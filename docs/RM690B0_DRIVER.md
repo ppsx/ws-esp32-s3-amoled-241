@@ -67,32 +67,32 @@ The **RM690B0 driver** is a high-performance, standalone display driver for the 
 ### System Overview
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   Python Application                     │
-├─────────────────────────────────────────────────────────┤
+┌────────────────────────────────────────────────────┐
+│                   Python Application                    │
+├────────────────────────────────────────────────────┤
 │              rm690b0 Module (CircuitPython)             │
 │  • init_display()     • fill_rect()                     │
 │  • set_font()         • line()                          │
 │  • text()             • circle()                        │
 │  • swap_buffers()     • rect()                          │
-├─────────────────────────────────────────────────────────┤
+├────────────────────────────────────────────────────┤
 │           C Driver (common-hal/rm690b0/)                │
 │  • Framebuffer Management                               │
 │  • DMA Transfer Engine                                  │
 │  • Text Rendering Engine                                │
 │  • Image Decoders (BMP/JPEG)                            │
-├─────────────────────────────────────────────────────────┤
-│              ESP-IDF LCD Component                       │
+├────────────────────────────────────────────────────┤
+│              ESP-IDF LCD Component                      │
 │  • esp_lcd_rm690b0.c (panel driver)                     │
 │  • QSPI Communication                                   │
 │  • Hardware Acceleration                                │
-├─────────────────────────────────────────────────────────┤
-│                  ESP32-S3 Hardware                       │
+├────────────────────────────────────────────────────┤
+│                  ESP32-S3 Hardware                      │
 │  • PSRAM (framebuffer storage)                          │
 │  • DMA (transfer engine)                                │
 │  • JPEG Decoder (hardware accelerated)                  │
 │  • QSPI Peripheral                                      │
-└─────────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────┘
 ```
 
 ### Memory Architecture
@@ -1338,9 +1338,9 @@ if images:
 ```
 PSRAM Layout:
 ┌──────────────────────────────┐
-│  Front Buffer (540 KB)       │  ← Currently displayed
+│  Front Buffer (540 KB)          │  ← Currently displayed
 ├──────────────────────────────┤
-│  Back Buffer (540 KB)        │  ← Being drawn to
+│  Back Buffer (540 KB)           │  ← Being drawn to
 └──────────────────────────────┘
 ```
 
