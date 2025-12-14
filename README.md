@@ -411,11 +411,41 @@ Contributions are welcome! Please:
 
 ## License
 
-This project follows the CircuitPython license. See individual files for specific licensing.
+This project is licensed under the **MIT License**.
+
+### CircuitPython Base
+
+This project is based on CircuitPython 10.0.3, which is licensed under the MIT License. The RM690B0 driver and LVGL integration additions follow the same MIT License.
 
 ### Font Licenses
 
 Built-in fonts use Liberation fonts (SIL OFL 1.1). See font headers for details.
+
+### MIT License
+
+```
+MIT License
+
+Copyright (c) 2025 RM690B0 Driver Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ---
 

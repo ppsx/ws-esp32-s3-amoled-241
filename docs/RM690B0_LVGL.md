@@ -2737,6 +2737,360 @@ mp_obj_type_t
 
 ---
 
+## Troubleshooting
+
+### Common Issues
+
+#### Issue: Widgets Not Visible
+
+**Symptoms:** Widgets created but nothing appears on screen
+
+**Causes & Solutions:**
+
+1. **Forgot to call `init_rendering()`:**
+   ```python
+   lvgl = rm690b0_lvgl.RM690B0_LVGL()
+   lvgl.init_display()
+   lvgl.init_rendering()  # ← Must call this!
+   ```
+
+2. **Not calling `task_handler()` in loop:**
+   ```python
+   while True:
+       lvgl.task_handler()  # ← Required for rendering
+       time.sleep(0.01)
+   ```
+
+3. **Widgets positioned off-screen:**
+   ```python
+   # Check coordinates are within bounds
+   label = rm690b0_lvgl.Label("Text", x=50, y=50)  # OK
+   label = rm690b0_lvgl.Label("Text", x=700, y=50)  # Off-screen (x > 600)
+   ```
+
+4. **Widget hidden by default:**
+   ```python
+   # Some widgets may need explicit visibility
+   widget.set_style_bg_opa(255)  # Make opaque
+   ```
+
+---
+
+#### Issue: Touch Not Working
+
+**Symptoms:** Touch input doesn't trigger widget events
+
+**Causes & Solutions:**
+
+1. **Touch not initialized:**
+   ```python
+   lvgl = rm690b0_lvgl.RM690B0_LVGL()
+   lvgl.init_display()
+   lvgl.init_rendering()  # This initializes touch automatically
+   ```
+
+2. **Missing `task_handler()` call:**
+   ```python
+   # Touch events processed in task_handler()
+   while True:
+       lvgl.task_handler()  # ← Processes touch events
+       time.sleep(0.01)
+   ```
+
+3. **I2C bus conflict:**
+   - Check no other code is using I2C simultaneously
+   - Touch controller is at address 0x38
+
+4. **Wrong touch coordinates:**
+   - Touch coordinates are automatically transformed
+   - No manual transformation needed when using LVGL
+
+---
+
+#### Issue: Memory Error Loading TTF Font
+
+**Symptoms:** `MemoryError` or crash when loading TTF fonts
+
+**Causes & Solutions:**
+
+1. **Font file too large:**
+   ```python
+   # Use smaller font files (< 500KB recommended)
+   # Subset fonts to reduce size:
+   # pyftsubset font.ttf --output-file=font-subset.ttf --unicodes="U+0020-007F"
+   ```
+
+2. **Not freeing memory before load:**
+   ```python
+   import gc
+   
+   # Free memory before loading font
+   gc.collect()
+   font = rm690b0_lvgl.Font("fonts/calibri.ttf", 24)
+   ```
+
+3. **Loading fonts repeatedly:**
+   ```python
+   # BAD - loads font every frame
+   while True:
+       font = rm690b0_lvgl.Font("font.ttf", 24)  # Memory leak!
+       lvgl.task_handler()
+   
+   # GOOD - load once at startup
+   font = rm690b0_lvgl.Font("font.ttf", 24)
+   while True:
+       lvgl.task_handler()
+   ```
+
+4. **Multiple large fonts loaded:**
+   ```python
+   # Keep only necessary fonts in memory
+   font1 = rm690b0_lvgl.Font("font1.ttf", 24)
+   # ... use font1 ...
+   font1.deinit()  # Free when done
+   gc.collect()
+   
+   font2 = rm690b0_lvgl.Font("font2.ttf", 24)
+   ```
+
+---
+
+#### Issue: LVGL Touch Freezes Under GC Pressure
+
+**Symptoms:** Touch becomes unresponsive after a while, especially after `gc.collect()` or loading fonts
+
+**Cause:** Known issue with LVGL+touch on ESP32-S3 when garbage collection or large allocations occur
+
+**Solutions:**
+
+1. **Avoid `gc.collect()` in main UI loop:**
+   ```python
+   # BAD
+   while True:
+       lvgl.task_handler()
+       gc.collect()  # ← Don't do this!
+       time.sleep(0.01)
+   
+   # GOOD
+   while True:
+       lvgl.task_handler()
+       time.sleep(0.01)
+   ```
+
+2. **Load TTF fonts once at startup:**
+   ```python
+   # Load all fonts before entering main loop
+   gc.collect()  # OK to call here
+   font1 = rm690b0_lvgl.Font("font1.ttf", 24)
+   font2 = rm690b0_lvgl.Font("font2.ttf", 16)
+   
+   # Now enter main loop without further allocations
+   while True:
+       lvgl.task_handler()
+       time.sleep(0.01)
+   ```
+
+3. **Minimize large heap allocations during UI:**
+   ```python
+   # Pre-allocate large buffers at startup if needed
+   buffer = bytearray(1024)  # Do this once
+   
+   # Don't create large objects in loop
+   while True:
+       lvgl.task_handler()
+       # Avoid: data = bytearray(1024)
+       time.sleep(0.01)
+   ```
+
+4. **Consider using standalone driver instead:**
+   - For production apps, use `rm690b0` driver without LVGL
+   - LVGL is better for prototyping, standalone for production
+
+---
+
+#### Issue: Slow Performance / Low FPS
+
+**Symptoms:** UI updates feel sluggish, animations aren't smooth
+
+**Causes & Solutions:**
+
+1. **`task_handler()` called too infrequently:**
+   ```python
+   # BAD - 100ms delay = 10 FPS max
+   while True:
+       lvgl.task_handler()
+       time.sleep(0.1)
+   
+   # GOOD - 10ms delay = 100 FPS max
+   while True:
+       lvgl.task_handler()
+       time.sleep(0.01)
+   ```
+
+2. **Too many widgets:**
+   ```python
+   # Keep widget count reasonable (< 50 visible widgets)
+   # Hide widgets when not needed instead of creating/destroying
+   ```
+
+3. **Expensive operations in callbacks:**
+   ```python
+   def on_click(event):
+       # BAD - blocking operation
+       time.sleep(1)
+       process_large_file()
+   
+   def on_click(event):
+       # GOOD - quick operations only
+       label.text = "Clicked"
+   ```
+
+4. **Heavy drawing operations:**
+   ```python
+   # Minimize full-screen redraws
+   # Update only changed widgets
+   # Use double buffering effectively
+   ```
+
+---
+
+#### Issue: Widget Property Changes Don't Update Display
+
+**Symptoms:** Changed widget property but display doesn't update
+
+**Solution:**
+
+```python
+# Make sure task_handler() is called after property changes
+label.text = "New Text"
+button.x = 100
+
+# Updates appear after next task_handler() call
+lvgl.task_handler()
+```
+
+**Note:** Property changes are queued and applied during `task_handler()`.
+
+---
+
+#### Issue: Callback Not Called
+
+**Symptoms:** Set `on_click` or `on_change` but callback never fires
+
+**Causes & Solutions:**
+
+1. **Callback syntax error:**
+   ```python
+   # BAD - not callable
+   button.on_click = print("Clicked")  # Executes immediately!
+   
+   # GOOD - function reference
+   def on_click(event):
+       print("Clicked")
+   button.on_click = on_click
+   
+   # GOOD - lambda
+   button.on_click = lambda e: print("Clicked")
+   ```
+
+2. **Touch not working (see Touch Not Working section)**
+
+3. **Widget not clickable:**
+   ```python
+   # Labels aren't clickable by default
+   # Use Button for clickable elements
+   ```
+
+---
+
+#### Issue: Font Not Found
+
+**Symptoms:** `OSError` when loading TTF font
+
+**Solution:**
+
+```python
+# Check file exists and path is correct
+try:
+    font = rm690b0_lvgl.Font("fonts/calibri.ttf", 24)
+    print("✓ Font loaded")
+except OSError as e:
+    print(f"✗ Font not found: {e}")
+    print("Check:")
+    print("  1. File exists at fonts/calibri.ttf")
+    print("  2. Path is relative to code.py location")
+    print("  3. File is uploaded to device")
+```
+
+**Upload fonts:**
+```bash
+mpremote mkdir :fonts
+mpremote cp fonts/calibri.ttf :fonts/calibri.ttf
+```
+
+---
+
+### Performance Debugging
+
+**Measure Frame Time:**
+```python
+import time
+
+last_time = time.monotonic()
+while True:
+    lvgl.task_handler()
+    
+    current_time = time.monotonic()
+    frame_time = current_time - last_time
+    last_time = current_time
+    
+    if frame_time > 0.02:  # > 20ms = < 50 FPS
+        print(f"Slow frame: {frame_time*1000:.1f} ms")
+    
+    time.sleep(0.01)
+```
+
+**Monitor Memory:**
+```python
+import gc
+
+gc.collect()
+print(f"Free memory: {gc.mem_free()} bytes")
+
+# Load your UI
+lvgl = rm690b0_lvgl.RM690B0_LVGL()
+lvgl.init_display()
+lvgl.init_rendering()
+
+font = rm690b0_lvgl.Font("fonts/font.ttf", 24)
+label = rm690b0_lvgl.Label("Text", x=50, y=50)
+
+gc.collect()
+print(f"Free after UI: {gc.mem_free()} bytes")
+```
+
+---
+
+### Getting Help
+
+**Documentation:**
+- Review [RM690B0_DRIVER.md](RM690B0_DRIVER.md) for standalone driver
+- Check [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) for deep technical details
+- See [examples/](../examples/) for working code
+
+**Known Issues:**
+- LVGL+touch freezing under GC pressure (documented)
+- Use standalone driver for production apps
+
+**Debugging Steps:**
+1. Test with minimal example first
+2. Add complexity incrementally
+3. Check memory with `gc.mem_free()`
+4. Profile performance with timing code
+5. Review error messages carefully
+
+---
+
 ## Future Enhancements
 
 ### Implementation Status Summary
