@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Snake Game for Waveshare ESP32-S3 Touch AMOLED 2.41
 
@@ -27,6 +26,11 @@ import board
 import busio
 import rm690b0
 
+try:
+    import adafruit_focaltouch
+except ImportError:
+    adafruit_focaltouch = None
+
 # Import the Navigation Switch driver
 # We'll use a simplified version inline to avoid external dependencies
 PCA9554_ADDR = 0x21
@@ -52,8 +56,8 @@ MAX_SPEED = 20  # Maximum speed
 SCORE_PER_FOOD = 10
 
 # Font configuration
-FONT_HUD = 1  # 16×16 Liberation Sans
-FONT_TITLE = 3  # 24×24
+FONT_HUD = rm690b0.FONT_16x16  # 16×16 Liberation Sans
+FONT_TITLE = rm690b0.FONT_24x24  # 24×24
 CHAR_WIDTH_HUD = 16
 CHAR_HEIGHT_HUD = 16
 CHAR_WIDTH_TITLE = 24
@@ -183,7 +187,7 @@ class JoystickInput:
         }
 
     def get_direction(self):
-        """Get current direction pressed (returns DIR_* constant or None)."""
+        """Get current direction pressed (returns direction tuple or None)."""
         switches = self.read_switches()
         if switches["up"]:
             return DIR_UP
@@ -215,6 +219,86 @@ class JoystickInput:
             self.pca.write_outputs(0b11100000)  # Turn off LED
         except:
             pass
+
+
+class TouchInput:
+    """Touch screen input handler using FocalTouch."""
+
+    def __init__(self, i2c):
+        if adafruit_focaltouch is None:
+            raise RuntimeError("adafruit_focaltouch library is required.")
+        self.i2c = i2c
+        self.touch = adafruit_focaltouch.Adafruit_FocalTouch(self.i2c)
+        self.start_x = 0
+        self.start_y = 0
+        self.is_swiping = False
+        self.last_tap_time = 0
+
+    def get_direction(self):
+        """Get swipe direction from touch input (returns direction tuple or None)."""
+        if not self.touch.touched:
+            self.is_swiping = False
+            return None
+
+        try:
+            points = self.touch.touches
+        except:
+            return None
+
+        if not points:
+            self.is_swiping = False
+            return None
+
+        # Map coordinates (Landscape)
+        raw_x = points[0]["x"]
+        raw_y = points[0]["y"]
+        x = 600 - raw_y
+        y = raw_x
+
+        if not self.is_swiping:
+            self.start_x = x
+            self.start_y = y
+            self.is_swiping = True
+            return None
+
+        dx = x - self.start_x
+        dy = y - self.start_y
+        threshold = 30
+
+        if abs(dx) > abs(dy):
+            if abs(dx) > threshold:
+                self.start_x = x
+                self.start_y = y
+                return DIR_RIGHT if dx > 0 else DIR_LEFT
+        else:
+            if abs(dy) > threshold:
+                self.start_x = x
+                self.start_y = y
+                return DIR_DOWN if dy > 0 else DIR_UP
+        return None
+
+    def is_center_pressed(self):
+        """Check if center is pressed (tap anywhere)."""
+        if self.touch.touched and not self.is_swiping:
+            now = time.monotonic()
+            if now - self.last_tap_time > 0.5:
+                self.last_tap_time = now
+                return True
+        return False
+
+    def wait_for_center(self, timeout=None):
+        """Wait for center press with optional timeout."""
+        start = time.monotonic()
+        while True:
+            if self.is_center_pressed():
+                return True
+            if timeout and (time.monotonic() - start) > timeout:
+                return False
+            time.sleep(WAIT_POLL_INTERVAL)
+
+    def deinit(self):
+        """Cleanup resources."""
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -441,7 +525,7 @@ def draw_scene(display, snake, food, score, best):
 # ---------------------------------------------------------------------------
 
 
-def play_round(display, joystick, best_score):
+def play_round(display, joystick, touch, best_score):
     """Play one round of Snake."""
     width = display.width
     height = display.height
@@ -457,47 +541,56 @@ def play_round(display, joystick, best_score):
     speed = INITIAL_SPEED
     game_over = False
     elapsed_timer = time.monotonic()
+    last_move_time = time.monotonic()
+    input_poll_rate = 60  # Hz - check input 60 times per second
 
     while not game_over:
         frame_start = time.monotonic()
 
-        # Handle input
-        new_direction = joystick.get_direction()
+        # Handle input from joystick or touch (polled at high rate)
+        new_direction = None
+        if joystick:
+            new_direction = joystick.get_direction()
+        if new_direction is None and touch:
+            new_direction = touch.get_direction()
         if new_direction:
             snake.set_direction(new_direction)
 
-        # Move snake
-        snake.move()
+        # Move snake only at game speed
+        move_interval = 1.0 / speed
+        if time.monotonic() - last_move_time >= move_interval:
+            last_move_time = time.monotonic()
+            snake.move()
 
-        # Check collisions
-        if (
-            snake.collides_with_walls(GRID_COLS, GRID_ROWS)
-            or snake.collides_with_self()
-        ):
-            game_over = True
+            # Check collisions
+            if (
+                snake.collides_with_walls(GRID_COLS, GRID_ROWS)
+                or snake.collides_with_self()
+            ):
+                game_over = True
 
-        # Check food collision
-        if snake.get_head() == food.position:
-            snake.grow()
-            score += SCORE_PER_FOOD
-            if score > local_best:
-                local_best = score
-            speed = min(speed + SPEED_INCREMENT, MAX_SPEED)
-            food.respawn(GRID_COLS, GRID_ROWS, snake.segments)
+            # Check food collision
+            if snake.get_head() == food.position:
+                snake.grow()
+                score += SCORE_PER_FOOD
+                if score > local_best:
+                    local_best = score
+                speed = min(speed + SPEED_INCREMENT, MAX_SPEED)
+                food.respawn(GRID_COLS, GRID_ROWS, snake.segments)
 
-        # Draw scene
-        draw_scene(display, snake, food, score, local_best)
-        display.swap_buffers(copy=False)
+            # Draw scene
+            draw_scene(display, snake, food, score, local_best)
+            display.swap_buffers(copy=False)
 
-        # Status update
-        if time.monotonic() - elapsed_timer >= 1.0:
-            elapsed_timer = time.monotonic()
-            print(
-                f"Score: {score:03d}  Length: {len(snake.segments):02d}  Speed: {speed:.1f}"
-            )
+            # Status update
+            if time.monotonic() - elapsed_timer >= 1.0:
+                elapsed_timer = time.monotonic()
+                print(
+                    f"Score: {score:03d}  Length: {len(snake.segments):02d}  Speed: {speed:.1f}"
+                )
 
-        # Frame timing
-        frame_time = 1.0 / speed
+        # Frame timing for input polling (60 Hz)
+        frame_time = 1.0 / input_poll_rate
         frame_elapsed = time.monotonic() - frame_start
         if frame_elapsed < frame_time:
             time.sleep(frame_time - frame_elapsed)
@@ -526,28 +619,86 @@ def main():
     display.brightness = 1.0
     display.swap_buffers()
 
-    # Initialize joystick
-    i2c = busio.I2C(board.TP_SCL, board.TP_SDA, frequency=100000)
-    joystick = JoystickInput(i2c)
+    # Initialize input devices
+    i2c = busio.I2C(board.TP_SCL, board.TP_SDA, frequency=400000)
+
+    joystick = None
+    touch = None
+
+    try:
+        joystick = JoystickInput(i2c)
+        print("Joystick initialized")
+    except Exception as e:
+        print(f"Joystick init failed: {e}")
+
+    try:
+        touch = TouchInput(i2c)
+        print("Touch initialized")
+    except Exception as e:
+        print(f"Touch init failed: {e}")
+
+    if not joystick and not touch:
+        print("No input devices found!")
+        return
 
     best_score = 0
+
+    # Helper functions for combined input (like Pacman)
+    def get_combined_input():
+        """Get input from joystick or touch."""
+        direction = None
+        if joystick:
+            direction = joystick.get_direction()
+        if direction is None and touch:
+            direction = touch.get_direction()
+        return direction
+
+    def check_start():
+        """Check if start/center is pressed."""
+        if joystick and joystick.is_center_pressed():
+            return True
+        if touch and touch.is_center_pressed():
+            return True
+        return False
 
     try:
         while True:
             # Show start screen
             draw_start_screen(display, best_score)
-            joystick.wait_for_center()
+
+            # Wait for inputs to be released (debounce)
+            while check_start() or get_combined_input() is not None:
+                time.sleep(0.1)
+
+            # Wait for input to start
+            start = False
+            while not start:
+                if check_start():
+                    start = True
+                elif get_combined_input() is not None:
+                    start = True
+                time.sleep(0.05)
 
             # Play round
-            score, best_score = play_round(display, joystick, best_score)
+            score, best_score = play_round(display, joystick, touch, best_score)
             print(f"\nRound finished. Score: {score}, Best: {best_score}")
 
             # Show game over screen
             draw_game_over(display, score, best_score, display.width, display.height)
             display.swap_buffers()
 
-            # Wait for restart
-            joystick.wait_for_center()
+            # Wait for inputs to be released (debounce)
+            while check_start() or get_combined_input() is not None:
+                time.sleep(0.1)
+
+            # Wait for any input to continue
+            waiting = True
+            while waiting:
+                if check_start():
+                    waiting = False
+                elif get_combined_input() is not None:
+                    waiting = False
+                time.sleep(0.05)
 
     except KeyboardInterrupt:
         print("\nInterrupted. Exiting.")
@@ -555,7 +706,10 @@ def main():
         display.fill_color(rm690b0.BLACK)
         display.swap_buffers()
         display.deinit()
-        joystick.deinit()
+        if joystick:
+            joystick.deinit()
+        if touch:
+            touch.deinit()
         i2c.deinit()
         print("\nBest score this session:", best_score)
 

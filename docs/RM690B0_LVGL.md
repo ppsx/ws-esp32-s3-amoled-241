@@ -136,22 +136,22 @@ print(dir(rm690b0_lvgl))
 
 ## Quick Start
 
-### Minimal Example (5 Lines)
+### Minimal Example
 
 ```python
+import time
 import rm690b0
 import rm690b0_lvgl
 
-# Step 1: Initialize hardware
+# Initialize display driver
 display = rm690b0.RM690B0()
 display.init_display()
 
-# Step 2: Initialize LVGL
+# Initialize LVGL
 lvgl = rm690b0_lvgl.RM690B0_LVGL()
 lvgl.init_display()
 
-# Step 3: Main loop
-import time
+# Main loop
 while True:
     lvgl.task_handler()
     time.sleep(0.01)
@@ -160,11 +160,11 @@ while True:
 ### Interactive Button Example
 
 ```python
+import time
 import board
 import busio
 import rm690b0
 import rm690b0_lvgl
-import time
 
 # Initialize display
 display = rm690b0.RM690B0()
@@ -175,7 +175,7 @@ lvgl = rm690b0_lvgl.RM690B0_LVGL()
 lvgl.init_display()
 
 # Initialize touch
-i2c = busio.I2C(board.SCL, board.SDA, frequency=400000)
+i2c = busio.I2C(board.TP_SCL, board.TP_SDA, frequency=400000)
 lvgl.init_touch(i2c)
 
 # Create a label
@@ -402,12 +402,37 @@ h = lvgl.height  # Returns 450
 
 #### Context Manager Support
 
+The `RM690B0_LVGL` class supports Python's context manager protocol, ensuring proper cleanup:
+
 ```python
+import rm690b0
+import rm690b0_lvgl
+
+# Initialize display first
+display = rm690b0.RM690B0()
+display.init_display()
+
+# Use LVGL with context manager
 with rm690b0_lvgl.RM690B0_LVGL() as lvgl:
     lvgl.init_display()
-    # Use lvgl...
+    lvgl.init_rendering()
+    
+    # Create widgets
+    label = rm690b0_lvgl.Label(text="Hello World")
+    label.x = 300
+    label.y = 225
+    
+    # Main loop
+    import time
+    for _ in range(100):  # Run for 10 seconds
+        lvgl.task_handler()
+        time.sleep(0.1)
+        
 # Automatically calls deinit() on exit
+# This ensures LVGL resources are properly cleaned up
 ```
+
+**Note:** The display (`rm690b0.RM690B0`) must be initialized before creating the LVGL instance.
 
 ---
 
@@ -826,21 +851,35 @@ def callback(slider: Slider) -> None:
 #### Complete Slider Example
 
 ```python
-# Create label to show slider value
-value_label = rm690b0_lvgl.Label(text="Volume: 50")
-value_label.x = 250
-value_label.y = 100
+import time
+import rm690b0
+import rm690b0_lvgl
+
+# Initialize display and LVGL
+display = rm690b0.RM690B0()
+display.init_display()
+lvgl = rm690b0_lvgl.RM690B0_LVGL()
+lvgl.init_display()
+
+# Create volume control
+volume_label = rm690b0_lvgl.Label(text="Volume: 50")
+volume_label.x = 200
+volume_label.y = 100
 
 def on_volume_change(slider):
-    value_label.text = f"Volume: {slider.value}"
+    volume_label.text = f"Volume: {slider.value}"
 
 slider = rm690b0_lvgl.Slider(min_value=0, max_value=100)
-slider.x = 180
+slider.x = 100
 slider.y = 150
-slider.width = 240
-slider.height = 15
+slider.width = 400
+slider.value = 50
 slider.on_change = on_volume_change
-slider.value = 50  # Triggers callback, updates label
+
+# Main loop
+while True:
+    lvgl.task_handler()
+    time.sleep(0.01)
 ```
 
 ---
@@ -2478,24 +2517,36 @@ i2c = busio.I2C(board.SCL, board.SDA, frequency=400000)
 lvgl.init_touch(i2c)
 
 # Create UI
+```python
+import time
+import rm690b0
+import rm690b0_lvgl
+
+# Initialize display and LVGL
+display = rm690b0.RM690B0()
+display.init_display()
+lvgl = rm690b0_lvgl.RM690B0_LVGL()
+lvgl.init_display()
+
+# Create counter display
 count = 0
 label = rm690b0_lvgl.Label(text=f"Count: {count}")
-label.x = 250
-label.y = 150
+label.x = 200
+label.y = 100
 
 def increment(btn):
     global count
     count += 1
     label.text = f"Count: {count}"
 
-button = rm690b0_lvgl.Button(text="Count Up")
-button.x = 200
-button.y = 250
-button.width = 200
+button = rm690b0_lvgl.Button(text="Click Me!")
+button.x = 150
+button.y = 200
+button.width = 300
 button.height = 80
 button.on_click = increment
 
-# Run
+# Main loop
 while True:
     lvgl.task_handler()
     time.sleep(0.01)
@@ -2504,9 +2555,15 @@ while True:
 ### Example 2: Multi-Button Control
 
 ```python
+import time
+import rm690b0
 import rm690b0_lvgl
 
-# Initialize (display and LVGL setup omitted for brevity)
+# Initialize display and LVGL
+display = rm690b0.RM690B0()
+display.init_display()
+lvgl = rm690b0_lvgl.RM690B0_LVGL()
+lvgl.init_display()
 
 # Status label
 status = rm690b0_lvgl.Label(text="Ready")
@@ -2556,7 +2613,14 @@ btn_blue.on_click = on_blue
 ### Example 3: Settings Panel
 
 ```python
+import rm690b0
 import rm690b0_lvgl
+
+# Initialize display and LVGL
+display = rm690b0.RM690B0()
+display.init_display()
+lvgl = rm690b0_lvgl.RM690B0_LVGL()
+lvgl.init_display()
 
 # Title
 title = rm690b0_lvgl.Label(text="Display Settings")
@@ -2935,12 +2999,12 @@ mp_obj_type_t
 
 3. **Expensive operations in callbacks:**
    ```python
-   def on_click(event):
+   def on_click_bad(event):
        # BAD - blocking operation
        time.sleep(1)
        process_large_file()
    
-   def on_click(event):
+   def on_click_good(event):
        # GOOD - quick operations only
        label.text = "Clicked"
    ```

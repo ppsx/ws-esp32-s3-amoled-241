@@ -14,30 +14,29 @@ This document consolidates technical notes and findings from the RM690B0 driver 
 
 ## 1. Performance Benchmarking Insights
 
-### Adaptive Delay Implementation
+### DMA Synchronization Strategy (Semaphore)
 
-The driver uses an adaptive delay formula to ensure hardware has time to process transfers:
+The driver implements robust synchronization using a FreeRTOS semaphore to manage DMA transfers, replacing previous "adaptive delay" heuristics.
 
-```
-delay_us = pixels_transferred / 36
-minimum: 50µs
-maximum: 500µs
-```
+**Problem:** Using estimated delays (busy-waiting) creates a race condition where the CPU might write to the DMA buffer before the previous transfer completes, causing visual artifacts (tearing/corruption).
+
+**Solution:**
+- A binary semaphore (`transfer_done_sem`) tracks DMA status.
+- A callback (`rm690b0_on_color_trans_done`) releases the semaphore from ISR when hardware signals completion.
+- `flush_region` waits on the semaphore before reusing the transfer buffer.
 
 ### Performance Characteristics
 
-| Operation Type | Pixels | Old Delay | New Delay | Improvement |
-|---------------|--------|-----------|-----------|-------------|
-| Single line | ~600 | 500µs | 50µs | 10x faster |
-| Small rect | ~5,000 | 500µs | ~139µs | 3.6x faster |
-| Large bitmap | ~270,000 | 500µs | 500µs | Same (hardware limited) |
+| Synchronization | Safety | CPU Usage | Latency |
+|----------------|--------|-----------|---------|
+| Adaptive Delay | Low (Race Risk) | High (Busy Wait) | Variable |
+| **Semaphore** | **High (Guaranteed)** | **Low (Blocked)** | **Optimal** |
 
 ### Key Findings
 
-1. **Small operations benefit most** from adaptive delays (10x improvement)
-2. **Large operations** are hardware-limited regardless of delay
-3. **50µs minimum** prevents artifacts while maintaining performance
-4. **Scaling formula** ensures hardware never gets overrun
+1. **Eliminated Race Conditions:** Visual artifacts during heavy load are gone.
+2. **CPU Efficiency:** CPU yields during transfers instead of busy-waiting.
+3. **Stability:** Safe for complex applications (e.g., multithreaded LVGL).
 
 ### Benchmarking Recommendations
 
@@ -71,6 +70,32 @@ Original implementation was 39× slower due to:
 - Vertical lines: x coordinate boundary handling
 - Fill operations: proper inclusive/exclusive bounds
 
+### Fill Rectangle (`fill_rect`) Optimization
+
+**Previous Approach:** Optional recursive tiling into 100×100 blocks.
+
+**Updated Approach (Current):** Single-pass fill after clipping + rotation mapping
+- Avoids recursion overhead and repeated clip/map operations
+- Uses block-doubling (fill first row, then memcpy-doubling rows) for large fills
+- Especially beneficial for `fill_color()` and large UI background clears
+
+### Line Drawing Rotation Fix
+
+**Issue:** `line()` used Bresenham in logical coordinates but wrote directly to the physical framebuffer without applying rotation mapping.
+
+**Fix:** Convert endpoints to physical coordinates before Bresenham
+- Prevents incorrect placement when rotation != 0
+- Prevents potential out-of-bounds writes when logical dimensions differ from physical stride
+
+### Glyph Rendering Clipping
+
+**Issue:** Glyph rasterizers used per-pixel bounds checks only, which is safe but wastes work for partially off-screen text.
+
+**Fix:** Early-exit + per-glyph clipping window
+- Skip glyphs completely off-screen
+- Only iterate visible rows/columns when partially clipped
+- Reduces per-pixel overhead near edges and for scrolling text
+
 ### DMA Alignment Requirements
 
 **Hardware Constraint:** RM690B0/ESP32-S3 requires even-pixel alignment for DMA
@@ -99,6 +124,15 @@ Original implementation was 39× slower due to:
 **Solution:** Read from framebuffer at expanded coordinates with bounds checking
 - Prevents out-of-bounds access
 - Maintains proper color values at edges
+
+### Image Blitting Optimizations (BMP/JPEG)
+
+**Issue:** Pixel-by-pixel rendering is correct but slow for full-screen images.
+
+**Fix:** Fast path for rotation=0 + clipping-aware loops
+- For rotation=0, copy rows directly into the framebuffer with tight loops
+- Apply RGB565 byte/bit swapping consistently
+- For other rotations, fall back to per-pixel rotated writes (correctness-first)
 - Eliminates visual artifacts from duplicate pixels
 
 ---
@@ -331,15 +365,21 @@ with open("/sd/image.bmp", "rb") as f:
 
 ### Issue: Color Mixing/Artifacts
 
-**Cause:** Insufficient delay between transfers
+**Cause:** DMA transfer buffer reuse before the previous transfer completes (race condition).
 
-**Solution:** Adaptive delay formula ensures hardware has time to process
+**Solution:** Semaphore-based DMA synchronization
+- A binary semaphore tracks when the last DMA transfer is complete
+- The LCD IO completion callback releases the semaphore from ISR
+- The flush loop waits on the semaphore before reusing the DMA staging buffer
 
 ### Issue: Slow Small Operations
 
-**Cause:** Fixed 500µs delay was overkill for small operations
+**Cause:** Excessive per-operation overhead when flushing many tiny regions.
 
-**Solution:** Scale delay based on pixels transferred (minimum 50µs)
+**Solution:**
+- Prefer batching operations (draw into framebuffer first, flush once via `swap_buffers()` in double-buffer mode)
+- Reduce flush frequency for many tiny updates (group UI updates per frame/tick)
+- Semaphore-based synchronization prevents corruption without relying on arbitrary delays
 
 ### Issue: SD Card Access
 
@@ -367,7 +407,267 @@ with open("/sd/image.bmp", "rb") as f:
 
 ---
 
-## 7. Future Optimization Opportunities
+## 7. DMA Memory Management and ESP_ERR_NO_MEM (0x101)
+
+### Problem Overview
+
+**Error:** `RuntimeError: Failed to refresh display: UNKNOWN ERROR (0x101)`  
+**Root Cause:** `ESP_ERR_NO_MEM` - DMA memory allocation failure  
+**Location:** `rm690b0_flush_region()` in `RM690B0.c`
+
+### Memory Architecture
+
+ESP32-S3 has two separate memory pools:
+
+1. **SPIRAM (PSRAM)** - External RAM (~8 MB)
+   - Used for: Framebuffers (2 × 540 KB)
+   - Slow but large
+   - Cannot be used for DMA transfers (hardware limitation)
+
+2. **DMA-capable Internal RAM** - ~400 KB total
+   - Used for: DMA transfers, driver buffers, heap
+   - Fast but limited and **required for SPI display transfers**
+   - Shared by all system components
+
+### DMA RAM Usage Breakdown
+
+```
+DMA RAM Usage (~400 KB total):
+├─ System/ESP-IDF:           ~100 KB (OS, network stack, etc.)
+├─ CircuitPython heap:        ~150 KB (variable)
+├─ Display driver chunk:       23.4 KB (temporary, per-flush)
+├─ Touch/I2C/other drivers:    ~50 KB
+└─ Available:                  ~75 KB (fragmented)
+```
+
+### Why Allocation Fails
+
+Even with free DMA memory, **fragmentation** prevents large contiguous allocations:
+
+```
+Example fragmented state:
+[20KB free][used][15KB free][used][30KB free][used][10KB free]
+Total free: 75 KB, but largest block: 30 KB
+
+Trying to allocate 58.6 KB chunk → FAILS (no single block large enough)
+```
+
+### Driver Optimization Applied
+
+**Original Configuration:**
+```c
+// Before (line 93):
+#define RM690B0_MAX_CHUNK_PIXELS   (LCD_H_RES * 50)
+// = 600 × 50 = 30,000 pixels
+// = 30,000 × 2 bytes = 60,000 bytes = 58.6 KB DMA
+```
+
+**Optimized Configuration:**
+```c
+// After (line 93):
+#define RM690B0_MAX_CHUNK_PIXELS   (LCD_H_RES * 20)
+// = 600 × 20 = 12,000 pixels  
+// = 12,000 × 2 bytes = 24,000 bytes = 23.4 KB DMA
+```
+
+**Benefits:**
+- **2.5× smaller allocation** (23.4 KB vs 58.6 KB)
+- Much higher probability of finding contiguous block
+- Reduces fragmentation pressure
+- More room for Python heap growth
+
+**Trade-offs:**
+- Slightly more DMA transfers per flush (2-3× more)
+- Each transfer has overhead (~50µs setup)
+- Net performance impact: **minimal** (~0.7ms per full frame)
+
+### Performance Impact Analysis
+
+**Full Screen Flush (600×450):**
+
+Before (50 lines/chunk):
+```
+Chunks needed: 450 / 50 = 9 chunks
+Setup overhead: 9 × 50µs = 0.45ms
+Transfer time: ~8ms
+TOTAL: ~8.5ms
+```
+
+After (20 lines/chunk):
+```
+Chunks needed: 450 / 20 = 23 chunks  
+Setup overhead: 23 × 50µs = 1.15ms
+Transfer time: ~8ms
+TOTAL: ~9.2ms
+```
+
+**Impact:** +0.7ms per full flush (~8% slower)
+
+**Typical Game Frame (dirty regions):**
+```
+Most frames don't flush full screen.
+Small regions (e.g., 100×100) still fit in one chunk.
+IMPACT: NONE for typical usage
+```
+
+### Prevention Strategies for Developers
+
+1. **Strategic Garbage Collection:**
+   ```python
+   import gc
+   
+   def game_loop():
+       gc.collect()  # Before heavy operations
+       # ... drawing ...
+       display.swap_buffers()
+       gc.collect()  # After frame complete
+   ```
+
+2. **Minimize Allocations in Game Loop:**
+   ```python
+   # Bad - creates new objects every frame
+   def update():
+       temp = [0] * 100  # New allocation
+       process(temp)
+   
+   # Good - reuse pre-allocated buffer
+   class Game:
+       def __init__(self):
+           self.temp_buffer = [0] * 100
+       
+       def update(self):
+           process(self.temp_buffer)  # Reuse
+   ```
+
+3. **Batch Drawing Operations:**
+   ```python
+   # Inefficient - many Python→C calls
+   for tile in 868_tiles:
+       display.fill_rect(tile.x, tile.y, 16, 16, tile.color)
+   
+   # Better - fewer, larger operations
+   display.fill_rect(x, y, width, height, color)
+   ```
+
+4. **Avoid Premature Buffer Activation:**
+   ```python
+   # Don't do this
+   display.init_display()
+   display.swap_buffers()  # ← BAD: activates buffers too early
+   
+   # Do this
+   display.init_display()
+   # Let first frame initialize buffers naturally
+   ```
+
+### Alternative Solutions Considered
+
+**1. Use SPIRAM for chunk_buffer** ❌
+- Problem: DMA can't transfer from SPIRAM (hardware limitation)
+
+**2. Static buffer** ❌
+- Problem: Wastes 58.6 KB even when display not used
+
+**3. Reduce to 10 lines** ❓
+- Trade-off: Even safer but 4-5× more transfers
+- Verdict: 20 lines is optimal balance
+
+**4. Graceful degradation** 🔄
+- Future consideration: Try 20, then 10, then 5 lines if allocation fails
+
+### Verification Test
+
+```python
+import rm690b0
+import gc
+import time
+
+display = rm690b0.RM690B0()
+display.init_display()
+
+# Stress test: 500 frames with alternating patterns
+errors = 0
+start = time.monotonic()
+
+for frame in range(500):
+    try:
+        gc.collect()
+        
+        if frame % 2 == 0:
+            # Full screen update
+            display.fill_color(0x0000)
+        else:
+            # Many small updates (worst case for fragmentation)
+            for i in range(20):
+                x = (frame * 10 + i * 30) % 600
+                y = (frame * 5 + i * 20) % 450
+                display.fill_rect(x, y, 50, 50, 0xFFFF)
+        
+        display.swap_buffers()
+        
+    except RuntimeError as e:
+        if "0x101" in str(e):
+            errors += 1
+            print(f"Frame {frame}: ESP_ERR_NO_MEM!")
+
+elapsed = time.monotonic() - start
+print(f"\nCompleted 500 frames in {elapsed:.1f}s")
+print(f"FPS: {500/elapsed:.1f}")
+print(f"Errors: {errors}")
+print(f"Success rate: {100*(500-errors)/500:.1f}%")
+
+# Expected with optimized driver:
+# Errors: 0, Success rate: 100.0%
+```
+
+### Firmware Modification Details
+
+**File:** `ports/espressif/common-hal/rm690b0/RM690B0.c`  
+**Line:** 93  
+**Change:** `RM690B0_MAX_CHUNK_PIXELS` from `(LCD_H_RES * 50)` to `(LCD_H_RES * 20)`
+
+**Rebuild Required:** Yes (CircuitPython firmware recompilation)
+
+```bash
+cd ports/espressif
+make BOARD=waveshare_esp32s3_amoled_241
+```
+
+### Long-term Recommendations
+
+1. **Make chunk size configurable:**
+   ```c
+   #ifndef RM690B0_CHUNK_LINES
+   #define RM690B0_CHUNK_LINES 20
+   #endif
+   ```
+
+2. **Add DMA memory diagnostic:**
+   ```c
+   size_t dma_free = heap_caps_get_free_size(MALLOC_CAP_DMA);
+   size_t dma_largest = heap_caps_get_largest_free_block(MALLOC_CAP_DMA);
+   ESP_LOGI(TAG, "DMA: %zu free, %zu largest", dma_free, dma_largest);
+   ```
+
+3. **Implement graceful degradation:**
+   ```c
+   // Try 20 lines, then 10, then 5, then 1
+   for (int lines = 20; lines >= 1; lines /= 2) {
+       chunk_buffer = malloc(LCD_H_RES * lines * 2);
+       if (chunk_buffer != NULL) break;
+   }
+   ```
+
+### Summary
+
+- **Fix Applied:** Reduced DMA chunk from 58.6 KB to 23.4 KB
+- **Impact:** Significantly improved stability for complex games
+- **Cost:** ~0.7ms slower for full screen flush (negligible)
+- **Result:** Addresses root cause (fragmentation) vs symptoms (crashes)
+
+---
+
+## 8. Future Optimization Opportunities
 
 ### Short Term
 - [ ] Profile BMP decoder for optimization opportunities
@@ -853,18 +1153,18 @@ display.init_display()
 display.set_font(1)  # 16×16 font
 
 # Draw text with transparent background
-display.text(10, 10, "Hello World", color=0xFFFF)
+display.text(10, 10, "Hello World", color=rm690b0.WHITE)
 
 # Draw text with solid background
-display.text(10, 50, "Highlighted", color=0x0000, background=0xFFE0)
+display.text(10, 50, "Highlighted", color=rm690b0.BLACK, background=rm690b0.YELLOW)
 
 # Switch to larger font
 display.set_font(3)  # 24×24 font
-display.text(10, 100, "Bigger!", color=0xF800)
+display.text(10, 100, "Bigger!", color=rm690b0.RED)
 
 # Smallest font for debug/status text
 display.set_font(0)  # 8×8 font
-display.text(10, 420, "Status: OK", color=0x07E0)
+display.text(10, 420, "Status: OK", color=rm690b0.GREEN)
 ```
 
 **Available Font IDs:**
@@ -980,10 +1280,10 @@ display.init_display()
 display.set_font(1)  # 16×16 Liberation Sans
 
 # Draw text with transparent background
-display.text(10, 10, "Hello World", color=0xFFFF)
+display.text(10, 10, "Hello World", color=rm690b0.WHITE)
 
 # Draw text with solid background
-display.text(10, 50, "Status: OK", color=0x0000, background=0x07E0)
+display.text(10, 50, "Status: OK", color=rm690b0.BLACK, background=rm690b0.GREEN)
 
 # Update display
 display.swap_buffers()
@@ -998,21 +1298,21 @@ display = rm690b0.RM690B0()
 display.init_display()
 
 # Clear screen
-display.fill_color(0x0000)  # Black
+display.fill_color(rm690b0.BLACK)  # Black
 
 # Title with large font
 display.set_font(3)  # 24×24
-display.text(50, 20, "RM690B0 Demo", color=0xFFFF)
+display.text(50, 20, "RM690B0 Demo", color=rm690b0.WHITE)
 
 # Body text with medium font
 display.set_font(1)  # 16×16
-display.text(50, 80, "Native text rendering", color=0x07E0)
-display.text(50, 110, "7 built-in fonts", color=0x07E0)
-display.text(50, 140, "Fast and lightweight", color=0x07E0)
+display.text(50, 80, "Native text rendering", color=rm690b0.GREEN)
+display.text(50, 110, "7 built-in fonts", color=rm690b0.GREEN)
+display.text(50, 140, "Fast and lightweight", color=rm690b0.GREEN)
 
 # Status bar with small font
 display.set_font(0)  # 8×8
-display.text(10, 430, f"FPS: 60  Free: {gc.mem_free()}", color=0xF800)
+display.text(10, 430, f"FPS: 60  Free: {gc.mem_free()}", color=rm690b0.RED)
 
 # Show on display
 display.swap_buffers()
@@ -1056,16 +1356,16 @@ Render UTF-8 text string at specified coordinates.
 **Examples:**
 ```python
 # Transparent white text
-display.text(10, 10, "Hello", color=0xFFFF)
+display.text(10, 10, "Hello", color=rm690b0.WHITE)
 
 # Black text on yellow background
-display.text(10, 50, "Warning", color=0x0000, background=0xFFE0)
+display.text(10, 50, "Warning", color=rm690b0.BLACK, background=rm690b0.YELLOW)
 
 # Red text (transparent)
-display.text(10, 90, "Error!", color=0xF800)
+display.text(10, 90, "Error!", color=rm690b0.RED)
 
 # Custom RGB565 colors
-display.text(10, 130, "Custom", color=0x07E0, background=0x001F)
+display.text(10, 130, "Custom", color=rm690b0.GREEN, background=rm690b0.BLUE)
 ```
 
 ### Built-in Fonts

@@ -74,43 +74,46 @@ import basic_test
 
 ---
 
-### font_test.py
+### test_all_fonts.py
 
 **Description:** Comprehensive test of all 7 native bitmap fonts.
 
 **Features:**
-- Displays all fonts on a single screen
-- Shows character samples for each font
-- Demonstrates font sizing and spacing
-
-**Usage:**
-```python
-import font_test
-```
-
-**Fonts Tested:**
-- Font 0: 8×8 monospace
-- Font 1: 16×16 Liberation Sans
-- Font 2: 16×24 Liberation Mono Bold
-- Font 3: 24×24 monospace
-- Font 4: 24×32 monospace
-- Font 5: 32×32 monospace
-- Font 6: 32×48 monospace
-
----
-
-### test_all_fonts.py
-
-**Description:** Cycle through all fonts with visual comparison.
-
-**Features:**
-- Shows each font with identical text
-- Automatic cycling with timing
-- Memory usage monitoring
+- Displays each font with sample text
+- Shows all fonts together for size comparison
+- Tests rendering performance
+- Demonstrates font colors and backgrounds
+- Cycles through each font individually
+- Shows memory usage statistics
 
 **Usage:**
 ```python
 import test_all_fonts
+```
+
+**Fonts Available:**
+- Font 0: 8×8 monospace (760 bytes) - Debug/logs
+- Font 1: 16×16 Liberation Sans (30 KB) - Standard UI
+- Font 2: 16×24 Liberation Mono Bold (45 KB) - Readable UI
+- Font 3: 24×24 monospace (68 KB) - Headers
+- Font 4: 24×32 monospace (91 KB) - Large headers
+- Font 5: 32×32 monospace (121 KB) - Big display
+- Font 6: 32×48 monospace (182 KB) - Huge display
+
+---
+
+### show_image_fast.py
+
+**Description:** Demonstrates fast image loading from SD card or flash.
+
+**Features:**
+- Loads and displays BMP/JPEG images
+- Shows performance metrics
+- Supports SD card and internal storage
+
+**Usage:**
+```python
+import show_image_fast
 ```
 
 ---
@@ -389,26 +392,6 @@ Tests for specific hardware peripherals and sensors.
 ```python
 import navigation_switch_test
 # Press switches to see LED changes
-```
-
----
-
-### sparkfun_joystick_test.py
-
-**Description:** Test analog joystick input.
-
-**Features:**
-- X/Y axis position reading
-- Button press detection
-- Real-time coordinate display
-
-**Hardware:**
-- SparkFun Qwiic Joystick
-- I2C interface
-
-**Usage:**
-```python
-import sparkfun_joystick_test
 ```
 
 ---

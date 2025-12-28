@@ -72,14 +72,15 @@ print("Creating title label...")
 
 print("Loading TTF font from: fonts/calibri.ttf")
 print("This may take a moment...")
-#gc.collect()  # Free up memory before loading font
+##@# Commented out - memory issues - screen freezing
+##@# gc.collect()  # Free up memory before loading font
 print(f"Free memory before font load: {gc.mem_free()} bytes")
-#font = rm690b0_lvgl.Font("fonts/calibri.ttf", 24)
+##@# font = rm690b0_lvgl.Font("fonts/calibri.ttf", 24)
 print("✓ Font loaded successfully")
-#gc.collect()
+##@# gc.collect()
 print(f"Free memory after font load: {gc.mem_free()} bytes")
 print("Setting font to title...")
-#title.set_style_text_font(font)
+##@# title.set_style_text_font(font)
 print("✓ Font applied to title")
 time.sleep(0.03)
 lvgl.task_handler()

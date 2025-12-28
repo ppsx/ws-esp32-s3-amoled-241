@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Simple Flappy Bird clone for the Waveshare ESP32-S3 Touch AMOLED display.
 
@@ -53,8 +52,8 @@ CLOUD_SPEED = 1.2
 CLOUD_RADIUS = 26
 
 # Font configuration for native text rendering
-FONT_HUD = 1  # 16×16 Liberation Sans for HUD
-FONT_TITLE = 3  # 24×24 for titles
+FONT_HUD = rm690b0.FONT_16x16  # 16×16 Liberation Sans for HUD
+FONT_TITLE = rm690b0.FONT_24x24  # 24×24 for titles
 CHAR_WIDTH_HUD = 16
 CHAR_HEIGHT_HUD = 16
 CHAR_WIDTH_TITLE = 24

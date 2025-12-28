@@ -28,7 +28,7 @@ TEXT_COLOR = rgb565(255, 255, 255)
 BORDER_COLOR = rgb565(200, 200, 200)
 
 # Font configuration for native text rendering
-FONT_16x16 = 1  # Built-in 16×16 Liberation Sans font
+FONT_16x16 = rm690b0.FONT_16x16  # Built-in 16×16 Liberation Sans font
 CHAR_WIDTH_16x16 = 16
 CHAR_HEIGHT_16x16 = 16
 
@@ -156,7 +156,7 @@ class Button:
         draw_text(display, self.text, text_x, text_y, TEXT_COLOR)
 
 
-def draw_menu(display, flappy_button, snake_button, exit_button):
+def draw_menu(display, flappy_button, snake_button, pacman_button, exit_button):
     """Draw the main menu."""
     display.fill_color(BG_COLOR)
 
@@ -169,6 +169,7 @@ def draw_menu(display, flappy_button, snake_button, exit_button):
     # Draw buttons
     flappy_button.draw(display)
     snake_button.draw(display)
+    pacman_button.draw(display)
     exit_button.draw(display)
 
     display.swap_buffers()
@@ -186,6 +187,10 @@ def main():
     display.init_display()
     display.brightness = 1.0
 
+    # Enable double buffering (allocates second buffer)
+    # This prevents visible drawing of individual elements
+    display.swap_buffers()
+
     # Initialize touch
     touch = TouchInput()
 
@@ -194,14 +199,16 @@ def main():
     button_height = 70
     button_x = (display.width - button_width) // 2
 
-    flappy_button = Button(button_x, 100, button_width, button_height, "FLAPPY BIRD")
+    flappy_button = Button(button_x, 90, button_width, button_height, "FLAPPY BIRD")
 
-    snake_button = Button(button_x, 180, button_width, button_height, "SNAKE")
+    snake_button = Button(button_x, 170, button_width, button_height, "SNAKE")
 
-    exit_button = Button(button_x, 260, button_width, button_height, "EXIT")
+    pacman_button = Button(button_x, 250, button_width, button_height, "PAC-MAN")
+
+    exit_button = Button(button_x, 330, button_width, button_height, "EXIT")
 
     # Draw initial menu
-    draw_menu(display, flappy_button, snake_button, exit_button)
+    draw_menu(display, flappy_button, snake_button, pacman_button, exit_button)
 
     selected = None
     try:
@@ -228,6 +235,14 @@ def main():
                     display.swap_buffers()
                     time.sleep(0.2)
                     selected = "snake"
+
+                elif pacman_button.contains(x, y):
+                    print("Pac-Man button pressed!")
+                    # Visual feedback
+                    pacman_button.draw(display, BUTTON_PRESSED_COLOR)
+                    display.swap_buffers()
+                    time.sleep(0.2)
+                    selected = "pacman"
 
                 elif exit_button.contains(x, y):
                     print("Exit button pressed!")
@@ -256,23 +271,33 @@ def main():
     if selected == "flappy":
         print("\nStarting Flappy Bird...\n")
         try:
-            import flappy_bird_clone
+            import game_flappy_bird
 
-            flappy_bird_clone.main()
+            game_flappy_bird.main()
         except ImportError:
-            print("Error: flappy_bird_clone.py not found!")
+            print("Error: game_flappy_bird.py not found!")
         except Exception as e:
             print(f"Error running Flappy Bird: {e}")
     elif selected == "snake":
         print("\nStarting Snake Game...\n")
         try:
-            import snake_game
+            import game_snake
 
-            snake_game.main()
+            game_snake.main()
         except ImportError:
-            print("Error: snake_game.py not found!")
+            print("Error: game_snake.py not found!")
         except Exception as e:
             print(f"Error running Snake Game: {e}")
+    elif selected == "pacman":
+        print("\nStarting Pac-Man...\n")
+        try:
+            import game_pacman
+
+            game_pacman.main()
+        except ImportError:
+            print("Error: game_pacman.py not found!")
+        except Exception as e:
+            print(f"Error running Pac-Man: {e}")
     else:
         print("\nExiting to REPL.")
 

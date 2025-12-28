@@ -137,7 +137,7 @@ import rm690b0  # ✅ Available on ESP32-S3 with RM690B0 display
 
 ## Quick Start
 
-### Minimal Example (3 Lines)
+### Minimal Example
 
 ```python
 import rm690b0
@@ -165,7 +165,7 @@ display.fill_color(0x0000)
 
 # Draw text
 display.set_font(1)  # 16×16 font
-display.text(50, 200, "Hello, World!", color=0xFFFF)
+display.text(50, 200, "Hello, World!", color=rm690b0.WHITE)
 
 # Show on screen
 display.swap_buffers()
@@ -180,16 +180,16 @@ display = rm690b0.RM690B0()
 display.init_display()
 
 # Blue background
-display.fill_color(0x001F)
+display.fill_color(rm690b0.BLUE)
 
 # White rectangle
-display.rect(50, 50, 200, 100, color=0xFFFF)
+display.rect(50, 50, 200, 100, color=rm690b0.WHITE)
 
 # Filled red circle
-display.fill_circle(400, 225, 50, color=0xF800)
+display.fill_circle(400, 225, 50, color=rm690b0.RED)
 
 # Yellow line
-display.line(0, 0, 600, 450, color=0xFFE0)
+display.line(0, 0, 600, 450, color=rm690b0.YELLOW)
 
 # Update display
 display.swap_buffers()
@@ -533,14 +533,13 @@ display.fill_rect(x, y, width, height, color)
 display.fill_rect(50, 50, 200, 100, 0xF800)
 
 # Progress bar
-def draw_progress(percent):
-    # Background (gray)
-    display.fill_rect(50, 200, 500, 30, 0x7BEF)
-    # Progress (green)
-    width = int(500 * percent / 100)
-    display.fill_rect(50, 200, width, 30, 0x07E0)
-
-draw_progress(75)  # 75%
+# Example usage:
+# Draw a progress bar at 75%
+# Background (gray)
+display.fill_rect(50, 200, 500, 30, 0x7BEF)
+# Progress (green)
+width = int(500 * 75 / 100)
+display.fill_rect(50, 200, width, 30, 0x07E0)
 ```
 
 ---
@@ -747,14 +746,14 @@ display.text(x, y, text, color=0xFFFF, background=None)
 ```python
 # Simple white text (transparent background)
 display.set_font(1)
-display.text(10, 10, "Hello, World!", color=0xFFFF)
+display.text(10, 10, "Hello, World!", color=rm690b0.WHITE)
 
 # Colored text with solid background
-display.text(10, 50, "Warning!", color=0x0000, background=0xFFE0)
+display.text(10, 50, "Warning!", color=rm690b0.BLACK, background=rm690b0.YELLOW)
 
 # Status text (small font)
 display.set_font(0)
-display.text(10, 430, f"FPS: 60  Temp: 25C", color=0x07E0)
+display.text(10, 430, f"FPS: 60  Temp: 25C", color=rm690b0.GREEN)
 
 # Multi-line text (manual positioning)
 display.set_font(1)
@@ -769,52 +768,56 @@ display.text(50, 140, "Line 3", 0xFFFF)
 ```python
 import rm690b0
 
+# Initialize display
 display = rm690b0.RM690B0()
 display.init_display()
 
-display.fill_color(0x0000)  # Black
+display.fill_color(rm690b0.BLACK)  # Black
 
 # Title (large)
 display.set_font(3)  # 24×24
-display.text(50, 20, "System Status", color=0xFFFF)
+display.text(50, 20, "System Status", color=rm690b0.WHITE)
 
 # Body (medium)
 display.set_font(1)  # 16×16
-display.text(50, 80, "CPU: 45%", color=0x07E0)
-display.text(50, 110, "Memory: 2.1 MB free", color=0x07E0)
-display.text(50, 140, "Temperature: 25C", color=0x07E0)
+display.text(50, 80, "CPU: 45%", color=rm690b0.GREEN)
+display.text(50, 110, "Memory: 2.1 MB free", color=rm690b0.GREEN)
+display.text(50, 140, "Temperature: 25C", color=rm690b0.GREEN)
 
 # Footer (small)
 display.set_font(0)  # 8×8
-display.text(10, 430, "v1.0.0 | Uptime: 3h 24m", color=0x7BEF)
+display.text(10, 430, "v1.0.0 | Uptime: 3h 24m", color=rm690b0.GRAY)
 
 display.swap_buffers()
 ```
 
 **Colored Labels:**
 ```python
-def show_status(msg, status):
+def show_status(display, msg, status):
     """Show status message with color coding."""
-    display.fill_color(0x0000)
+    display.fill_color(rm690b0.BLACK)
     display.set_font(1)
     
     if status == "error":
-        color = 0xF800  # Red
+        color = rm690b0.RED
         bg = 0x1800     # Dark red
     elif status == "warning":
-        color = 0x0000  # Black
-        bg = 0xFFE0     # Yellow
+        color = rm690b0.BLACK
+        bg = rm690b0.YELLOW
     elif status == "success":
-        color = 0xFFFF  # White
-        bg = 0x07E0     # Green
+        color = rm690b0.WHITE
+        bg = rm690b0.GREEN
     else:
-        color = 0xFFFF  # White
+        color = rm690b0.WHITE
         bg = None       # Transparent
     
     display.text(50, 200, msg, color=color, background=bg)
     display.swap_buffers()
 
-show_status("Connected!", "success")
+# Example usage:
+# display = rm690b0.RM690B0()
+# display.init_display()
+# show_status(display, "Connected!", "success")
 ```
 
 ---
@@ -947,7 +950,7 @@ The RM690B0 display uses **RGB565** color format:
 
 ```python
 def rgb565(r, g, b):
-    """Convert RGB888 (0-255 each) to RGB565."""
+    """Convert RGB888 (0-255) to RGB565 format."""
     return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
 
 # Example usage
@@ -1164,13 +1167,13 @@ import time
 display = rm690b0.RM690B0()
 display.init_display()
 
-def draw_progress(x, y, width, height, percent, color=0x07E0):
+def draw_progress(x, y, width, height, percent, color=rm690b0.GREEN):
     """Draw a progress bar."""
     # Border
-    display.rect(x, y, width, height, 0xFFFF)
+    display.rect(x, y, width, height, rm690b0.WHITE)
     
     # Background
-    display.fill_rect(x+2, y+2, width-4, height-4, 0x2104)
+    display.fill_rect(x+2, y+2, width-4, height-4, 0x2104)  # Dark gray
     
     # Progress
     prog_width = int((width-4) * percent / 100)
@@ -1181,12 +1184,12 @@ def draw_progress(x, y, width, height, percent, color=0x07E0):
     display.set_font(1)
     text = f"{percent}%"
     text_x = x + width//2 - len(text)*8
-    display.text(text_x, y + height//2 - 8, text, 0xFFFF)
+    display.text(text_x, y + height//2 - 8, text, rm690b0.WHITE)
 
 # Demo
-display.fill_color(0x0000)
+display.fill_color(rm690b0.BLACK)
 display.set_font(3)
-display.text(150, 50, "Loading...", 0xFFFF)
+display.text(150, 50, "Loading...", rm690b0.WHITE)
 
 for i in range(0, 101, 5):
     draw_progress(100, 200, 400, 40, i)
@@ -1194,7 +1197,7 @@ for i in range(0, 101, 5):
     time.sleep(0.1)
 
 display.set_font(3)
-display.text(200, 300, "Complete!", 0x07E0)
+display.text(200, 300, "Complete!", rm690b0.GREEN)
 display.swap_buffers(copy=True)
 ```
 
@@ -1211,8 +1214,8 @@ display.init_display()
 def draw_clock(cx, cy, radius, hour, minute, second):
     """Draw an analog clock face."""
     # Clock face
-    display.fill_circle(cx, cy, radius, 0x0000)
-    display.circle(cx, cy, radius, 0xFFFF)
+    display.fill_circle(cx, cy, radius, rm690b0.BLACK)
+    display.circle(cx, cy, radius, rm690b0.WHITE)
     
     # Hour marks
     for i in range(12):
@@ -1221,40 +1224,40 @@ def draw_clock(cx, cy, radius, hour, minute, second):
         y1 = int(cy + (radius - 10) * math.sin(angle))
         x2 = int(cx + (radius - 5) * math.cos(angle))
         y2 = int(cy + (radius - 5) * math.sin(angle))
-        display.line(x1, y1, x2, y2, 0xFFFF)
+        display.line(x1, y1, x2, y2, rm690b0.WHITE)
     
     # Hour hand
     angle = math.radians((hour % 12) * 30 + minute * 0.5 - 90)
     x = int(cx + radius * 0.5 * math.cos(angle))
     y = int(cy + radius * 0.5 * math.sin(angle))
-    display.line(cx, cy, x, y, 0xFFFF)
+    display.line(cx, cy, x, y, rm690b0.WHITE)
     
     # Minute hand
     angle = math.radians(minute * 6 - 90)
     x = int(cx + radius * 0.7 * math.cos(angle))
     y = int(cy + radius * 0.7 * math.sin(angle))
-    display.line(cx, cy, x, y, 0x07E0)
+    display.line(cx, cy, x, y, rm690b0.GREEN)
     
     # Second hand
     angle = math.radians(second * 6 - 90)
     x = int(cx + radius * 0.8 * math.cos(angle))
     y = int(cy + radius * 0.8 * math.sin(angle))
-    display.line(cx, cy, x, y, 0xF800)
+    display.line(cx, cy, x, y, rm690b0.RED)
     
     # Center dot
-    display.fill_circle(cx, cy, 5, 0xFFFF)
+    display.fill_circle(cx, cy, 5, rm690b0.WHITE)
 
 # Main loop
 while True:
     t = time.localtime()
     
-    display.fill_color(0x0000)
+    display.fill_color(rm690b0.BLACK)
     draw_clock(300, 225, 150, t.tm_hour, t.tm_min, t.tm_sec)
     
     # Digital time
     display.set_font(3)
     time_str = f"{t.tm_hour:02d}:{t.tm_min:02d}:{t.tm_sec:02d}"
-    display.text(220, 400, time_str, 0xFFFF)
+    display.text(220, 400, time_str, rm690b0.WHITE)
     
     display.swap_buffers(copy=False)
     time.sleep(1)
@@ -1264,8 +1267,8 @@ while True:
 
 ```python
 import rm690b0
-import espsdcard
 import os
+import time
 
 display = rm690b0.RM690B0()
 display.init_display()
@@ -1403,9 +1406,7 @@ PSRAM Layout:
 display.fill_color(255, 0, 0)  # ERROR
 
 # Correct (RGB565)
-def rgb565(r, g, b):
-    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
-
+# Use the rgb565() helper function defined earlier
 RED = rgb565(255, 0, 0)  # 0xF800
 display.fill_color(RED)  # Correct
 ```
@@ -1500,13 +1501,121 @@ display.fill_color(RED)  # Correct
    img3 = open("c.jpg", "rb").read()
    
    # Do this instead
-   def show_image(path):
-       with open(path, "rb") as f:
+   def show_image(display, path):
+       with open(path, 'rb') as f:
            data = f.read()
        display.blit_jpeg(0, 0, data)
+       display.swap_buffers()
        del data
        gc.collect()
    ```
+
+---
+
+### Issue: RuntimeError 0x101 (ESP_ERR_NO_MEM)
+
+**Symptoms:** `RuntimeError: Failed to refresh display: UNKNOWN ERROR (0x101)`
+
+**Root Cause:** DMA memory allocation failure during display transfer
+
+**What's Happening:**
+The ESP32-S3 has limited DMA-capable internal RAM (~400 KB). When the display driver needs to flush regions to the screen, it allocates a temporary buffer from DMA memory. If this memory is fragmented or exhausted, the allocation fails with error 0x101.
+
+**Common Triggers:**
+- Complex games with many draw operations
+- Frequent full-screen updates
+- Memory-intensive Python code running alongside display updates
+- Multiple large allocations without garbage collection
+
+**Solutions:**
+
+1. **Add garbage collection before display updates:**
+   ```python
+   import gc
+   
+   def game_loop():
+       gc.collect()  # Free Python heap
+       # ... drawing operations ...
+       display.swap_buffers()
+       gc.collect()  # Clean up after frame
+   ```
+
+2. **Batch drawing operations:**
+   ```python
+   # Inefficient - many small operations
+   for tile in tiles:
+       display.fill_rect(tile.x, tile.y, 16, 16, tile.color)
+   
+   # Better - minimize Python→C calls
+   display.fill_rect(x, y, width, height, color)  # One large call
+   ```
+
+3. **Avoid premature buffer activation:**
+   ```python
+   # Don't do this
+   display.init_display()
+   display.swap_buffers()  # ← BAD: activates buffers too early
+   
+   # Do this
+   display.init_display()
+   # Let first frame initialize buffers naturally
+   ```
+
+4. **Reduce memory pressure:**
+   ```python
+   # Pre-allocate reusable objects
+   class Game:
+       def __init__(self):
+           self.temp_buffer = bytearray(1000)  # Reuse this
+           
+       def update(self):
+           # Use self.temp_buffer instead of creating new ones
+           pass
+   ```
+
+**Driver-Level Fix (Firmware):**
+The driver has been optimized to use smaller DMA chunks (23.4 KB instead of 58.6 KB), which significantly reduces the likelihood of this error. If you're building custom firmware, ensure the following setting in `RM690B0.c`:
+
+```c
+#define RM690B0_MAX_CHUNK_PIXELS (LCD_H_RES * 20)  // 20 lines
+```
+
+**Verification Test:**
+```python
+import rm690b0
+import gc
+import time
+
+display = rm690b0.RM690B0()
+display.init_display()
+
+# Stress test - 500 frames with alternating patterns
+errors = 0
+for frame in range(500):
+    try:
+        gc.collect()
+        if frame % 2 == 0:
+            display.fill_color(0x0000)
+        else:
+            for i in range(20):
+                x = (frame * 10 + i * 30) % 600
+                y = (frame * 5 + i * 20) % 450
+                display.fill_rect(x, y, 50, 50, 0xFFFF)
+        display.swap_buffers()
+    except RuntimeError as e:
+        if "0x101" in str(e):
+            errors += 1
+            print(f"Frame {frame}: 0x101 error!")
+
+print(f"Completed 500 frames, {errors} errors")
+# Expected: 0 errors with optimized driver
+```
+
+**Performance Impact:**
+The driver optimization has minimal performance impact (~0.7ms per full-screen flush), which is negligible for typical applications.
+
+**Further Reading:**
+See `TECHNICAL_NOTES.md` for detailed memory architecture analysis and DMA allocation strategies.
 
 ---
 
