@@ -145,8 +145,8 @@ RAW_SIZES = {"cerber.raw": (600, 450), "cyborg.raw": (256, 256)}
 # On the uSD card there are 6 files present:
 # cerber.[bmp|jpg|raw] (600x450) and cyborg.[bmp|jpg|raw] (256x256)
 
-for ext in ['bmp', 'jpg', 'raw']:
-    for file in ['cerber', 'cyborg']:
+for ext in ["bmp", "jpg", "raw"]:
+    for file in ["cerber", "cyborg"]:
         img = file + "." + ext
         full_path = "/sd/" + img
         print(f"  Loading {img}...")

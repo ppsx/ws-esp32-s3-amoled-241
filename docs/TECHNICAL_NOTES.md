@@ -134,6 +134,7 @@ Original implementation was 39× slower due to:
 - Apply RGB565 byte/bit swapping consistently
 - For other rotations, fall back to per-pixel rotated writes (correctness-first)
 - Eliminates visual artifacts from duplicate pixels
+- JPEG path now streams TJpgDec blocks (≤16×16) straight into the framebuffer via `esp_jpeg` callbacks, so there is no longer a 540 KB PSRAM allocation per image and small images/fragmented heaps decode reliably.
 
 ---
 

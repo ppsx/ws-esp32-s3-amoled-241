@@ -6,22 +6,22 @@ Comprehensive benchmark tool for testing image conversion and display performanc
 Supports RAW, BMP, and JPEG formats.
 
 Usage:
-    import unified_benchmark
-    unified_benchmark.run()  # Interactive menu
+    import benchmark_gfx_conversion
+    benchmark_gfx_conversion.run()  # Interactive menu
 
 Or run specific tests:
-    unified_benchmark.quick_test()
-    unified_benchmark.full_benchmark()
-    unified_benchmark.diagnostic()
-    unified_benchmark.format_comparison()
+    benchmark_gfx_conversion.quick_test()
+    benchmark_gfx_conversion.full_benchmark()
+    benchmark_gfx_conversion.diagnostic()
+    benchmark_gfx_conversion.format_comparison()
 """
 
-import time
 import gc
-import sys
 import os
-import rm690b0
+import sys
+import time
 
+import rm690b0
 
 # =============================================================================
 # Configuration
@@ -29,9 +29,9 @@ import rm690b0
 
 CONFIG = {
     "files": {
-        "RAW": "/cerber.raw",
-        "BMP": "/cerber.bmp",
-        "JPG": "/cerber.jpg",
+        "RAW": "/gfx/cerber.raw",
+        "BMP": "/gfx/cerber.bmp",
+        "JPG": "/gfx/cerber.jpg",
     },
     "raw_dimensions": {"width": 600, "height": 450},
     "display_time": 3.0,  # seconds to show each image
@@ -158,7 +158,9 @@ def load_file(filepath):
         return None
 
     if read_bytes < size:
-        print(f"  ⚠️  Short read from {filepath}: expected {size} bytes, got {read_bytes}")
+        print(
+            f"  ⚠️  Short read from {filepath}: expected {size} bytes, got {read_bytes}"
+        )
         del buf[read_bytes:]
     return buf
 
@@ -391,7 +393,9 @@ def quick_test():
 def full_benchmark(iterations=10, memory_efficient=False):
     """Full benchmark with detailed statistics."""
     mode_text = (
-        "FULL BENCHMARK MODE" if not memory_efficient else "MEMORY-EFFICIENT BENCHMARK MODE"
+        "FULL BENCHMARK MODE"
+        if not memory_efficient
+        else "MEMORY-EFFICIENT BENCHMARK MODE"
     )
     print_header(mode_text)
     print(f"\nIterations: {iterations} (conversion), 5 (display)\n")
@@ -499,7 +503,9 @@ def full_benchmark(iterations=10, memory_efficient=False):
 
             # Display benchmark
             print(f"Running display benchmark (5 iterations)...")
-            disp_times = benchmark_display(display, buffer, info["width"], info["height"], 5)
+            disp_times = benchmark_display(
+                display, buffer, info["width"], info["height"], 5
+            )
             disp_min, disp_max, disp_avg = calculate_stats(disp_times)
 
             # Print results
@@ -509,14 +515,20 @@ def full_benchmark(iterations=10, memory_efficient=False):
             file_size = len(data) if not memory_efficient else files_data[fmt]["size"]
 
             print(f"\n{fmt} RESULTS:")
-            print(f"  File size:         {file_size:>10,} bytes ({file_size / 1024:.1f} KB)")
+            print(
+                f"  File size:         {file_size:>10,} bytes ({file_size / 1024:.1f} KB)"
+            )
             print(f"  Image size:        {info['width']}×{info['height']}")
             print(f"  RGB565 size:       {info['data_size']:>10,} bytes")
             if fmt == "RAW":
                 print(f"  CONVERSION ({len(conv_times)} iterations):")
                 print(f"    Average:         {format_time(conv_avg)}")
-                print(f"    Note:            RAW is already RGB565 - no actual conversion")
-                print(f"                     Time shown is Python overhead only (< 0.1ms ideal)")
+                print(
+                    f"    Note:            RAW is already RGB565 - no actual conversion"
+                )
+                print(
+                    f"                     Time shown is Python overhead only (< 0.1ms ideal)"
+                )
             else:
                 print(f"  CONVERSION ({len(conv_times)} iterations):")
                 print(f"    Average:         {format_time(conv_avg)}")
@@ -615,7 +627,9 @@ def full_benchmark(iterations=10, memory_efficient=False):
         smallest = min(results, key=lambda x: x["file_size"])
 
         print(f"\n🏆 Fastest:  {fastest['format']} ({format_time(fastest['total'])})")
-        print(f"💾 Smallest: {smallest['format']} ({format_size(smallest['file_size'])})")
+        print(
+            f"💾 Smallest: {smallest['format']} ({format_size(smallest['file_size'])})"
+        )
 
         if "RAW" in [r["format"] for r in results]:
             print(f"\nℹ️  RAW format shows true zero-conversion performance")
@@ -644,7 +658,9 @@ def diagnostic():
     if mem:
         print(f"\nMemory:")
         print(f"  Free:       {mem['free']:>10,} bytes ({mem['free'] / 1024:.1f} KB)")
-        print(f"  Allocated:  {mem['allocated']:>10,} bytes ({mem['allocated'] / 1024:.1f} KB)")
+        print(
+            f"  Allocated:  {mem['allocated']:>10,} bytes ({mem['allocated'] / 1024:.1f} KB)"
+        )
 
     # File I/O test
     print_header("FILE I/O PERFORMANCE", "=")
@@ -756,7 +772,9 @@ def diagnostic():
 
             if avg_t > 0:
                 throughput = len(data) / avg_t / (1024 * 1024)
-                print(f"  Average:      {format_time(avg_t):>10} ({throughput:.2f} MB/s)")
+                print(
+                    f"  Average:      {format_time(avg_t):>10} ({throughput:.2f} MB/s)"
+                )
             else:
                 print(f"  Average:      {format_time(avg_t):>10} (throughput N/A)")
 
@@ -779,7 +797,9 @@ def diagnostic():
         print(f"✅ Image ready: {info['width']}×{info['height']}")
 
         print("\nDrawing to display...")
-        times = benchmark_display(display, buffer, info["width"], info["height"], iterations)
+        times = benchmark_display(
+            display, buffer, info["width"], info["height"], iterations
+        )
 
         min_t, max_t, avg_t = calculate_stats(times)
         for i, t in enumerate(times, 1):
@@ -842,14 +862,18 @@ def format_comparison():
                 try:
                     load_buffer = bytearray(buffer_size)
                 except MemoryError:
-                    raise MemoryError(f"Not enough memory to allocate {buffer_size} bytes for load buffer")
+                    raise MemoryError(
+                        f"Not enough memory to allocate {buffer_size} bytes for load buffer"
+                    )
 
             t_start = time.monotonic()
             read_bytes = load_file_into(filepath, load_buffer, buffer_size)
             t_load = time.monotonic() - t_start
 
             if read_bytes != buffer_size:
-                raise OSError(f"Short read: expected {buffer_size} bytes, got {read_bytes}")
+                raise OSError(
+                    f"Short read: expected {buffer_size} bytes, got {read_bytes}"
+                )
 
             del load_buffer
             gc.collect()
@@ -868,7 +892,9 @@ def format_comparison():
             total = t_load + t_convert + t_display
 
             print(f"\nResults:")
-            print(f"  File size:     {len(data):>10,} bytes ({len(data) / 1024:.1f} KB)")
+            print(
+                f"  File size:     {len(data):>10,} bytes ({len(data) / 1024:.1f} KB)"
+            )
             print(f"  Dimensions:    {info['width']}×{info['height']}")
             print(f"  Load time:     {format_time(t_load)}")
             print(f"  Convert time:  {format_time(t_convert)}")

@@ -48,10 +48,10 @@ Complete CircuitPython support for the Waveshare ESP32-S3 Touch AMOLED 2.41 boar
 ### 📁 [`examples/`](examples/) - 25+ Ready-to-Run Examples
 
 **Display Driver Examples:**
-- `basic_test.py` - Interactive graphics and fonts
+- `test_basic_gfx.py` - Interactive graphics and fonts
 - `test_all_fonts.py` - All 7 fonts showcase
-- `bouncing_ball_60fps.py` - 60 FPS animation
-- `show_image_fast.py` - BMP/JPEG loading
+- `test_animation.py` - 60 FPS animation
+- `test_sd_gfx.py` - BMP/JPEG loading
 
 **LVGL Examples:**
 - `lvgl_test_gui.py` - Complete widget demo
@@ -63,9 +63,15 @@ Complete CircuitPython support for the Waveshare ESP32-S3 Touch AMOLED 2.41 boar
 - `game_pacman.py` - Pac-Man
 
 **Hardware Tests:**
-- `board_test_suite.py` - Complete validation
-- `navigation_switch_test.py` - I2C joystick
-- `unified_benchmark.py` - Performance tests
+- `test_board_hardware.py` - Complete validation
+- `test_hw_nav_switch.py` - I2C joystick
+- `test_espsdcard.py` - SD card throughput
+- `test_espnow.py` - ESP-NOW validation
+
+**Benchmarks:**
+- `benchmark_gfx_conversion.py` - Image conversion performance
+- `benchmark_gfx_display.py` - Primitive throughput
+- `benchmark_simple_flush.py` - DMA/flush stress test
 
 See [examples/README.md](examples/README.md) for complete documentation.
 

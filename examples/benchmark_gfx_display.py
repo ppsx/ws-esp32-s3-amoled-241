@@ -58,15 +58,15 @@ class BenchmarkRunner:
         result = BenchmarkResult(name, category, iterations, elapsed_ms)
         self.results.append(result)
 
-        print(f"  {name}: {result.avg_ms:.2f}ms avg ({iterations}x)")
+        #print(f"  {name}: {result.avg_ms:.2f}ms avg ({iterations}x)")
 
         return result
 
     def print_results_table(self):
         """Print results in markdown table format"""
-        print("\n" + "=" * 100)
-        print("  BENCHMARK RESULTS")
-        print("=" * 100 + "\n")
+        print("=" * 100)
+        print("  BENCHMARK RESULTS  (" + ("Double" if DOUBLE_BUFF else "Single") + "-buffer)")
+        print("=" * 100)
 
         # Group by category
         categories = {}
@@ -77,10 +77,10 @@ class BenchmarkRunner:
 
         # Print table header with proper alignment
         print(
-            "| Category   | Operation                         | Iterations | Avg Time (ms) | Ops/sec | Rating  |"
+            "| Category   | Operation                          | Iterations | Avg Time (ms) | Ops/sec | Rating  |"
         )
         print(
-            "|------------|-----------------------------------|------------|---------------|---------|---------|"
+            "|------------|------------------------------------|------------|---------------|---------|---------|"
         )
 
         for category in sorted(categories.keys()):
@@ -94,7 +94,7 @@ class BenchmarkRunner:
                     f"| {category_name:10} | {result.name:34} | {result.iterations:10} | "
                     f"{result.avg_ms:13.2f} | {result.ops_per_sec:7.0f} | {rating_str:7} |"
                 )
-
+        print("=" * 100)
         print()
 
     def _get_rating(self, result):
@@ -145,9 +145,9 @@ class BenchmarkRunner:
 
 def print_header(title):
     """Print section header"""
-    print("\n" + "-" * 80)
-    print(f"  {title}")
-    print("-" * 80)
+    #print("\n" + "-" * 80)
+    #print(f"  {title}")
+    #print("-" * 80)
 
 
 def main():
@@ -273,42 +273,42 @@ def main():
     print_header("TEST 5: Filled Rectangles (fill_rect)")
 
     runner.run_test(
-        "fill_rect - tiny (10×10)",
+        "fill_rect - tiny (10x10)",
         "Rectangles",
         lambda: display.fill_rect(100, 100, 10, 10, 0x07E0),
         iterations=1000,
     )
 
     runner.run_test(
-        "fill_rect - small (50×50)",
+        "fill_rect - small (50x50)",
         "Rectangles",
         lambda: display.fill_rect(100, 100, 50, 50, 0x07E0),
         iterations=500,
     )
 
     runner.run_test(
-        "fill_rect - medium (100×100)",
+        "fill_rect - medium (100x100)",
         "Rectangles",
         lambda: display.fill_rect(100, 100, 100, 100, 0x07E0),
         iterations=200,
     )
 
     runner.run_test(
-        "fill_rect - large (200×200)",
+        "fill_rect - large (200x200)",
         "Rectangles",
         lambda: display.fill_rect(100, 100, 200, 200, 0x07E0),
         iterations=100,
     )
 
     runner.run_test(
-        "fill_rect - huge (400×300)",
+        "fill_rect - huge (400x300)",
         "Rectangles",
         lambda: display.fill_rect(100, 75, 400, 300, 0x07E0),
         iterations=50,
     )
 
     runner.run_test(
-        "fill_rect - full screen (600×450)",
+        "fill_rect - full screen (600x450)",
         "Rectangles",
         lambda: display.fill_rect(0, 0, 600, 450, 0x07E0),
         iterations=50,
@@ -320,35 +320,35 @@ def main():
     print_header("TEST 6: Rectangle Outlines (rect)")
 
     runner.run_test(
-        "rect - small (50×50)",
+        "rect - small (50x50)",
         "Outlines",
         lambda: display.rect(100, 100, 50, 50, 0x001F),
         iterations=500,
     )
 
     runner.run_test(
-        "rect - medium (100×100)",
+        "rect - medium (100x100)",
         "Outlines",
         lambda: display.rect(100, 100, 100, 100, 0x001F),
         iterations=300,
     )
 
     runner.run_test(
-        "rect - large (200×200)",
+        "rect - large (200x200)",
         "Outlines",
         lambda: display.rect(100, 100, 200, 200, 0x001F),
         iterations=200,
     )
 
     runner.run_test(
-        "rect - huge (400×300)",
+        "rect - huge (400x300)",
         "Outlines",
         lambda: display.rect(100, 75, 400, 300, 0x001F),
         iterations=100,
     )
 
     runner.run_test(
-        "rect - full screen (600×450)",
+        "rect - full screen (600x450)",
         "Outlines",
         lambda: display.rect(0, 0, 600, 450, 0x001F),
         iterations=50,
@@ -446,105 +446,9 @@ def main():
     )
 
     # ========================================================================
-    # TEST 10: MEMORY & CLEANUP
-    # ========================================================================
-    print_header("TEST 10: Memory Usage")
-
-    gc.collect()
-    free_mem = gc.mem_free()
-    print(f"  Free memory: {free_mem / 1024:.1f} KB")
-    print(f"  Used memory: ~{(8192 - free_mem / 1024):.1f} KB / 8192 KB")
-    print(f"  Usage: ~{((8192 - free_mem / 1024) / 8192 * 100):.1f}%")
-
-    # ========================================================================
     # PRINT RESULTS TABLE
     # ========================================================================
     runner.print_results_table()
-
-    # ========================================================================
-    # SUMMARY STATISTICS
-    # ========================================================================
-    print("=" * 100)
-    print("  SUMMARY STATISTICS")
-    print("=" * 100 + "\n")
-
-    # Mode information
-    mode_str = "Double-buffer" if DOUBLE_BUFF else "Single-buffer"
-    print(f"Test Mode: {mode_str}")
-    print()
-
-    # Find key metrics
-    fill_color_result = None
-    circles_10_result = None
-    large_rect_result = None
-
-    for r in runner.results:
-        if "fill_color" in r.name and not fill_color_result:
-            fill_color_result = r
-        if "10 circles" in r.name and not circles_10_result:
-            circles_10_result = r
-        if "fill_rect - large" in r.name and not large_rect_result:
-            large_rect_result = r
-
-    print("Key Performance Metrics:")
-    print(
-        f"  • Full screen fill:     {fill_color_result.avg_ms:.2f}ms"
-        if fill_color_result
-        else "  • Full screen fill: N/A"
-    )
-    print(
-        f"  • 10 circles:           {circles_10_result.avg_ms:.2f}ms (avg)"
-        if circles_10_result
-        else "  • 10 circles: N/A"
-    )
-    print(
-        f"  • Large rect (200×200): {large_rect_result.avg_ms:.2f}ms"
-        if large_rect_result
-        else "  • Large rect: N/A"
-    )
-    print(f"  • Total tests:          {len(runner.results)}")
-    print(f"  • Memory usage:         {((8192 - free_mem / 1024) / 8192 * 100):.1f}%")
-
-    print("\nBaseline Comparison:")
-    if fill_color_result:
-        # Adjust baseline for double-buffering overhead
-        baseline_fill = 54.0 if DOUBLE_BUFF else 27.0
-        diff_fill = (baseline_fill - fill_color_result.avg_ms) / baseline_fill * 100
-        mode_note = " (with swap)" if DOUBLE_BUFF else " (direct)"
-        print(
-            f"  • Full screen: {fill_color_result.avg_ms:.2f}ms vs {baseline_fill:.2f}ms baseline ({diff_fill:+.1f}%){mode_note}"
-        )
-
-    if circles_10_result:
-        # Adjust baseline for double-buffering overhead (~27ms per swap)
-        baseline_circles = 41.0 if DOUBLE_BUFF else 14.0
-        diff_circles = (
-            (baseline_circles - circles_10_result.avg_ms) / baseline_circles * 100
-        )
-        threshold = 50 if DOUBLE_BUFF else 20
-        status = "✓" if circles_10_result.avg_ms < threshold else "⚠"
-        mode_note = " (with swap)" if DOUBLE_BUFF else " (direct)"
-        print(
-            f"  • 10 circles: {circles_10_result.avg_ms:.2f}ms vs {baseline_circles:.2f}ms baseline ({diff_circles:+.1f}%) {status}{mode_note}"
-        )
-
-    print()
-
-    # Overall rating
-    issues = sum(1 for r in runner.results if runner._get_rating(r) == "☆☆☆")
-    excellent = sum(1 for r in runner.results if runner._get_rating(r) == "★★★")
-
-    print("Overall Assessment:")
-    if issues == 0 and excellent > len(runner.results) * 0.7:
-        print("  ★★★ EXCELLENT - All tests performing well!")
-    elif issues == 0:
-        print("  ★★☆ GOOD - Performance within acceptable range")
-    elif issues < 3:
-        print(f"  ★☆☆ ACCEPTABLE - {issues} test(s) need attention")
-    else:
-        print(f"  ⚠️  REVIEW NEEDED - {issues} test(s) performing poorly")
-
-    print()
 
     # Cleanup
     display.fill_color(0x0000)

@@ -1,43 +1,36 @@
 """
-High FPS Bouncing Ball Animation
-=================================
+Bouncing Ball with Background Image
+====================================
 
-Demonstrates 60+ FPS animation using Phase 2 dirty region tracking.
-
-Instead of clearing the full screen each frame (12.8ms), this version:
-1. Clears only the OLD ball position (0.1ms)
-2. Draws ball at NEW position (0.1ms)
-3. swap_buffers() flushes only dirty regions (0.3ms)
-
-Result: ~0.5ms per frame = 2000 FPS theoretical, 100+ FPS practical!
-
-Key Difference from Original:
-- Original: Clear full screen → 12.8ms per frame = 22 FPS max
-- This: Clear only ball area → 0.5ms per frame = 100+ FPS!
+Combines background image loading with high FPS bouncing ball animation.
+Background is loaded from /gfx/cerber.raw and the ball bounces over it.
 
 Usage:
-    python bouncing_ball_60fps.py
+    python test_animation_bg.py
 """
 
-import rm690b0
-import time
 import random
+import time
 
+import rm690b0
 
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
 DURATION = 15  # Animation duration in seconds
-SPEED = 8.0  # Ball speed (pixels per frame) - higher speed for 60 FPS
+SPEED = 8.0  # Ball speed (pixels per frame)
 TARGET_FPS = 60  # Target frame rate
 BALL_RADIUS = 20  # Ball radius in pixels
+BACKGROUND_PATH = "/gfx/cerber.raw"  # Background image path
+WIDTH = 600
+HEIGHT = 450
 
 
 class HighFPSBall:
     """High performance bouncing ball using dirty region optimization"""
 
-    def __init__(self, x, y, vx, vy, radius, display_width, display_height):
+    def __init__(self, x, y, vx, vy, radius, display_width, display_height, background):
         self.x = x
         self.y = y
         self.vx = vx
@@ -45,6 +38,7 @@ class HighFPSBall:
         self.radius = radius
         self.display_width = display_width
         self.display_height = display_height
+        self.background = background
 
         # Track previous position for efficient clearing
         self.prev_x = x
@@ -76,14 +70,31 @@ class HighFPSBall:
             self.vy = -abs(self.vy)
 
     def clear_previous(self, display):
-        """Clear only the previous ball position (dirty region optimization!)"""
+        """Restore background at previous ball position"""
         x = int(self.prev_x)
         y = int(self.prev_y)
         r = self.radius + 2  # Slightly larger to ensure clean erase
 
-        # Only clear the small region where ball WAS
-        # This is 10× smaller than clearing full screen!
-        display.fill_rect(x - r, y - r, r * 2, r * 2, rm690b0.BLACK)
+        # Calculate the region to restore
+        x1 = max(0, x - r)
+        y1 = max(0, y - r)
+        x2 = min(self.display_width, x + r)
+        y2 = min(self.display_height, y + r)
+        w = x2 - x1
+        h = y2 - y1
+
+        if w > 0 and h > 0:
+            # Extract the region from background buffer
+            region = bytearray(w * h * 2)
+            for row in range(h):
+                src_offset = ((y1 + row) * self.display_width + x1) * 2
+                dst_offset = row * w * 2
+                region[dst_offset : dst_offset + w * 2] = self.background[
+                    src_offset : src_offset + w * 2
+                ]
+
+            # Blit the background region back
+            display.blit_buffer(x1, y1, w, h, region)
 
     def draw(self, display):
         """Draw the fancy ball at current position"""
@@ -116,10 +127,22 @@ class HighFPSBall:
         display.fill_circle(x, shadow_y, int(r * 0.3), 0x4000)
 
 
+def load_background(path):
+    """Load background image from RAW RGB565 file"""
+    print(f"Loading background from {path}...")
+    fb = bytearray(WIDTH * HEIGHT * 2)
+    with open(path, "rb") as f:
+        read = f.readinto(fb)
+        if read != len(fb):
+            raise RuntimeError("Background file is the wrong size")
+    print("✓ Background loaded")
+    return fb
+
+
 def main():
-    """Main high FPS animation loop"""
+    """Main animation loop with background"""
     print("\n" + "=" * 70)
-    print("  HIGH FPS BOUNCING BALL ANIMATION (60+ FPS)")
+    print("  BOUNCING BALL WITH BACKGROUND IMAGE")
     print("=" * 70)
 
     # Initialize display
@@ -128,18 +151,23 @@ def main():
     display.init_display()
     display.brightness = 1.0
 
-    # Enable double-buffering for dirty region optimization
-    print("Enabling double-buffering with dirty regions...")
+    # Enable double-buffering
+    print("Enabling double-buffering...")
     display.swap_buffers()
-    print("✓ Display ready for high FPS animation\n")
+    print("✓ Display ready\n")
 
-    # Display dimensions
-    width = display.width
-    height = display.height
+    # Load background
+    background = load_background(BACKGROUND_PATH)
+
+    # Display background
+    print("Displaying background...")
+    display.blit_buffer(0, 0, WIDTH, HEIGHT, background)
+    display.swap_buffers()
+    print("✓ Background displayed\n")
 
     # Random starting position
-    start_x = random.randint(BALL_RADIUS + 20, width - BALL_RADIUS - 20)
-    start_y = random.randint(BALL_RADIUS + 20, height - BALL_RADIUS - 20)
+    start_x = random.randint(BALL_RADIUS + 20, WIDTH - BALL_RADIUS - 20)
+    start_y = random.randint(BALL_RADIUS + 20, HEIGHT - BALL_RADIUS - 20)
 
     # Random velocity
     vx = SPEED * (random.random() * 2 - 1)
@@ -156,47 +184,36 @@ def main():
     print(f"  Starting position: ({start_x}, {start_y})")
     print(f"  Initial velocity: ({vx:.2f}, {vy:.2f})")
     print(f"  Target FPS: {TARGET_FPS}")
-    print(f"  Duration: {DURATION} seconds")
-    print(f"\n🚀 HIGH FPS MODE: Using dirty region optimization!")
-    print(f"   • Only clearing old ball position (not full screen)")
-    print(f"   • Only flushing changed regions")
-    print(f"   • Expected: 60-120 FPS (vs 22 FPS with full clear)\n")
+    print(f"  Duration: {DURATION} seconds\n")
 
     # Create ball
-    ball = HighFPSBall(start_x, start_y, vx, vy, BALL_RADIUS, width, height)
-
-    # Initial clear and border
-    display.fill_color(rm690b0.BLACK)
-    display.rect(0, 0, width, height, 0x4208)  # Dark gray border
-    display.swap_buffers()
+    ball = HighFPSBall(start_x, start_y, vx, vy, BALL_RADIUS, WIDTH, HEIGHT, background)
 
     # Animation loop
     start_time = time.monotonic()
     frame_count = 0
     target_frame_time = 1.0 / TARGET_FPS
-    fps_update_interval = 30  # Update FPS display every 30 frames
+    fps_update_interval = 30
 
     # For FPS calculation
     last_fps_time = start_time
     last_fps_frame = 0
 
+    print("🚀 Starting animation...\n")
+
     while time.monotonic() - start_time < DURATION:
         frame_start = time.monotonic()
 
-        # HIGH FPS OPTIMIZATION: Only clear where ball WAS, not entire screen!
+        # Restore background at old ball position
         ball.clear_previous(display)
 
         # Update physics
         ball.update()
 
-        # Draw ball at NEW position
+        # Draw ball at new position
         ball.draw(display)
 
-        # Redraw border (it's tiny, doesn't hurt performance)
-        display.rect(0, 0, width, height, 0x4208)
-
-        # CRITICAL: use copy=False since we're doing incremental updates
-        # This avoids 27ms memcpy overhead
+        # Swap buffers
         display.swap_buffers(copy=False)
 
         frame_count += 1
@@ -216,7 +233,7 @@ def main():
             last_fps_time = current_time
             last_fps_frame = frame_count
 
-        # Optional frame rate limiting (comment out for max FPS test)
+        # Frame rate limiting
         frame_elapsed = time.monotonic() - frame_start
         if frame_elapsed < target_frame_time:
             time.sleep(target_frame_time - frame_elapsed)
@@ -235,33 +252,12 @@ def main():
     print(f"  Target FPS: {TARGET_FPS}")
     print(f"  Achievement: {(actual_fps / TARGET_FPS * 100):.1f}%")
 
-    # Performance rating
-    if actual_fps >= TARGET_FPS * 0.95:
-        print(f"\n  ⭐⭐⭐ EXCELLENT! Achieved target FPS!")
-    elif actual_fps >= TARGET_FPS * 0.80:
-        print(f"\n  ⭐⭐☆ GOOD! Close to target FPS")
-    elif actual_fps >= TARGET_FPS * 0.50:
-        print(f"\n  ⭐☆☆ ACCEPTABLE performance")
-    else:
-        print(f"\n  ⚠️  Below target - check system load")
-
-    print(f"\n💡 Key Insight:")
-    print(f"  Dirty region optimization allows {actual_fps:.0f} FPS")
-    print(f"  vs ~22 FPS with full screen clearing")
-    print(f"  Speedup: {actual_fps / 22:.1f}× faster!")
-
-    # Comparison
-    print(f"\n📈 Comparison:")
-    print(f"  Original method (full clear): ~22 FPS")
-    print(f"  Dirty region method: {actual_fps:.0f} FPS")
-    print(f"  Improvement: {actual_fps / 22:.1f}× better frame rate!")
-
     # Clean up
     display.fill_color(rm690b0.BLACK)
     display.swap_buffers()
     display.deinit()
 
-    print("\n✓ High FPS animation finished!\n")
+    print("\n✓ Animation finished!\n")
 
 
 if __name__ == "__main__":

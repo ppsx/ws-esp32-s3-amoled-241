@@ -50,7 +50,7 @@ ampy reset
 
 These examples use the standalone `rm690b0` display driver (no LVGL).
 
-### basic_test.py
+### test_basic_gfx.py
 
 **Description:** Interactive test of native text rendering with all built-in fonts.
 
@@ -62,7 +62,7 @@ These examples use the standalone `rm690b0` display driver (no LVGL).
 
 **Usage:**
 ```python
-import basic_test
+import test_basic_gfx
 # Follow on-screen prompts
 ```
 
@@ -102,7 +102,7 @@ import test_all_fonts
 
 ---
 
-### show_image_fast.py
+### test_sd_gfx.py
 
 **Description:** Demonstrates fast image loading from SD card or flash.
 
@@ -113,33 +113,12 @@ import test_all_fonts
 
 **Usage:**
 ```python
-import show_image_fast
+import test_sd_gfx
 ```
 
 ---
 
-### bouncing_ball.py
-
-**Description:** Simple bouncing ball animation demonstrating basic graphics.
-
-**Features:**
-- Circle drawing and filling
-- Basic physics simulation
-- Frame timing
-
-**Usage:**
-```python
-import bouncing_ball
-```
-
-**Key Concepts:**
-- `fill_circle()` for shapes
-- Animation loops
-- Basic physics
-
----
-
-### bouncing_ball_60fps.py
+### test_animation.py
 
 **Description:** Optimized bouncing ball targeting 60 FPS.
 
@@ -150,7 +129,7 @@ import bouncing_ball
 
 **Usage:**
 ```python
-import bouncing_ball_60fps
+import test_animation
 ```
 
 **Key Concepts:**
@@ -160,7 +139,7 @@ import bouncing_ball_60fps
 
 ---
 
-### bouncing_ball_with_bg.py
+### test_animation_bg.py
 
 **Description:** Bouncing ball with background image.
 
@@ -171,8 +150,8 @@ import bouncing_ball_60fps
 
 **Usage:**
 ```python
-import bouncing_ball_with_bg
-# Requires image files: cerber.jpg or cyborg.jpg
+import test_animation_bg
+# Requires image files under /gfx (cerber/cyborg)
 ```
 
 **Key Concepts:**
@@ -368,7 +347,7 @@ import snake_game
 
 Tests for specific hardware peripherals and sensors.
 
-### navigation_switch_test.py
+### test_hw_nav_switch.py
 
 **Description:** Test SparkFun Qwiic Navigation Switch with RGB LED support.
 
@@ -390,13 +369,13 @@ Tests for specific hardware peripherals and sensors.
 
 **Usage:**
 ```python
-import navigation_switch_test
+import test_hw_nav_switch
 # Press switches to see LED changes
 ```
 
 ---
 
-### espsdcard_test.py
+### test_espsdcard.py
 
 **Description:** SD card read/write test using espsdcard module.
 
@@ -408,7 +387,7 @@ import navigation_switch_test
 
 **Usage:**
 ```python
-import espsdcard_test
+import test_espsdcard
 # Requires SD card inserted
 ```
 
@@ -420,7 +399,7 @@ import espsdcard_test
 
 ---
 
-### espnow_test.py
+### test_espnow.py
 
 **Description:** ESP-NOW wireless communication test.
 
@@ -431,13 +410,13 @@ import espsdcard_test
 
 **Usage:**
 ```python
-import espnow_test
+import test_espnow
 # Requires two ESP32 devices
 ```
 
 ---
 
-### board_test_suite.py
+### test_board_hardware.py
 
 **Description:** Comprehensive hardware test suite.
 
@@ -450,7 +429,7 @@ import espnow_test
 
 **Usage:**
 ```python
-import board_test_suite
+import test_board_hardware
 # Interactive test menu
 ```
 
@@ -460,9 +439,9 @@ import board_test_suite
 
 Performance measurement and optimization tools.
 
-### unified_benchmark.py
+### benchmark_gfx_conversion.py
 
-**Description:** Comprehensive performance benchmark suite.
+**Description:** Comprehensive image conversion benchmark suite (RAW/BMP/JPEG → framebuffer).
 
 **Features:**
 - Graphics primitive benchmarks
@@ -482,7 +461,7 @@ Performance measurement and optimization tools.
 
 **Usage:**
 ```python
-import unified_benchmark
+import benchmark_gfx_conversion
 # Results printed to console
 ```
 
@@ -493,6 +472,36 @@ Circle (r=50): 2.1 ms
 Text "Hello" (16×16): 1.2 ms
 JPEG decode: 145 ms
 ```
+
+### benchmark_gfx_display.py
+
+**Description:** Full display primitive benchmark derived from the comprehensive graphics test suite. Measures fill operations, line/circle drawing, rectangles, text fill paths, and overall FPS impact.
+
+**Features:**
+- Tests every primitive size bucket (tiny → full screen)
+- Reports average time, ops/sec, and star rating
+- Includes memory usage snapshot
+- Highlights regressions against baseline thresholds
+
+**Usage:**
+```python
+import benchmark_gfx_display
+# Interactive prompts / summary table printed to console
+```
+
+### benchmark_simple_flush.py
+
+**Description:** Lightweight stress test that targets high-bandwidth DMA operations. It runs full-screen `fill_color`, multiple `fill_rect` variants (full screen, full-width×64 rows, centered 64 px column), `blit_buffer`, and `circle`/`fill_circle`, first in single-buffer mode and then in double-buffer mode.
+
+**Why it matters:** Exercises the most recent driver optimizations (DMA scheduling, `fill_rect_pixels`, span cache for circles), so regressions in throughput or buffer synchronization become visible immediately.
+
+**Usage:**
+```python
+import benchmark_simple_flush
+# Result table (Avg ms + MP/s) printed to console
+```
+
+**Tip:** Capture results before and after firmware changes to quantify the impact of each tweak.
 
 ---
 
@@ -787,9 +796,9 @@ display_y = touch_x
 ## Example Gallery
 
 ### Simple Examples
-- `basic_test.py` - Native text and fonts
-- `font_test.py` - Font showcase
-- `bouncing_ball.py` - Basic animation
+- `test_basic_gfx.py` - Native text and fonts
+- `test_all_fonts.py` - Font showcase
+- `test_animation.py` / `test_animation_bg.py` - Graphics + motion
 
 ### Advanced Examples  
 - `test_gui.py` - Complete LVGL UI
@@ -797,12 +806,14 @@ display_y = touch_x
 - `snake_game.py` - Grid-based game with joystick
 
 ### Hardware Tests
-- `navigation_switch_test.py` - 5-way switch + RGB LED
-- `espsdcard_test.py` - SD card operations
-- `board_test_suite.py` - Complete hardware check
+- `test_hw_nav_switch.py` - 5-way switch + RGB LED
+- `test_espsdcard.py` - SD card operations
+- `test_board_hardware.py` - Complete hardware check
 
 ### Benchmarks
-- `unified_benchmark.py` - Performance measurements
+- `benchmark_gfx_conversion.py` - Image conversion throughput
+- `benchmark_gfx_display.py` - Display primitive performance
+- `benchmark_simple_flush.py` - Full-screen flush stress test
 
 ---
 

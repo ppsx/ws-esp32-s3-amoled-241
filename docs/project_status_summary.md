@@ -22,6 +22,8 @@
 - Unified benchmarking and diagnostics scripts consolidate prior tooling, ship quick/diagnostic/memory-efficient modes, and document runbooks in the README and benchmark guides
 - JPEG conversion on ESP32-S3 leverages ESP-IDF's hardware-accelerated `esp_jpeg` decoder for faster image loads (10-50x faster than software decoding)
 - All pin definitions properly configured through board config files (`mpconfigboard.h`) with no hardcoded GPIO numbers in driver code
+- Streaming JPEG path now writes decoded blocks directly into the framebuffer, eliminating the previous ~540 KB PSRAM allocation and making image blits resilient to memory fragmentation.
+- `examples/benchmark_simple_flush.py` benchmarks both buffering modes plus partial-width/full-width rectangles and circle paths, guarding the new fill/circle optimizations against regressions.
 
 ### Phase 5: LVGL Integration (FUNCTIONALLY COMPLETE, STABILITY OPEN)
 - **LVGL Library**: v8.x compiled and integrated into CircuitPython firmware

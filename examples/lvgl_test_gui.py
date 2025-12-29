@@ -910,7 +910,7 @@ def on_keyboard_change(kb):
 # image_lbl.set_text_color(0x000000)
 #
 # try:
-#    with open("/cyborg.jpg", "rb") as f:
+#    with open("/gfx/cyborg.jpg", "rb") as f:
 #        jpeg_data = f.read()
 #
 #    img = rm690b0_lvgl.Image()

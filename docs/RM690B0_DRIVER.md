@@ -878,12 +878,17 @@ display.blit_jpeg(x, y, jpeg_data)
 
 **Returns:** None
 
-**Performance:** Hardware JPEG decoder (ESP32-S3), very fast
+**Performance:** Hardware JPEG decoder (ESP32-S3) with block streaming
 
 **Requirements:**
 - Standard JPEG format
 - Any reasonable size supported
 - Hardware decoding handles most JPEG variants
+
+**Memory usage & safety:**
+- Decoder no longer allocates a full-frame PSRAM buffer (~540 KB for 600×450); pixels are streamed block-by-block straight to the framebuffer, so fragmented PSRAM is no longer a blocker.
+- Callback receives at most a 16×16 block (`≤512 B`), so even tiny JPEGs (e.g. 4×20 px) decode without special handling.
+- Double-buffering stays intact: JPEG writes into the active back buffer and respects clipping/rotation.
 
 **Example:**
 ```python
@@ -1015,11 +1020,18 @@ def lighten(color):
 **Benchmark Results:**
 | Operation | Time | Notes |
 |-----------|------|-------|
-| Full screen fill | ~25 ms | Hardware limited by DMA |
-| Circle (r=50) | ~2 ms | Optimized Bresenham |
+| Full screen fill | ~25–34 ms | Hardware limited by DMA, both single/double buffer tracked |
+| Full-width fill (64 rows) | ~5 ms | Exercises partial-height DMA path |
+| 64 px column fill | ~6 ms | Stresses narrow-span cache/fill loop |
+| Circle (r=50) | ~2 ms | Optimized Bresenham (with span cache) |
 | Text "Hello World" (16×16) | ~1.2 ms | Native font rendering |
 | 100×100 rectangle | ~0.5 ms | DMA accelerated |
 | Single pixel | ~0.001 ms | Direct framebuffer write |
+
+**Targeted benchmarks (`examples/benchmark_simple_flush.py`):**
+- Runs in both single- and double-buffer modes so regressions in swap/buffer sync are obvious.
+- Adds two extra rectangle tests (full width × 64 rows, narrow 64‑px column) to cover the optimized fill loops.
+- Includes circle/fill_circle runs to monitor the new span cache and clipping paths.
 
 ### Optimization Tips
 
