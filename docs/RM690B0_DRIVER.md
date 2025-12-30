@@ -14,9 +14,10 @@
 8. [Image Support](#image-support)
 9. [Color System](#color-system)
 10. [Performance Optimization](#performance-optimization)
-11. [Examples](#examples)
-12. [Implementation Details](#implementation-details)
-13. [Troubleshooting](#troubleshooting)
+11. [DMA Memory Management](#dma-memory-management)
+12. [Examples](#examples)
+13. [Implementation Details](#implementation-details)
+14. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -49,16 +50,16 @@ The **RM690B0 driver** is a high-performance, standalone display driver for the 
 
 ### Hardware Specifications
 
-| Component | Specification |
-|-----------|---------------|
-| **Display Controller** | RM690B0 AMOLED |
-| **Resolution** | 600×450 pixels (landscape) |
-| **Interface** | QSPI (Quad SPI) |
-| **Color Format** | RGB565 (16-bit) |
-| **Clock Speed** | 80 MHz |
-| **Framebuffer** | 540 KB in PSRAM (double buffered) |
-| **DMA Limit** | 30 lines per transfer |
-| **MCU** | ESP32-S3 |
+| Component              | Specification                     |
+| ---------------------- | --------------------------------- |
+| **Display Controller** | RM690B0 AMOLED                    |
+| **Resolution**         | 600×450 pixels (landscape)        |
+| **Interface**          | QSPI (Quad SPI)                   |
+| **Color Format**       | RGB565 (16-bit)                   |
+| **Clock Speed**        | 80 MHz                            |
+| **Framebuffer**        | 540 KB in PSRAM (double buffered) |
+| **DMA Limit**          | 30 lines per transfer             |
+| **MCU**                | ESP32-S3                          |
 
 ---
 
@@ -98,12 +99,14 @@ The **RM690B0 driver** is a high-performance, standalone display driver for the 
 ### Memory Architecture
 
 **Double Buffering:**
+
 - **Front Buffer**: Currently displayed (PSRAM)
 - **Back Buffer**: Being drawn to (PSRAM)
 - **Swap**: `swap_buffers()` flips front/back instantly
 - **Result**: Zero tearing, smooth animations
 
 **DMA Staging:**
+
 - DMA requires SRAM buffers (MALLOC_CAP_DMA)
 - Driver manages staging buffers automatically
 - Transfers up to 30 lines per DMA operation
@@ -214,6 +217,7 @@ Creates a new RM690B0 display instance. Only one instance should exist at a time
 **Parameters:** None
 
 **Example:**
+
 ```python
 import rm690b0
 display = rm690b0.RM690B0()
@@ -236,6 +240,7 @@ display.init_display()
 **Raises:** `RuntimeError` if initialization fails
 
 **What it does:**
+
 - Allocates double-buffered framebuffers in PSRAM
 - Configures QSPI interface at 80 MHz
 - Initializes RM690B0 controller registers
@@ -244,6 +249,7 @@ display.init_display()
 - Turns on display power and backlight
 
 **Example:**
+
 ```python
 display = rm690b0.RM690B0()
 display.init_display()  # Must call before any drawing
@@ -265,12 +271,14 @@ display.deinit()
 **Returns:** None
 
 **What it does:**
+
 - Frees framebuffer memory
 - Releases DMA buffers
 - Powers down display
 - Resets QSPI interface
 
 **Example:**
+
 ```python
 display.deinit()
 # Display is now off and resources freed
@@ -287,19 +295,23 @@ display.swap_buffers(copy=True)
 ```
 
 **Parameters:**
+
 - `copy` (bool, optional): If `True`, copy front buffer to back buffer after swap. Default: `True`
 
 **Returns:** None
 
 **Behavior:**
+
 - **With `copy=True`**: New back buffer contains previous frame (for incremental updates)
 - **With `copy=False`**: New back buffer is undefined (for full redraws)
 
 **Performance:**
+
 - Buffer swap itself is instant (pointer swap)
 - Copy operation takes ~3-5 ms if enabled
 
 **Example:**
+
 ```python
 # Incremental updates (preserve previous frame)
 display.fill_circle(x, y, 10, 0xFFFF)
@@ -352,7 +364,10 @@ rotation = display.rotation  # 0
 **Type:** `int`  
 **Value:** `0` (landscape orientation, fixed)
 
-**Note:** Rotation is currently fixed at 0° (landscape). Software rotation can be implemented in application layer if needed.
+**Type:** `int`  
+**Value:** `0`, `90`, `180`, `270`
+
+**Note:** Hardware rotation is set to 0. This property controls software-based rotation for drawing operations (pixels, lines, rects, text, images). Optimized with loop unrolling and pointer arithmetic for high performance.
 
 ---
 
@@ -372,6 +387,7 @@ display.brightness = 0.5  # 50%
 **Range:** `0.0` (off) to `1.0` (full brightness)
 
 **Example:**
+
 ```python
 # Dim display
 display.brightness = 0.3
@@ -399,6 +415,7 @@ display.fill_color(color)
 ```
 
 **Parameters:**
+
 - `color` (int): RGB565 color value (0x0000-0xFFFF)
 
 **Returns:** None
@@ -406,6 +423,7 @@ display.fill_color(color)
 **Performance:** ~25 ms for full screen
 
 **Example:**
+
 ```python
 display.fill_color(0x0000)  # Black
 display.fill_color(0xFFFF)  # White
@@ -425,6 +443,7 @@ display.pixel(x, y, color)
 ```
 
 **Parameters:**
+
 - `x` (int): X coordinate (0-599)
 - `y` (int): Y coordinate (0-449)
 - `color` (int): RGB565 color value
@@ -432,6 +451,7 @@ display.pixel(x, y, color)
 **Returns:** None
 
 **Example:**
+
 ```python
 # Draw red pixel at (100, 100)
 display.pixel(100, 100, 0xF800)
@@ -452,6 +472,7 @@ display.line(x0, y0, x1, y1, color)
 ```
 
 **Parameters:**
+
 - `x0, y0` (int): Start point coordinates
 - `x1, y1` (int): End point coordinates
 - `color` (int): RGB565 color value
@@ -461,6 +482,7 @@ display.line(x0, y0, x1, y1, color)
 **Algorithm:** Bresenham's line algorithm (single-pixel accurate)
 
 **Example:**
+
 ```python
 # Diagonal line
 display.line(0, 0, 600, 450, 0xFFFF)
@@ -487,6 +509,7 @@ display.rect(x, y, width, height, color)
 ```
 
 **Parameters:**
+
 - `x, y` (int): Top-left corner coordinates
 - `width` (int): Rectangle width in pixels
 - `height` (int): Rectangle height in pixels
@@ -497,6 +520,7 @@ display.rect(x, y, width, height, color)
 **Note:** Draws 1-pixel border, no corner overlap
 
 **Example:**
+
 ```python
 # White border rectangle
 display.rect(50, 50, 200, 100, 0xFFFF)
@@ -518,6 +542,7 @@ display.fill_rect(x, y, width, height, color)
 ```
 
 **Parameters:**
+
 - `x, y` (int): Top-left corner coordinates
 - `width` (int): Rectangle width in pixels
 - `height` (int): Rectangle height in pixels
@@ -528,6 +553,7 @@ display.fill_rect(x, y, width, height, color)
 **Performance:** Hardware accelerated, very fast
 
 **Example:**
+
 ```python
 # Red filled rectangle
 display.fill_rect(50, 50, 200, 100, 0xF800)
@@ -553,6 +579,7 @@ display.circle(x, y, radius, color)
 ```
 
 **Parameters:**
+
 - `x, y` (int): Center coordinates
 - `radius` (int): Circle radius in pixels
 - `color` (int): RGB565 color value
@@ -562,6 +589,7 @@ display.circle(x, y, radius, color)
 **Algorithm:** Bresenham's circle algorithm (optimized, 39× faster than naive)
 
 **Example:**
+
 ```python
 # White circle
 display.circle(300, 225, 100, 0xFFFF)
@@ -582,6 +610,7 @@ display.fill_circle(x, y, radius, color)
 ```
 
 **Parameters:**
+
 - `x, y` (int): Center coordinates
 - `radius` (int): Circle radius in pixels
 - `color` (int): RGB565 color value
@@ -591,6 +620,7 @@ display.fill_circle(x, y, radius, color)
 **Performance:** Optimized scanline filling
 
 **Example:**
+
 ```python
 # Red filled circle
 display.fill_circle(300, 225, 100, 0xF800)
@@ -612,6 +642,7 @@ display.hline(x, y, width, color)
 ```
 
 **Parameters:**
+
 - `x, y` (int): Starting coordinates
 - `width` (int): Line length in pixels
 - `color` (int): RGB565 color value
@@ -621,6 +652,7 @@ display.hline(x, y, width, color)
 **Performance:** Faster than `line()` for horizontal lines
 
 **Example:**
+
 ```python
 # Horizontal separator
 display.hline(0, 225, 600, 0xFFFF)
@@ -641,6 +673,7 @@ display.vline(x, y, height, color)
 ```
 
 **Parameters:**
+
 - `x, y` (int): Starting coordinates
 - `height` (int): Line length in pixels
 - `color` (int): RGB565 color value
@@ -650,6 +683,7 @@ display.vline(x, y, height, color)
 **Performance:** Faster than `line()` for vertical lines
 
 **Example:**
+
 ```python
 # Vertical separator
 display.vline(300, 0, 450, 0xFFFF)
@@ -670,6 +704,7 @@ for y in range(0, 450, 50):
 The RM690B0 driver includes native text rendering with 7 built-in bitmap fonts. This system is lightweight, fast, and completely independent from LVGL.
 
 **Key Features:**
+
 - ✅ 7 embedded fonts (8×8 to 32×48 pixels)
 - ✅ Simple API: `set_font()` + `text()`
 - ✅ Transparent or solid backgrounds
@@ -677,18 +712,19 @@ The RM690B0 driver includes native text rendering with 7 built-in bitmap fonts. 
 - ✅ ASCII printable characters (0x20-0x7E)
 - ✅ 10-500× faster than DisplayIO text
 - ✅ Zero heap allocations during rendering
+- ✅ **Batch Rendering**: Calculates full bounding box and flushes once per string for maximum performance.
 
 ### Built-in Fonts
 
-| ID | Size | Style | Memory | Best For |
-|----|------|-------|--------|----------|
-| 0 | 8×8 | Monospace | 760 B | Tiny text, debug, status |
-| 1 | 16×16 | Liberation Sans | 30 KB | Body text, labels |
-| 2 | 16×24 | Liberation Mono Bold | 45 KB | Code, monospace text |
-| 3 | 24×24 | Monospace | 68 KB | Headings, emphasis |
-| 4 | 24×32 | Monospace | 91 KB | Large headings |
-| 5 | 32×32 | Monospace | 121 KB | Display text |
-| 6 | 32×48 | Monospace | 182 KB | Very large text |
+| ID  | Size  | Style                | Memory | Best For                 |
+| --- | ----- | -------------------- | ------ | ------------------------ |
+| 0   | 8×8   | Monospace            | 760 B  | Tiny text, debug, status |
+| 1   | 16×16 | Liberation Sans      | 30 KB  | Body text, labels        |
+| 2   | 16×24 | Liberation Mono Bold | 45 KB  | Code, monospace text     |
+| 3   | 24×24 | Monospace            | 68 KB  | Headings, emphasis       |
+| 4   | 24×32 | Monospace            | 91 KB  | Large headings           |
+| 5   | 32×32 | Monospace            | 121 KB | Display text             |
+| 6   | 32×48 | Monospace            | 182 KB | Very large text          |
 
 **Total:** ~538 KB in flash
 
@@ -701,6 +737,7 @@ display.set_font(font_id)
 ```
 
 **Parameters:**
+
 - `font_id` (int): Font identifier (0-6)
 
 **Returns:** None
@@ -708,6 +745,7 @@ display.set_font(font_id)
 **Note:** Invalid font IDs automatically clamp to 0 (no exception)
 
 **Example:**
+
 ```python
 display.set_font(0)  # 8×8 tiny
 display.set_font(1)  # 16×16 normal
@@ -726,6 +764,7 @@ display.text(x, y, text, color=0xFFFF, background=None)
 ```
 
 **Parameters:**
+
 - `x, y` (int): Top-left position of text
 - `text` (str): UTF-8 string to render
 - `color` (int, optional): RGB565 foreground color (default: white)
@@ -734,6 +773,7 @@ display.text(x, y, text, color=0xFFFF, background=None)
 **Returns:** None
 
 **Behavior:**
+
 - Characters rendered left-to-right
 - Fixed-width fonts (each character same width)
 - Unsupported characters replaced with '?'
@@ -743,6 +783,7 @@ display.text(x, y, text, color=0xFFFF, background=None)
 **Performance:** 0.3-7.7 ms for "Hello World" (depends on font size)
 
 **Example:**
+
 ```python
 # Simple white text (transparent background)
 display.set_font(1)
@@ -765,6 +806,7 @@ display.text(50, 140, "Line 3", 0xFFFF)
 ### Text Rendering Examples
 
 **Multi-Font UI:**
+
 ```python
 import rm690b0
 
@@ -792,12 +834,13 @@ display.swap_buffers()
 ```
 
 **Colored Labels:**
+
 ```python
 def show_status(display, msg, status):
     """Show status message with color coding."""
     display.fill_color(rm690b0.BLACK)
     display.set_font(1)
-    
+
     if status == "error":
         color = rm690b0.RED
         bg = 0x1800     # Dark red
@@ -810,7 +853,7 @@ def show_status(display, msg, status):
     else:
         color = rm690b0.WHITE
         bg = None       # Transparent
-    
+
     display.text(50, 200, msg, color=color, background=bg)
     display.swap_buffers()
 
@@ -829,6 +872,7 @@ def show_status(display, msg, status):
 The RM690B0 driver supports loading and displaying BMP and JPEG images.
 
 **Supported Formats:**
+
 - ✅ BMP: 24-bit RGB (uncompressed)
 - ✅ JPEG: Hardware-accelerated decoding (ESP32-S3 JPEG engine)
 
@@ -841,17 +885,20 @@ display.blit_bmp(x, y, bmp_data)
 ```
 
 **Parameters:**
+
 - `x, y` (int): Top-left position for image
 - `bmp_data` (bytes): BMP file data (header + pixels)
 
 **Returns:** None
 
 **Requirements:**
+
 - BMP must be 24-bit RGB format
 - Uncompressed only
 - Any reasonable size supported
 
 **Example:**
+
 ```python
 # Load BMP from file
 with open("/sd/logo.bmp", "rb") as f:
@@ -873,6 +920,7 @@ display.blit_jpeg(x, y, jpeg_data)
 ```
 
 **Parameters:**
+
 - `x, y` (int): Top-left position for image
 - `jpeg_data` (bytes): JPEG file data
 
@@ -881,16 +929,19 @@ display.blit_jpeg(x, y, jpeg_data)
 **Performance:** Hardware JPEG decoder (ESP32-S3) with block streaming
 
 **Requirements:**
+
 - Standard JPEG format
 - Any reasonable size supported
 - Hardware decoding handles most JPEG variants
 
 **Memory usage & safety:**
+
 - Decoder no longer allocates a full-frame PSRAM buffer (~540 KB for 600×450); pixels are streamed block-by-block straight to the framebuffer, so fragmented PSRAM is no longer a blocker.
 - Callback receives at most a 16×16 block (`≤512 B`), so even tiny JPEGs (e.g. 4×20 px) decode without special handling.
 - Double-buffering stays intact: JPEG writes into the active back buffer and respects clipping/rotation.
 
 **Example:**
+
 ```python
 # Load JPEG from file
 with open("/sd/photo.jpg", "rb") as f:
@@ -906,6 +957,7 @@ display.swap_buffers()
 ### Image Loading Best Practices
 
 **Memory Management:**
+
 ```python
 import gc
 
@@ -922,6 +974,7 @@ gc.collect()
 ```
 
 **SD Card Access:**
+
 ```python
 import espsdcard
 
@@ -946,6 +999,7 @@ sd.deinit()
 ### RGB565 Format
 
 The RM690B0 display uses **RGB565** color format:
+
 - **Red**: 5 bits (0-31)
 - **Green**: 6 bits (0-63)
 - **Blue**: 5 bits (0-31)
@@ -968,19 +1022,19 @@ black = rgb565(0, 0, 0)       # 0x0000
 
 ### Common Colors
 
-| Color | RGB565 | Hex Value |
-|-------|--------|-----------|
-| Black | 0, 0, 0 | 0x0000 |
-| White | 31, 63, 31 | 0xFFFF |
-| Red | 31, 0, 0 | 0xF800 |
-| Green | 0, 63, 0 | 0x07E0 |
-| Blue | 0, 0, 31 | 0x001F |
-| Yellow | 31, 63, 0 | 0xFFE0 |
-| Cyan | 0, 63, 31 | 0x07FF |
-| Magenta | 31, 0, 31 | 0xF81F |
-| Gray (50%) | 15, 31, 15 | 0x7BEF |
-| Orange | 31, 32, 0 | 0xFC00 |
-| Purple | 16, 0, 16 | 0x8010 |
+| Color      | RGB565     | Hex Value |
+| ---------- | ---------- | --------- |
+| Black      | 0, 0, 0    | 0x0000    |
+| White      | 31, 63, 31 | 0xFFFF    |
+| Red        | 31, 0, 0   | 0xF800    |
+| Green      | 0, 63, 0   | 0x07E0    |
+| Blue       | 0, 0, 31   | 0x001F    |
+| Yellow     | 31, 63, 0  | 0xFFE0    |
+| Cyan       | 0, 63, 31  | 0x07FF    |
+| Magenta    | 31, 0, 31  | 0xF81F    |
+| Gray (50%) | 15, 31, 15 | 0x7BEF    |
+| Orange     | 31, 32, 0  | 0xFC00    |
+| Purple     | 16, 0, 16  | 0x8010    |
 
 ### Color Utilities
 
@@ -1029,6 +1083,7 @@ def lighten(color):
 | Single pixel | ~0.001 ms | Direct framebuffer write |
 
 **Targeted benchmarks (`examples/benchmark_simple_flush.py`):**
+
 - Runs in both single- and double-buffer modes so regressions in swap/buffer sync are obvious.
 - Adds two extra rectangle tests (full width × 64 rows, narrow 64‑px column) to cover the optimized fill loops.
 - Includes circle/fill_circle runs to monitor the new span cache and clipping paths.
@@ -1036,6 +1091,7 @@ def lighten(color):
 ### Optimization Tips
 
 **1. Use `swap_buffers(copy=False)` for Full Redraws:**
+
 ```python
 # Slower (unnecessary copy)
 display.fill_color(0x0000)
@@ -1049,6 +1105,7 @@ display.swap_buffers(copy=False)  # Saves 3-5 ms
 ```
 
 **2. Batch Operations:**
+
 ```python
 # Slower (multiple swap_buffers calls)
 for i in range(10):
@@ -1062,6 +1119,7 @@ display.swap_buffers()  # 1 swap
 ```
 
 **3. Use Appropriate Primitives:**
+
 ```python
 # Slower (generic line)
 for x in range(100, 200):
@@ -1072,6 +1130,7 @@ display.hline(100, 100, 100, 0xFFFF)
 ```
 
 **4. Pre-calculate Colors:**
+
 ```python
 # Slower (calculate each frame)
 for frame in range(1000):
@@ -1087,6 +1146,7 @@ for frame in range(1000):
 ```
 
 **5. Minimize Framebuffer Writes:**
+
 ```python
 # Slower (redraw everything)
 while True:
@@ -1108,6 +1168,13 @@ while True:
     display.text(300, 200, f"Value: {value}", 0xFFFF)
     display.swap_buffers(copy=True)  # Preserves static content
 ```
+
+### 3. DMA Memory Management
+
+To prevent heap fragmentation and ensure stability:
+
+- **Dynamic Buffer Allocation**: The driver attempts to allocate static DMA buffers (`chunk_buffers`) at initialization. It prioritizes internal memory, then PSRAM, and adaptively reduces buffer size if allocation fails.
+- **Adaptive Flushing**: Rendering operations respect the actual size of the allocated static buffers, avoiding fallback to slow and fragmentation-prone `heap_caps_malloc` for every frame.
 
 ---
 
@@ -1148,24 +1215,24 @@ while True:
     temp = 45  # Get actual temperature
     mem = 2048  # Get actual memory
     uptime = time.monotonic()
-    
+
     # Update values (preserving static UI)
     display.set_font(1)
-    
+
     # Clear old values
     display.fill_rect(300, 100, 250, 20, BG)
     display.fill_rect(300, 140, 250, 20, BG)
     display.fill_rect(300, 180, 250, 20, BG)
-    
+
     # Draw new values
     color = GOOD if temp < 60 else WARNING
     display.text(300, 100, f"{temp}C", color)
     display.text(300, 140, f"{mem} KB", GOOD)
-    
+
     hours = int(uptime // 3600)
     mins = int((uptime % 3600) // 60)
     display.text(300, 180, f"{hours}h {mins}m", TEXT)
-    
+
     display.swap_buffers(copy=True)
     time.sleep(1)
 ```
@@ -1183,15 +1250,15 @@ def draw_progress(x, y, width, height, percent, color=rm690b0.GREEN):
     """Draw a progress bar."""
     # Border
     display.rect(x, y, width, height, rm690b0.WHITE)
-    
+
     # Background
     display.fill_rect(x+2, y+2, width-4, height-4, 0x2104)  # Dark gray
-    
+
     # Progress
     prog_width = int((width-4) * percent / 100)
     if prog_width > 0:
         display.fill_rect(x+2, y+2, prog_width, height-4, color)
-    
+
     # Percentage text
     display.set_font(1)
     text = f"{percent}%"
@@ -1228,7 +1295,7 @@ def draw_clock(cx, cy, radius, hour, minute, second):
     # Clock face
     display.fill_circle(cx, cy, radius, rm690b0.BLACK)
     display.circle(cx, cy, radius, rm690b0.WHITE)
-    
+
     # Hour marks
     for i in range(12):
         angle = math.radians(i * 30 - 90)
@@ -1237,40 +1304,40 @@ def draw_clock(cx, cy, radius, hour, minute, second):
         x2 = int(cx + (radius - 5) * math.cos(angle))
         y2 = int(cy + (radius - 5) * math.sin(angle))
         display.line(x1, y1, x2, y2, rm690b0.WHITE)
-    
+
     # Hour hand
     angle = math.radians((hour % 12) * 30 + minute * 0.5 - 90)
     x = int(cx + radius * 0.5 * math.cos(angle))
     y = int(cy + radius * 0.5 * math.sin(angle))
     display.line(cx, cy, x, y, rm690b0.WHITE)
-    
+
     # Minute hand
     angle = math.radians(minute * 6 - 90)
     x = int(cx + radius * 0.7 * math.cos(angle))
     y = int(cy + radius * 0.7 * math.sin(angle))
     display.line(cx, cy, x, y, rm690b0.GREEN)
-    
+
     # Second hand
     angle = math.radians(second * 6 - 90)
     x = int(cx + radius * 0.8 * math.cos(angle))
     y = int(cy + radius * 0.8 * math.sin(angle))
     display.line(cx, cy, x, y, rm690b0.RED)
-    
+
     # Center dot
     display.fill_circle(cx, cy, 5, rm690b0.WHITE)
 
 # Main loop
 while True:
     t = time.localtime()
-    
+
     display.fill_color(rm690b0.BLACK)
     draw_clock(300, 225, 150, t.tm_hour, t.tm_min, t.tm_sec)
-    
+
     # Digital time
     display.set_font(3)
     time_str = f"{t.tm_hour:02d}:{t.tm_min:02d}:{t.tm_sec:02d}"
     display.text(220, 400, time_str, rm690b0.WHITE)
-    
+
     display.swap_buffers(copy=False)
     time.sleep(1)
 ```
@@ -1289,7 +1356,7 @@ display.init_display()
 sd = espsdcard.SDCard("/sd")
 
 # Get list of images
-images = [f for f in os.listdir("/sd/images") 
+images = [f for f in os.listdir("/sd/images")
           if f.endswith(('.jpg', '.jpeg', '.bmp'))]
 
 current = 0
@@ -1297,19 +1364,19 @@ current = 0
 def show_image(filename):
     """Load and display an image."""
     display.fill_color(0x0000)
-    
+
     with open(f"/sd/images/{filename}", "rb") as f:
         data = f.read()
-    
+
     if filename.endswith('.bmp'):
         display.blit_bmp(50, 50, data)
     else:
         display.blit_jpeg(50, 50, data)
-    
+
     # Show filename
     display.set_font(1)
     display.text(10, 10, filename, 0xFFFF, 0x0000)
-    
+
     display.swap_buffers()
     del data
 
@@ -1317,7 +1384,7 @@ def show_image(filename):
 if images:
     show_image(images[current])
     print("Touch screen to advance (simulated with time delay)")
-    
+
     # Auto-advance for demo
     import time
     while True:
@@ -1333,16 +1400,19 @@ if images:
 ### DMA Architecture
 
 **30-Line Limit:**
+
 - Hardware DMA supports maximum 30 lines per transfer
 - Full screen (450 lines) requires 15 DMA operations
 - Driver automatically chunks large operations
 
 **Alignment Requirements:**
+
 - DMA buffers must be even-pixel aligned
 - Driver adds internal padding automatically
 - No user action required
 
 **Color Format:**
+
 - RGB565 with automatic GB byte swapping
 - Hardware quirk handled by driver
 - Users work with standard RGB565 values
@@ -1350,6 +1420,7 @@ if images:
 ### Framebuffer Management
 
 **Double Buffering:**
+
 ```
 PSRAM Layout:
 ┌──────────────────────────────┐
@@ -1360,6 +1431,7 @@ PSRAM Layout:
 ```
 
 **swap_buffers() Operation:**
+
 1. Pointer swap (instant)
 2. Optional copy front→back (~3-5 ms if copy=True)
 3. New frame ready for drawing
@@ -1367,12 +1439,14 @@ PSRAM Layout:
 ### Text Rendering Engine
 
 **Font Format:**
+
 - Row-based bitmap (horizontal scan)
 - MSB = leftmost pixel
 - 1 bit per pixel (monochrome)
 - Byte-aligned rows
 
 **Rendering Process:**
+
 1. UTF-8 decode → codepoint
 2. Map codepoint → font glyph
 3. Blit glyph to framebuffer
@@ -1387,13 +1461,16 @@ PSRAM Layout:
 **Symptoms:** Black screen after initialization
 
 **Causes & Solutions:**
+
 1. **Forgot `init_display()`:**
+
    ```python
    display = rm690b0.RM690B0()
    display.init_display()  # ← Must call this!
    ```
 
 2. **Forgot `swap_buffers()`:**
+
    ```python
    display.fill_color(0xFFFF)
    display.swap_buffers()  # ← Must swap to see changes!
@@ -1413,6 +1490,7 @@ PSRAM Layout:
 **Cause:** RGB565 format confusion
 
 **Solution:** Use RGB565 format correctly
+
 ```python
 # Wrong (RGB888)
 display.fill_color(255, 0, 0)  # ERROR
@@ -1430,18 +1508,21 @@ display.fill_color(RED)  # Correct
 **Symptoms:** `text()` called but nothing appears
 
 **Causes & Solutions:**
+
 1. **Forgot `set_font()`:**
+
    ```python
    display.set_font(1)  # ← Select font first
    display.text(10, 10, "Hello", 0xFFFF)
    ```
 
 2. **Color matches background:**
+
    ```python
    # Won't see white text on white background
    display.fill_color(0xFFFF)
    display.text(10, 10, "Hello", 0xFFFF)  # Invisible!
-   
+
    # Solution: use contrasting color
    display.text(10, 10, "Hello", 0x0000)  # Black on white
    ```
@@ -1461,12 +1542,14 @@ display.fill_color(RED)  # Correct
 **Solutions:**
 
 1. **Use `copy=False` for full redraws:**
+
    ```python
    display.fill_color(0x0000)
    display.swap_buffers(copy=False)  # Faster
    ```
 
 2. **Batch drawing operations:**
+
    ```python
    # Draw everything, then swap once
    for i in range(10):
@@ -1490,28 +1573,31 @@ display.fill_color(RED)  # Correct
 **Symptoms:** `MemoryError` when loading images
 
 **Causes & Solutions:**
+
 1. **Image too large:**
+
    ```python
    import gc
-   
+
    # Load image
    with open("image.jpg", "rb") as f:
        data = f.read()
-   
+
    display.blit_jpeg(0, 0, data)
-   
+
    # Free memory immediately
    del data
    gc.collect()
    ```
 
 2. **Multiple images in memory:**
+
    ```python
    # Don't do this
    img1 = open("a.jpg", "rb").read()
    img2 = open("b.jpg", "rb").read()
    img3 = open("c.jpg", "rb").read()
-   
+
    # Do this instead
    def show_image(display, path):
        with open(path, 'rb') as f:
@@ -1534,6 +1620,7 @@ display.fill_color(RED)  # Correct
 The ESP32-S3 has limited DMA-capable internal RAM (~400 KB). When the display driver needs to flush regions to the screen, it allocates a temporary buffer from DMA memory. If this memory is fragmented or exhausted, the allocation fails with error 0x101.
 
 **Common Triggers:**
+
 - Complex games with many draw operations
 - Frequent full-screen updates
 - Memory-intensive Python code running alongside display updates
@@ -1542,9 +1629,10 @@ The ESP32-S3 has limited DMA-capable internal RAM (~400 KB). When the display dr
 **Solutions:**
 
 1. **Add garbage collection before display updates:**
+
    ```python
    import gc
-   
+
    def game_loop():
        gc.collect()  # Free Python heap
        # ... drawing operations ...
@@ -1553,33 +1641,36 @@ The ESP32-S3 has limited DMA-capable internal RAM (~400 KB). When the display dr
    ```
 
 2. **Batch drawing operations:**
+
    ```python
    # Inefficient - many small operations
    for tile in tiles:
        display.fill_rect(tile.x, tile.y, 16, 16, tile.color)
-   
+
    # Better - minimize Python→C calls
    display.fill_rect(x, y, width, height, color)  # One large call
    ```
 
 3. **Avoid premature buffer activation:**
+
    ```python
    # Don't do this
    display.init_display()
    display.swap_buffers()  # ← BAD: activates buffers too early
-   
+
    # Do this
    display.init_display()
    # Let first frame initialize buffers naturally
    ```
 
 4. **Reduce memory pressure:**
+
    ```python
    # Pre-allocate reusable objects
    class Game:
        def __init__(self):
            self.temp_buffer = bytearray(1000)  # Reuse this
-           
+
        def update(self):
            # Use self.temp_buffer instead of creating new ones
            pass
@@ -1593,6 +1684,7 @@ The driver has been optimized to use smaller DMA chunks (23.4 KB instead of 58.6
 ```
 
 **Verification Test:**
+
 ```python
 import rm690b0
 import gc
@@ -1634,15 +1726,18 @@ See `TECHNICAL_NOTES.md` for detailed memory architecture analysis and DMA alloc
 ### Getting Help
 
 **Documentation:**
+
 - `TECHNICAL_NOTES.md` - Detailed technical information
 - `RM690B0_LVGL.md` - LVGL integration guide
 - `project_status_summary.md` - Project status and known issues
 
 **Test Scripts:**
+
 - `test_scripts/` directory contains examples
 - Try running included test scripts for verification
 
 **Common Patterns:**
+
 - Check examples in this document
 - Reference `flappy_bird_clone.py` and `snake_game.py` for real-world usage
 
@@ -1661,6 +1756,7 @@ The **RM690B0 driver** provides:
 ✅ **Zero dependencies** (works without LVGL)
 
 **Perfect for:**
+
 - Games (see `flappy_bird_clone.py`, `snake_game.py`)
 - Dashboards and status displays
 - Data visualization
@@ -1668,12 +1764,14 @@ The **RM690B0 driver** provides:
 - Performance-critical applications
 
 **Choose RM690B0 driver when you need:**
+
 - Fast, lightweight rendering
 - Direct framebuffer control
 - Simple graphics and text
 - No LVGL complexity
 
 **Choose RM690B0_LVGL when you need:**
+
 - Rich UI widgets
 - TTF font support
 - Complex layouts

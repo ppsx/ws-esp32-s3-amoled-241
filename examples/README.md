@@ -55,18 +55,21 @@ These examples use the standalone `rm690b0` display driver (no LVGL).
 **Description:** Interactive test of native text rendering with all built-in fonts.
 
 **Features:**
+
 - Tests all 7 built-in fonts (8×8 to 32×48)
 - Text rendering with colors and backgrounds
 - Graphics primitives (lines, rectangles, circles)
 - Interactive prompts between tests
 
 **Usage:**
+
 ```python
 import test_basic_gfx
 # Follow on-screen prompts
 ```
 
 **Key Concepts:**
+
 - Font selection with `set_font()`
 - Text rendering with `text()`
 - Graphics primitives
@@ -79,6 +82,7 @@ import test_basic_gfx
 **Description:** Comprehensive test of all 7 native bitmap fonts.
 
 **Features:**
+
 - Displays each font with sample text
 - Shows all fonts together for size comparison
 - Tests rendering performance
@@ -87,11 +91,13 @@ import test_basic_gfx
 - Shows memory usage statistics
 
 **Usage:**
+
 ```python
 import test_all_fonts
 ```
 
 **Fonts Available:**
+
 - Font 0: 8×8 monospace (760 bytes) - Debug/logs
 - Font 1: 16×16 Liberation Sans (30 KB) - Standard UI
 - Font 2: 16×24 Liberation Mono Bold (45 KB) - Readable UI
@@ -107,13 +113,35 @@ import test_all_fonts
 **Description:** Demonstrates fast image loading from SD card or flash.
 
 **Features:**
+
 - Loads and displays BMP/JPEG images
 - Shows performance metrics
 - Supports SD card and internal storage
 
 **Usage:**
+
 ```python
 import test_sd_gfx
+```
+
+---
+
+### test_rotation.py
+
+**Description:** Verifies hardware-accelerated software rotation of images.
+
+**Features:**
+
+- Loads `cyborg.jpg` from internal flash
+- Rotates image to 0°, 90°, 180°, 270°
+- Demonstrates seamless rotation support in driver
+- Includes brightness fading effect
+
+**Usage:**
+
+```python
+import test_rotation
+# Watch display for rotation sequence
 ```
 
 ---
@@ -123,16 +151,19 @@ import test_sd_gfx
 **Description:** Optimized bouncing ball targeting 60 FPS.
 
 **Features:**
+
 - Frame rate monitoring
 - Optimized rendering
 - Performance metrics
 
 **Usage:**
+
 ```python
 import test_animation
 ```
 
 **Key Concepts:**
+
 - Frame timing optimization
 - `swap_buffers(copy=False)` for performance
 - FPS calculation
@@ -144,17 +175,20 @@ import test_animation
 **Description:** Bouncing ball with background image.
 
 **Features:**
+
 - Background image loading (BMP/JPEG)
 - Image + graphics compositing
 - Performance with complex scenes
 
 **Usage:**
+
 ```python
 import test_animation_bg
 # Requires image files under /gfx (cerber/cyborg)
 ```
 
 **Key Concepts:**
+
 - `blit_jpeg()` for images
 - Layered rendering
 - Performance with images
@@ -170,6 +204,7 @@ These examples use the LVGL integration for rich UI widgets.
 **Description:** Comprehensive LVGL widget demonstration.
 
 **Features:**
+
 - All major LVGL widgets
 - TTF font loading and rendering
 - Touch input handling
@@ -178,6 +213,7 @@ These examples use the LVGL integration for rich UI widgets.
 - Flex layouts
 
 **Widgets Demonstrated:**
+
 - Label (text display)
 - Button (with callbacks)
 - Slider (value selection)
@@ -193,17 +229,20 @@ These examples use the LVGL integration for rich UI widgets.
 - And more...
 
 **Usage:**
+
 ```python
 import test_gui
 # Interact with widgets via touch
 ```
 
 **TTF Font Requirements:**
+
 - Place fonts in `fonts/` directory
 - Example: `fonts/calibri.ttf`
 - Keep fonts under 500KB for best performance
 
 **Key Concepts:**
+
 - LVGL widget creation
 - TTF font loading
 - Touch event handling
@@ -217,22 +256,26 @@ import test_gui
 **Description:** Demonstrates LVGL's built-in FontAwesome icons.
 
 **Features:**
+
 - Icon display (home, heart, settings, etc.)
 - Icon + text labels
 - Symbol reference
 
 **Usage:**
+
 ```python
 import lvgl_icons_example
 ```
 
 **Available Icons:**
+
 - Home, User, Settings, WiFi
 - Battery, Bluetooth, Volume
 - Play, Pause, Stop
 - And many more...
 
 **Key Concepts:**
+
 - Using LVGL symbols
 - Icon fonts
 - Symbol constants from `lib/lvgl_symbols.py`
@@ -244,11 +287,13 @@ import lvgl_icons_example
 **Description:** Test and display all available LVGL symbols.
 
 **Features:**
+
 - Complete symbol catalog
 - Visual symbol reference
 - Copy-paste ready constants
 
 **Usage:**
+
 ```python
 import test_symbols
 ```
@@ -264,15 +309,18 @@ Complete game implementations using the display and touch input.
 **Description:** Main menu launcher for games.
 
 **Features:**
+
 - Touch-based menu interface
 - Game selection (Flappy Bird, Snake)
 - Clean UI with visual feedback
 
 **Usage:**
+
 - Automatically runs on device boot
 - Touch buttons to select game
 
 **Menu Options:**
+
 1. **Flappy Bird** - Tap-to-flap game
 2. **Snake** - Joystick-controlled snake
 3. **Exit** - Return to REPL
@@ -284,6 +332,7 @@ Complete game implementations using the display and touch input.
 **Description:** Complete Flappy Bird clone with touch controls.
 
 **Features:**
+
 - Tap to flap gameplay
 - Scrolling pipes with collision detection
 - Score tracking and best score
@@ -293,15 +342,18 @@ Complete game implementations using the display and touch input.
 - Game over screen
 
 **Controls:**
+
 - **Tap screen** - Flap wings
 
 **Usage:**
+
 ```python
 import flappy_bird_clone
 # Or select from code.py menu
 ```
 
 **Game Mechanics:**
+
 - Bird falls with gravity
 - Tap to flap upward
 - Avoid pipes
@@ -315,6 +367,7 @@ import flappy_bird_clone
 **Description:** Classic Snake game with joystick controls.
 
 **Features:**
+
 - Joystick-based directional control
 - Food collection and growth
 - Score tracking and best score
@@ -323,19 +376,23 @@ import flappy_bird_clone
 - Grid-based movement
 
 **Controls:**
+
 - **Joystick UP/DOWN/LEFT/RIGHT** - Change direction
 - **CENTER button** - Start/restart game
 
 **Hardware Required:**
+
 - SparkFun Qwiic Navigation Switch (I2C address 0x21)
 
 **Usage:**
+
 ```python
 import snake_game
 # Or select from code.py menu
 ```
 
 **Game Mechanics:**
+
 - Snake moves continuously in current direction
 - Eat red food to grow and score points
 - Game speeds up as you score more
@@ -352,22 +409,26 @@ Tests for specific hardware peripherals and sensors.
 **Description:** Test SparkFun Qwiic Navigation Switch with RGB LED support.
 
 **Features:**
+
 - 5-way navigation switch testing
 - RGB LED control
 - Real-time input display
 - LED color changes based on direction
 
 **Hardware:**
+
 - SparkFun Qwiic Navigation Switch (PRT-27576)
 - Modified I2C address: 0x21 (default 0x20)
 - Connected via QWIIC port
 
 **Controls:**
+
 - UP/DOWN/LEFT/RIGHT switches
 - CENTER button
 - RGB LED (red, green, blue)
 
 **Usage:**
+
 ```python
 import test_hw_nav_switch
 # Press switches to see LED changes
@@ -380,18 +441,21 @@ import test_hw_nav_switch
 **Description:** SD card read/write test using espsdcard module.
 
 **Features:**
+
 - SD card mounting
 - File operations (read/write)
 - Directory listing
 - Performance testing
 
 **Usage:**
+
 ```python
 import test_espsdcard
 # Requires SD card inserted
 ```
 
 **Key Operations:**
+
 - Mount/unmount
 - File creation and reading
 - Directory operations
@@ -404,11 +468,13 @@ import test_espsdcard
 **Description:** ESP-NOW wireless communication test.
 
 **Features:**
+
 - Peer-to-peer communication
 - Message sending/receiving
 - Network setup
 
 **Usage:**
+
 ```python
 import test_espnow
 # Requires two ESP32 devices
@@ -421,6 +487,7 @@ import test_espnow
 **Description:** Comprehensive hardware test suite.
 
 **Features:**
+
 - Display test
 - Touch test
 - I2C device scanning
@@ -428,6 +495,7 @@ import test_espnow
 - Memory check
 
 **Usage:**
+
 ```python
 import test_board_hardware
 # Interactive test menu
@@ -444,6 +512,7 @@ Performance measurement and optimization tools.
 **Description:** Comprehensive image conversion benchmark suite (RAW/BMP/JPEG → framebuffer).
 
 **Features:**
+
 - Graphics primitive benchmarks
 - Text rendering speed tests
 - Image loading performance
@@ -451,6 +520,7 @@ Performance measurement and optimization tools.
 - Frame rate measurements
 
 **Benchmarks:**
+
 - Full screen fill
 - Rectangle drawing (filled/outline)
 - Circle drawing (filled/outline)
@@ -460,12 +530,14 @@ Performance measurement and optimization tools.
 - DMA transfer performance
 
 **Usage:**
+
 ```python
 import benchmark_gfx_conversion
 # Results printed to console
 ```
 
 **Sample Output:**
+
 ```
 Full screen fill: 25.3 ms
 Circle (r=50): 2.1 ms
@@ -478,12 +550,14 @@ JPEG decode: 145 ms
 **Description:** Full display primitive benchmark derived from the comprehensive graphics test suite. Measures fill operations, line/circle drawing, rectangles, text fill paths, and overall FPS impact.
 
 **Features:**
+
 - Tests every primitive size bucket (tiny → full screen)
 - Reports average time, ops/sec, and star rating
 - Includes memory usage snapshot
 - Highlights regressions against baseline thresholds
 
 **Usage:**
+
 ```python
 import benchmark_gfx_display
 # Interactive prompts / summary table printed to console
@@ -496,6 +570,7 @@ import benchmark_gfx_display
 **Why it matters:** Exercises the most recent driver optimizations (DMA scheduling, `fill_rect_pixels`, span cache for circles), so regressions in throughput or buffer synchronization become visible immediately.
 
 **Usage:**
+
 ```python
 import benchmark_simple_flush
 # Result table (Avg ms + MP/s) printed to console
@@ -519,12 +594,14 @@ esptool.py --chip esp32s3 --port /dev/ttyACM0 write_flash 0x0 circuitpython.bin
 ### 2. Upload Examples
 
 **Method 1: USB Drive (CIRCUITPY)**
+
 ```bash
 # Mount device as USB drive
 cp flappy_bird_clone.py /media/CIRCUITPY/code.py
 ```
 
 **Method 2: mpremote**
+
 ```bash
 pip install mpremote
 mpremote cp flappy_bird_clone.py :code.py
@@ -532,6 +609,7 @@ mpremote reset
 ```
 
 **Method 3: ampy**
+
 ```bash
 pip install adafruit-ampy
 ampy --port /dev/ttyACM0 put flappy_bird_clone.py /code.py
@@ -696,6 +774,7 @@ if touch.touched:
 ```
 
 **Note:** Touch coordinates from FT6336U are in portrait orientation (450×600). When using with landscape display (600×450), apply coordinate transformation:
+
 ```python
 display_x = 600 - touch_y
 display_y = touch_x
@@ -711,7 +790,8 @@ display_y = touch_x
 
 ### Issue: Touch not working
 
-**Solution:** 
+**Solution:**
+
 - Check I2C wiring (SDA=GPIO47, SCL=GPIO48)
 - Verify FT6336U at address 0x38
 - For LVGL: Call `init_rendering()` after `init_display()`
@@ -719,6 +799,7 @@ display_y = touch_x
 ### Issue: Font file not found
 
 **Solution:**
+
 - Upload fonts to `/fonts/` directory
 - Check file path in code
 - Verify file exists: `mpremote ls :fonts/`
@@ -726,6 +807,7 @@ display_y = touch_x
 ### Issue: Memory error loading TTF
 
 **Solution:**
+
 - Call `gc.collect()` before loading font
 - Use smaller/subsetted fonts (<500KB)
 - Load fonts once at startup, not repeatedly
@@ -733,6 +815,7 @@ display_y = touch_x
 ### Issue: Display shows nothing
 
 **Solution:**
+
 - Check `init_display()` was called
 - Check `swap_buffers()` was called after drawing
 - Verify brightness: `display.brightness = 1.0`
@@ -740,6 +823,7 @@ display_y = touch_x
 ### Issue: LVGL widgets not visible
 
 **Solution:**
+
 - Call `init_rendering()` after `init_display()`
 - Call `task_handler()` in main loop
 - Check widget coordinates are on-screen
@@ -747,6 +831,7 @@ display_y = touch_x
 ### Issue: Slow performance
 
 **Solution:**
+
 - Use `swap_buffers(copy=False)` for full redraws
 - Batch drawing operations before swapping
 - Avoid frequent `gc.collect()` calls
@@ -770,16 +855,16 @@ display_y = touch_x
 
 **Board:** Waveshare ESP32-S3 Touch AMOLED 2.41
 
-| Component | Specification |
-|-----------|---------------|
-| **MCU** | ESP32-S3 |
-| **Flash** | 16 MB |
-| **PSRAM** | 8 MB |
-| **Display** | RM690B0 AMOLED, 600×450 pixels |
-| **Interface** | QSPI (80 MHz) |
-| **Touch** | FT6336U, I2C (address 0x38) |
-| **I2C** | GPIO47 (SDA), GPIO48 (SCL) |
-| **Color** | RGB565 (16-bit) |
+| Component     | Specification                  |
+| ------------- | ------------------------------ |
+| **MCU**       | ESP32-S3                       |
+| **Flash**     | 16 MB                          |
+| **PSRAM**     | 8 MB                           |
+| **Display**   | RM690B0 AMOLED, 600×450 pixels |
+| **Interface** | QSPI (80 MHz)                  |
+| **Touch**     | FT6336U, I2C (address 0x38)    |
+| **I2C**       | GPIO47 (SDA), GPIO48 (SCL)     |
+| **Color**     | RGB565 (16-bit)                |
 
 ---
 
@@ -796,21 +881,25 @@ display_y = touch_x
 ## Example Gallery
 
 ### Simple Examples
+
 - `test_basic_gfx.py` - Native text and fonts
 - `test_all_fonts.py` - Font showcase
 - `test_animation.py` / `test_animation_bg.py` - Graphics + motion
 
-### Advanced Examples  
+### Advanced Examples
+
 - `test_gui.py` - Complete LVGL UI
 - `flappy_bird_clone.py` - Full game with physics
 - `snake_game.py` - Grid-based game with joystick
 
 ### Hardware Tests
+
 - `test_hw_nav_switch.py` - 5-way switch + RGB LED
 - `test_espsdcard.py` - SD card operations
 - `test_board_hardware.py` - Complete hardware check
 
 ### Benchmarks
+
 - `benchmark_gfx_conversion.py` - Image conversion throughput
 - `benchmark_gfx_display.py` - Display primitive performance
 - `benchmark_simple_flush.py` - Full-screen flush stress test
@@ -820,6 +909,7 @@ display_y = touch_x
 ## Contributing
 
 When adding new examples:
+
 1. Include docstring with description and usage
 2. Add example to this README
 3. Test on actual hardware
