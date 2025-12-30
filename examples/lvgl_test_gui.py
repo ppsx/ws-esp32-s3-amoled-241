@@ -19,6 +19,8 @@ SYMBOL_BATTERY_FULL = "\uf240"
 SYMBOL_HOME = "\uf015"
 SYMBOL_KEYBOARD = "\uf11c"
 
+THEME_DARK = False
+
 print("=" * 60)
 print("LVGL Python GUI Test")
 print("=" * 60)
@@ -31,6 +33,13 @@ display.init_display()
 print("Initializing LVGL...")
 lvgl = rm690b0_lvgl.RM690B0_LVGL()
 lvgl.init_display()
+
+lvgl.set_theme_color(
+    primary=0x0066FF,
+    #secondary=0xFF6600,
+    dark=THEME_DARK
+)
+
 lvgl.init_rendering()
 
 # Get display dimensions dynamically
@@ -53,6 +62,19 @@ except Exception as e:
 # 3. Create UI using Python Widgets
 print("Creating Widgets...")
 
+widget_colors = []
+
+def apply_theme(theme_dark=False):
+    global THEME_DARK
+    THEME_DARK = theme_dark
+    for (widget, func, dark, light) in widget_colors:
+        getattr(widget, "set_" + func + "_color")(dark if theme_dark else light)
+        lvgl.set_theme_color(
+            primary=0x0066FF,
+            #secondary=0xFF6600,
+            dark=theme_dark
+        )
+
 
 # ============================================================================
 # Temporary label
@@ -60,7 +82,6 @@ print("Creating Widgets...")
 loading = rm690b0_lvgl.Label(text="Loading...")
 loading.x = (SCREEN_WIDTH - 64) // 2
 loading.y = (SCREEN_HEIGHT - 8) // 2
-loading.set_text_color(0x000000)
 time.sleep(0.03)
 lvgl.task_handler()
 
@@ -68,6 +89,7 @@ lvgl.task_handler()
 # TITLE - Centered at top
 # ============================================================================
 title = rm690b0_lvgl.Label("Widget Demo")
+
 print("Creating title label...")
 
 print("Loading TTF font from: fonts/calibri.ttf")
@@ -87,7 +109,8 @@ lvgl.task_handler()
 
 title.x = (SCREEN_WIDTH - 120) // 2  # Center horizontally
 title.y = 10
-title.set_text_color(0x000080)  # Navy Blue
+title.set_text_color(0xFFFFFF if THEME_DARK else 0x000080)  # Navy Blue
+widget_colors.append([title, "text", 0xFFFFFF, 0x000080])
 
 # Remove temporary label
 loading.delete()
@@ -110,7 +133,8 @@ prog_cont.x = 20
 prog_cont.y = 40
 prog_cont.width = 390
 prog_cont.height = 70
-prog_cont.set_style_bg_color(0xE0E0E0)
+prog_cont.set_style_bg_color(0x101010 if THEME_DARK else 0xE0E0E0)
+widget_colors.append([prog_cont, "style_bg", 0x101010, 0xE0E0E0])
 prog_cont.set_padding(10)
 prog_cont.set_flex_flow(rm690b0_lvgl.FLEX_FLOW_ROW)
 prog_cont.set_flex_align(
@@ -121,7 +145,6 @@ prog_cont.set_flex_align(
 
 # Progress Bar Section
 bar_lbl = rm690b0_lvgl.Label(text="Progress: 0%")
-bar_lbl.set_text_color(0x000000)
 bar_lbl.set_parent(prog_cont)  # Add to container
 
 bar = rm690b0_lvgl.Bar(min_value=0, max_value=100)
@@ -157,7 +180,6 @@ counter_val = 0
 counter_lbl = rm690b0_lvgl.Label(text="Count: 0")
 counter_lbl.x = 30
 counter_lbl.y = 140
-counter_lbl.set_text_color(0x000000)
 
 
 def on_inc_click(btn):
@@ -199,7 +221,6 @@ btn_rst.on_click = on_reset_click
 slider_lbl = rm690b0_lvgl.Label(text="Slider: 50")
 slider_lbl.x = 310
 slider_lbl.y = 130
-slider_lbl.set_text_color(0x000000)
 
 
 def on_slider_change(slider):
@@ -249,7 +270,6 @@ btn_slider_max.on_click = set_slider_max
 roller_lbl = rm690b0_lvgl.Label(text="Mode: Normal")
 roller_lbl.x = 30
 roller_lbl.y = 280
-roller_lbl.set_text_color(0x000000)
 
 
 def on_roller_change(roller_obj):
@@ -275,7 +295,6 @@ roller.selected = 0
 checkbox1_lbl = rm690b0_lvgl.Label(text="Feature: OFF")
 checkbox1_lbl.x = 30
 checkbox1_lbl.y = 220
-checkbox1_lbl.set_text_color(0x000000)
 
 
 def on_checkbox1_change(cb):
@@ -294,7 +313,6 @@ checkbox1.on_change = on_checkbox1_change
 checkbox2_lbl = rm690b0_lvgl.Label(text="Auto: ON")
 checkbox2_lbl.x = 160
 checkbox2_lbl.y = 220
-checkbox2_lbl.set_text_color(0x000000)
 
 
 def on_checkbox2_change(cb):
@@ -314,7 +332,6 @@ checkbox2.checked = True  # Start checked
 switch_lbl = rm690b0_lvgl.Label(text="WiFi: OFF")
 switch_lbl.x = 270
 switch_lbl.y = 220
-switch_lbl.set_text_color(0x000000)
 
 
 def on_switch_change(sw):
@@ -336,7 +353,6 @@ switch.on_change = on_switch_change
 arc_lbl = rm690b0_lvgl.Label(text="Volume: 50")
 arc_lbl.x = 220
 arc_lbl.y = 280
-arc_lbl.set_text_color(0x000000)
 
 
 def on_arc_change(arc):
@@ -360,13 +376,14 @@ arc.value = 50
 dropdown_lbl = rm690b0_lvgl.Label(text="Theme: Light")
 dropdown_lbl.x = 420
 dropdown_lbl.y = 40
-dropdown_lbl.set_text_color(0x000000)
 
 
 def on_dropdown_change(dd):
     dropdown_lbl.text = f"Theme: {dd.text}"
     status_lbl.text = f"Theme changed to {dd.text}"
     print(f"Dropdown: {dd.text} (index: {dd.selected})")
+    if dd.text == "Light" or dd.text == "Dark":
+        apply_theme(dd.text == "Dark")
 
 
 dropdown = rm690b0_lvgl.Dropdown(options="Light\nDark\nAuto\nCustom")
@@ -426,7 +443,6 @@ home_icon.set_text_color(0xFF6600)  # Orange
 list_lbl = rm690b0_lvgl.Label(text="List: -")
 list_lbl.x = 330
 list_lbl.y = 280
-list_lbl.set_text_color(0x000000)
 
 list_w = rm690b0_lvgl.List()
 list_w.x = 330
@@ -456,7 +472,6 @@ btn3.on_click = on_list_btn_click
 spinbox_lbl = rm690b0_lvgl.Label(text="Spinbox: 0")
 spinbox_lbl.x = 470
 spinbox_lbl.y = 280
-spinbox_lbl.set_text_color(0x000000)
 
 spinbox = rm690b0_lvgl.Spinbox()
 spinbox.x = 470
@@ -634,7 +649,8 @@ table.set_cell_value(2, 1, "99")
 chart_lbl = rm690b0_lvgl.Label(text="Chart: Temperature vs Humidity")
 chart_lbl.x = 20
 chart_lbl.y = 830
-chart_lbl.set_text_color(0x202020)
+chart_lbl.set_text_color(0xE0E0E0 if THEME_DARK else 0x202020)
+widget_colors.append([chart_lbl, "text", 0xE0E0E0, 0x202020])
 
 chart = rm690b0_lvgl.Chart(chart_type=rm690b0_lvgl.CHART_TYPE_LINE)
 chart.x = 20
@@ -672,7 +688,6 @@ btn_chart.on_click = update_chart_series
 scale_lbl = rm690b0_lvgl.Label(text="Gauge: 90°")
 scale_lbl.x = 20
 scale_lbl.y = 1020
-scale_lbl.set_text_color(0x202020)
 
 scale = rm690b0_lvgl.Scale(min_value=0, max_value=180)
 scale.x = 10
@@ -702,7 +717,6 @@ btn_gauge.on_click = nudge_scale
 canvas_lbl = rm690b0_lvgl.Label(text="Canvas Trail")
 canvas_lbl.x = 220
 canvas_lbl.y = 1020
-canvas_lbl.set_text_color(0x202020)
 
 canvas = rm690b0_lvgl.Canvas(180, 130, rm690b0_lvgl.IMG_CF_TRUE_COLOR)
 canvas.x = 220
@@ -732,7 +746,6 @@ btn_canvas.on_click = refresh_canvas
 line_lbl = rm690b0_lvgl.Label(text="Polyline Demo")
 line_lbl.x = 430
 line_lbl.y = 1020
-line_lbl.set_text_color(0x202020)
 
 line = rm690b0_lvgl.Line()
 line.x = 420
@@ -833,7 +846,6 @@ def _ensure_keyboard_objects():
     layer.height = 0  # start collapsed so it doesn't affect layout
     layer.x = 0
     layer.y = _keyboard_anchor_y()
-    layer.set_style_bg_color(0x000000)
     layer.set_style_bg_opa(0)
 
     kb = rm690b0_lvgl.Keyboard()
