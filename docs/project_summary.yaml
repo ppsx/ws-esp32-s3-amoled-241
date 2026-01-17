@@ -49,7 +49,7 @@ i2c_devices:
 current_status:
   display_driver: Production-ready for standalone rendering with native text support (rm690b0)
   native_text: ✅ COMPLETE - 7 built-in bitmap fonts (8x8 to 32x48), set_font(id) + text(x,y,str,color,bg) API, TTF conversion toolchain
-  lvgl_integration: Feature-complete, but NOT production-ready – known critical bug: LVGL + touch can become unresponsive under GC pressure (frequent gc.collect() / large heap allocations like TTF)
+  lvgl_integration: Feature-complete, but NOT production-ready - known critical bug - LVGL + touch can become unresponsive under GC pressure (frequent gc.collect() / large heap allocations like TTF). Supports dynamic theme switching (Light/Dark) with pure black AMOLED background.
   sd_card: ✅ SOLVED - espsdcard module provides reliable SD card access using native ESP-IDF drivers
   esp_modules: espnow enabled, espcamera disabled, espulp available, espidf enabled, espsdcard enabled
   next_milestone: Phase 6 - Documentation, Stability & Widget Library Expansion (Slider, Checkbox, Switch, etc.)
@@ -73,7 +73,7 @@ implementation_plan_summary:
   - ✅ Widget inheritance system: Label and Button inherit Widget properties correctly.
   - ✅ Interactive GUI examples tested on hardware (counter app, multi-button controls, settings panels).
   - ✅ Build system integration: All widget files added to circuitpy_defns.mk (SRC_BINDINGS_ENUMS and SRC_COMMON_HAL_ALL).
-  - 🚧 Phase 6 Tasks: Create Getting Started guides, expand widget library with 9-13 additional widgets (Slider, Checkbox, Switch, Arc, Bar, Image, Textarea, Dropdown, Roller, Panel, Tabview, Spinner, Chart).
+  - ✅ Phase 6 Tasks: Create Getting Started guides, expand widget library with 9-13 additional widgets (Slider, Checkbox, Switch, Arc, Bar, Image, Textarea, Dropdown, Roller, Panel, Tabview, Spinner, Chart).
 
 issues_solved:
   - { name: 32-bit QSPI command framing, id: qspi_cmd_width, solution: Uses `esp_lcd_panel_io_spi` with `lcd_cmd_bits=32` and quad mode }
@@ -87,8 +87,8 @@ issues_solved:
 
 working_features:
   rm690b0_module:
-    - RM690B0 driver constructs successfully and toggles reset/power GPIOs.
-    - `init_display()` issues the full RM690B0 command table and exits sleep.
+    - "RM690B0 driver constructs successfully and toggles reset/power GPIOs."
+    - "`init_display()` issues the full RM690B0 command table and exits sleep."
     - Drawing helpers (`fill_color`, `fill_rect`, `hline`, `vline`, `pixel`, `line`, `circle`, `fill_circle`, `rect`) render via DMA-backed QSPI transfers.
     - Module exposes RGB565 convenience constants (`BLACK`, `WHITE`, `RED`, `GREEN`, `BLUE`, `YELLOW`, `MAGENTA`, `CYAN`, `ORANGE`, `GRAY`) for quick sketching.
     - Software coordinate remap keeps 0/90/180/270 rotations working without relying on panel-specific MADCTL quirks.
@@ -99,12 +99,12 @@ working_features:
     - Image conversion supports BMP and JPEG formats; JPEG decoding on ESP32-S3 uses ESP-IDF's hardware-accelerated `esp_jpeg` decoder.
     - Double-buffering with `swap_buffers()` enables flicker-free updates and smooth animations.
     - Adaptive hardware timing delay ensures clean rendering at all operation sizes (50µs for small operations, 500µs for large bitmaps).
-    - Native text rendering: `set_font(id)` selects from 7 built-in fonts (0=8x8, 1=16x16, 2=16x24, 3=24x24, 4=24x32, 5=32x32, 6=32x48).
-    - Text API: `text(x, y, str, color, background)` draws UTF-8 text with transparent (background=None) or solid background.
+    - "Native text rendering: `set_font(id)` selects from 7 built-in fonts (0=8x8, 1=16x16, 2=16x24, 3=24x24, 4=24x32, 5=32x32, 6=32x48)."
+    - "Text API: `text(x, y, str, color, background)` draws UTF-8 text with transparent (background=None) or solid background."
     - 7 embedded bitmap fonts totaling ~538 KB in flash; ASCII 0x20-0x7E (95 characters); row-based format (MSB-first horizontal).
     - Font sources: Liberation Sans 16x16, Liberation Mono Bold 16x24, plus 8x8/24x24/24x32/32x32/32x48 variants.
     - Text rendering performance: 0.3-7.7 ms for "Hello World" depending on font size (10-500× faster than DisplayIO).
-    - TTF conversion toolchain: `ttf_to_rm690b0.py` converts any TrueType font to bitmap, `test_converted_font.py` validates/previews.
+    - "TTF conversion toolchain: `ttf_to_rm690b0.py` converts any TrueType font to bitmap, `test_converted_font.py` validates/previews."
     - Independent from LVGL: native text works standalone for lightweight labels, debug output, status displays.
   rm690b0_lvgl_module:
     - LVGL v8.x library fully compiled and integrated.
@@ -119,45 +119,26 @@ working_features:
     - Widget inheritance: Label and Button inherit all Widget properties and methods.
     - Memory efficient: 72 KB for LVGL display buffers, ~150-600 bytes per widget.
     - Interactive GUI examples working: counter app, multi-button controls, settings panels.
+    - Dynamic Theme Switching: "`set_theme_color(primary, secondary, dark)` API supports real-time Light/Dark mode transitions."
+    - AMOLED Optimization: "Dark theme background hardcoded to pure black (0x000000) for power efficiency and infinite contrast."
     - Build system: All files compiled and linked (Widget.c, Label.c, Button.c, RM690B0_LVGL.c).
 
 limitations:
   - Widget library currently limited to 3 widgets (Widget, Label, Button); 9-13 additional widgets planned for Phase 6.
   - No Getting Started guides yet; documentation in progress.
-  - `board.DISPLAY` auto-initialization not implemented (manual initialization required).
-  - `blit_buffer()` assumes RGB565 sources; developers must pre-convert assets (the new JPEG loader handles this only on ESP32 when explicitly invoked).
+  - "`board.DISPLAY` auto-initialization not implemented (manual initialization required)."
+  - "`blit_buffer()` assumes RGB565 sources; developers must pre-convert assets (the new JPEG loader handles this only on ESP32 when explicitly invoked)."
   - JPEG decode depends on ESP-IDF's `esp_jpeg` decoder; non-ESP builds currently return `IMG_ERR_UNSUPPORTED`.
   - Adaptive delay adds minimum 50µs overhead per operation (acceptable for most use cases).
-  - LVGL + touch stability under GC pressure: frequent `gc.collect()` in the UI loop or heavy heap allocations (e.g. TTF fonts) can cause touch/LVGL to stop responding; known bug in the current port. Workaround: avoid explicit `gc.collect()` in the main loop and load large assets early.
+  - "LVGL + touch stability under GC pressure: frequent `gc.collect()` in the UI loop or heavy heap allocations (e.g. TTF fonts) can cause touch/LVGL to stop responding; known bug in the current port. Workaround: avoid explicit `gc.collect()` in the main loop and load large assets early."
   - Native text: Fixed-width fonts only (no proportional spacing), no text measurement API yet, no word wrap, ASCII 0x20-0x7E only (extended Unicode planned).
-
-next_steps:
-  phase_6_priority_1_documentation:
-    - Create comprehensive Getting Started guide for rm690b0 module (3-4 days).
-    - Create comprehensive Getting Started guide for rm690b0_lvgl module (3-4 days).
-    - Build widget gallery example showcasing all current widgets (2-3 days).
-    - Create UI patterns library with common design patterns (2-3 days).
-    - Update API reference documentation with complete property and method details (1-2 days).
-    - Timeline: 1-2 weeks total.
-  phase_6_priority_2_widget_expansion:
-    - Tier 1 (Week 1): Slider, Checkbox, Switch, Arc (2-4 hours each).
-    - Tier 2 (Week 2): Bar, Image (2-5 hours each).
-    - Tier 3 (Week 3-4): Textarea, Dropdown, Roller (4-6 hours each).
-    - Tier 4 (Future): Panel/Container, Tabview.
-    - Tier 5 (Future): Spinner, Chart.
-    - Timeline: 2-4 weeks total.
-  other_priorities:
-    - Create comprehensive test suite for BMP and JPEG image conversion with SD card integration (1 week).
-    - Validate `esp_jpeg` decode path performance and add regression coverage for ESP-IDF component availability.
-    - Profile BMP conversion for further optimization (line caching, DMA-assisted copies, output caching for static assets).
-    - Board auto-initialization: board.DISPLAY, board.LVGL, board.TOUCH objects (optional, deferred).
 
 test_suite_features:
   - Diagnostic helpers were removed from the Python API; future validation should rely on LVGL widget/scene tests that exercise the flush driver.
-  - `ports/espressif/common-hal/rm690b0/tests/pattern_check.py` exercises single-pixel lines, sparse rows, and edge columns to verify framebuffer flush alignment.
-  - `test_scripts/quick_test.py` provides 2-minute verification of adaptive delay implementation with performance benchmarks and visual artifact checks.
-  - `test_scripts/test_adaptive_delay.py` offers comprehensive 10-minute test suite covering all operation sizes, performance comparisons, and stress tests.
-  - Test scripts are CircuitPython-compatible and use time.monotonic() for timing measurements.
+  - "`ports/espressif/common-hal/rm690b0/tests/pattern_check.py` exercises single-pixel lines, sparse rows, and edge columns to verify framebuffer flush alignment."
+  - "`test_scripts/quick_test.py` provides 2-minute verification of adaptive delay implementation with performance benchmarks and visual artifact checks."
+  - "`test_scripts/test_adaptive_delay.py` offers comprehensive 10-minute test suite covering all operation sizes, performance comparisons, and stress tests."
+  - "Test scripts are CircuitPython-compatible and use time.monotonic() for timing measurements."
 
 required_libraries:
   - rm690b0 (built-in module - standalone display driver)
@@ -183,7 +164,7 @@ key_files:
   font_tools: fonts/ttf_to_rm690b0.py, fonts/test_converted_font.py, fonts/example_ttf_conversion.sh
 
 notes:
-  - RM690B0 expects quad-SPI transactions at 80 MHz with 32-bit opcodes; command and data phases are strictly separated.
+  - RM690B0 expects quad-SPI transactions at 80MHz with 32-bit opcodes; command and data phases are strictly separated.
   - MADCTL manipulation must keep the vendor-provided base value before toggling axis bits to avoid unintended mirroring.
   - DMA buffers allocated via `heap_caps_malloc(..., MALLOC_CAP_DMA)` should be released on deinit to avoid PSRAM fragmentation.
   - Driver handles brightness writes by selecting page 0, updating WRDISBV (0x51), and asserting WRCTRLD (0x53) with BCTRL/BL/DD bits.

@@ -25,6 +25,7 @@ The `rm690b0_lvgl` module provides **full LVGL (Light and Versatile Graphics Lib
 ### What's Included
 
 ✅ **LVGL Core Integration**
+
 - LVGL 8.x library compiled into CircuitPython
 - Hardware-accelerated rendering via existing RM690B0 DMA paths
 - Display driver with efficient flush callbacks
@@ -32,6 +33,7 @@ The `rm690b0_lvgl` module provides **full LVGL (Light and Versatile Graphics Lib
 - Automatic tick timer for animations and tasks
 
 ✅ **Python Widget API**
+
 - CircuitPython-native widget classes (no C required!)
 - Base `Widget` class with positioning and styling
 - `Label` class for text display
@@ -40,6 +42,7 @@ The `rm690b0_lvgl` module provides **full LVGL (Light and Versatile Graphics Lib
 - Python callback functions for events
 
 ✅ **Performance**
+
 - Double-buffered drawing (2 × 30-row buffers in PSRAM)
 - Zero tearing or visual artifacts
 - Clean partial updates for interactive elements
@@ -116,7 +119,7 @@ The `rm690b0_lvgl` module provides **full LVGL (Light and Versatile Graphics Lib
 
 - **CircuitPython**: ESP32-S3 build with `rm690b0` and `rm690b0_lvgl` modules
 - **LVGL**: v8.x compiled into firmware
-- **Memory**: 
+- **Memory**:
   - ~36 KB PSRAM for LVGL display buffers
   - ~100-200 KB PSRAM/heap for widget objects
   - Existing RM690B0 framebuffer (if used)
@@ -126,6 +129,7 @@ The `rm690b0_lvgl` module provides **full LVGL (Light and Versatile Graphics Lib
 The `rm690b0_lvgl` module is **built into CircuitPython firmware** for the Waveshare ESP32-S3 Touch AMOLED board. No separate installation required.
 
 To verify availability:
+
 ```python
 import rm690b0_lvgl
 print(dir(rm690b0_lvgl))
@@ -221,6 +225,7 @@ RM690B0_LVGL()
 Creates a new LVGL manager instance. Does not initialize display or touch yet.
 
 **Example:**
+
 ```python
 lvgl = rm690b0_lvgl.RM690B0_LVGL()
 ```
@@ -236,6 +241,7 @@ lvgl.init_display() -> None
 ```
 
 **What it does:**
+
 - Initializes LVGL core library (`lv_init()`)
 - Gets panel handle from `rm690b0` module
 - Allocates 2 × 30-row display buffers in PSRAM
@@ -243,12 +249,15 @@ lvgl.init_display() -> None
 - Starts LVGL tick timer (2ms period)
 
 **Requirements:**
+
 - `rm690b0.RM690B0()` must be initialized first
 
 **Raises:**
+
 - `RuntimeError` if rm690b0 display not initialized
 
 **Example:**
+
 ```python
 display = rm690b0.RM690B0()
 display.init_display()
@@ -266,19 +275,23 @@ lvgl.init_touch(i2c: busio.I2C) -> None
 ```
 
 **Parameters:**
+
 - `i2c` (busio.I2C): I2C bus connected to FT6336U touch controller
 
 **What it does:**
+
 - Configures FT6336U touch controller
 - Registers LVGL input device driver
 - Sets up coordinate transformation (portrait→landscape)
 - Enables touch event handling
 
 **Requirements:**
+
 - `init_display()` must be called first
 - I2C bus must be initialized
 
 **Example:**
+
 ```python
 import board
 import busio
@@ -296,16 +309,19 @@ lvgl.task_handler() -> None
 ```
 
 **What it does:**
+
 - Calls `lv_task_handler()` to process pending LVGL tasks
 - Handles animations, timers, and input events
 - Must be called regularly in main loop
 
 **Recommended:**
+
 - Call every 10-20ms (50-100 Hz)
 - More frequent = smoother animations
 - Less frequent = lower CPU usage
 
 **Example:**
+
 ```python
 import time
 while True:
@@ -322,11 +338,13 @@ lvgl.test_draw() -> None
 ```
 
 **What it does:**
+
 - Creates simple LVGL test widgets
 - Useful for verifying display driver functionality
 - Shows colored rectangles and labels
 
 **Example:**
+
 ```python
 lvgl.init_display()
 lvgl.test_draw()
@@ -342,6 +360,7 @@ lvgl.scroll_screen(y=200, animated=True)
 ```
 
 **Parameters:**
+
 - `x`, `y` (int): Target scroll offsets in pixels.
 - `animated` (bool): Smooth animation if `True`.
 
@@ -360,6 +379,23 @@ print("Scroll:", offset)
 Combine `get_scroll_y()` with `scroll_screen()` to restore the previous
 position after temporarily shifting the layout for overlays.
 
+##### `set_theme_color(primary, secondary=0xFF0000, dark=False)`
+
+Set the LVGL theme primary/secondary colors and toggle dark mode.
+
+```python
+lvgl.set_theme_color(0x0066FF, dark=True)
+```
+
+**Parameters:**
+
+- `primary` (int): Primary color (buttons, sliders, etc.) as 0xRRGGBB.
+- `secondary` (int): Secondary color (accents) as 0xRRGGBB.
+- `dark` (bool): If `True`, enables Dark Theme. If `False`, uses Light Theme.
+
+**Note for AMOLED:**
+In this driver, the **Dark Theme** background has been optimized to be **pure black (0x000000)**. This allows the AMOLED display to turn off pixels, saving power and providing infinite contrast.
+
 ##### `deinit()`
 
 Clean up and release LVGL resources.
@@ -369,11 +405,13 @@ lvgl.deinit() -> None
 ```
 
 **What it does:**
+
 - Stops tick timer
 - Releases display buffers
 - Deinitializes LVGL
 
 **Example:**
+
 ```python
 try:
     # Your LVGL code here
@@ -416,18 +454,18 @@ display.init_display()
 with rm690b0_lvgl.RM690B0_LVGL() as lvgl:
     lvgl.init_display()
     lvgl.init_rendering()
-    
+
     # Create widgets
     label = rm690b0_lvgl.Label(text="Hello World")
     label.x = 300
     label.y = 225
-    
+
     # Main loop
     import time
     for _ in range(100):  # Run for 10 seconds
         lvgl.task_handler()
         time.sleep(0.1)
-        
+
 # Automatically calls deinit() on exit
 # This ensures LVGL resources are properly cleaned up
 ```
@@ -494,6 +532,7 @@ Widget()
 Creates a base LVGL object (container) on the active screen.
 
 **Example:**
+
 ```python
 container = rm690b0_lvgl.Widget()
 container.x = 50
@@ -552,9 +591,11 @@ widget.set_style_bg_color(color: int) -> None
 ```
 
 **Parameters:**
+
 - `color` (int): RGB888 color value (0x000000 to 0xFFFFFF)
 
 **Example:**
+
 ```python
 widget.set_style_bg_color(0xFF0000)  # Red
 widget.set_style_bg_color(0x00FF00)  # Green
@@ -570,11 +611,13 @@ widget.set_style_bg_opa(opacity: int) -> None
 ```
 
 **Parameters:**
+
 - `opacity` (int): Opacity value (0-255)
   - 0 = fully transparent
   - 255 = fully opaque
 
 **Example:**
+
 ```python
 widget.set_style_bg_opa(255)  # Fully opaque
 widget.set_style_bg_opa(128)  # 50% transparent
@@ -607,9 +650,11 @@ Label(text: str = "Label")
 Creates a label with the specified text.
 
 **Parameters:**
+
 - `text` (str, optional): Initial text content (default: "Label")
 
 **Example:**
+
 ```python
 label = rm690b0_lvgl.Label(text="Hello World")
 ```
@@ -628,6 +673,7 @@ print(label.text)  # "New text"
 ```
 
 **Example:**
+
 ```python
 counter = 0
 label = rm690b0_lvgl.Label(text=f"Count: {counter}")
@@ -652,9 +698,11 @@ label.set_text_color(color: int) -> None
 ```
 
 **Parameters:**
+
 - `color` (int): RGB888 color value (0x000000 to 0xFFFFFF)
 
 **Example:**
+
 ```python
 label.set_text_color(0xFF0000)  # Red text
 label.set_text_color(0x000000)  # Black text
@@ -698,9 +746,11 @@ Button(text: str = "Button")
 Creates a button with the specified text.
 
 **Parameters:**
+
 - `text` (str, optional): Initial button text (default: "Button")
 
 **Example:**
+
 ```python
 button = rm690b0_lvgl.Button(text="Click Me")
 ```
@@ -730,6 +780,7 @@ button.on_click = my_callback
 ```
 
 **Callback Signature:**
+
 ```python
 def callback(button: Button) -> None:
     # button is the Button instance that was clicked
@@ -737,6 +788,7 @@ def callback(button: Button) -> None:
 ```
 
 **Example:**
+
 ```python
 def on_button_click(btn):
     print(f"Button '{btn.text}' was clicked!")
@@ -791,10 +843,12 @@ Slider(min_value: int = 0, max_value: int = 100)
 Creates a slider with the specified range.
 
 **Parameters:**
+
 - `min_value` (int, optional): Minimum value (default: 0)
 - `max_value` (int, optional): Maximum value (default: 100)
 
 **Example:**
+
 ```python
 slider = rm690b0_lvgl.Slider(min_value=0, max_value=100)
 ```
@@ -842,6 +896,7 @@ slider.on_change = my_callback
 ```
 
 **Callback Signature:**
+
 ```python
 def callback(slider: Slider) -> None:
     # slider is the Slider instance
@@ -897,9 +952,11 @@ Checkbox(text: str = "Checkbox")
 Creates a checkbox with the specified label text.
 
 **Parameters:**
+
 - `text` (str, optional): Label text (default: "Checkbox")
 
 **Example:**
+
 ```python
 checkbox = rm690b0_lvgl.Checkbox(text="Enable Feature")
 ```
@@ -938,6 +995,7 @@ checkbox.on_change = my_callback
 ```
 
 **Callback Signature:**
+
 ```python
 def callback(checkbox: Checkbox) -> None:
     # checkbox is the Checkbox instance
@@ -957,6 +1015,7 @@ checkbox.toggle() -> None
 ```
 
 **Example:**
+
 ```python
 checkbox.checked = True
 checkbox.toggle()  # Now False
@@ -998,6 +1057,7 @@ Switch()
 Creates a switch widget (starts in OFF state).
 
 **Example:**
+
 ```python
 switch = rm690b0_lvgl.Switch()
 ```
@@ -1027,6 +1087,7 @@ switch.on_change = my_callback
 ```
 
 **Callback Signature:**
+
 ```python
 def callback(switch: Switch) -> None:
     # switch is the Switch instance
@@ -1046,6 +1107,7 @@ switch.toggle() -> None
 ```
 
 **Example:**
+
 ```python
 switch.checked = True
 switch.toggle()  # Now False
@@ -1077,12 +1139,12 @@ switch.checked = False  # Start OFF
 
 #### Switch vs Checkbox
 
-| Feature | Switch | Checkbox |
-|---------|--------|----------|
-| Visual Style | Sliding toggle | Checkmark box |
-| Best For | On/Off states | Select/Deselect options |
-| Label | No built-in label | Built-in label |
-| Common Use | Settings (WiFi, Bluetooth) | Forms, multi-select lists |
+| Feature      | Switch                     | Checkbox                  |
+| ------------ | -------------------------- | ------------------------- |
+| Visual Style | Sliding toggle             | Checkmark box             |
+| Best For     | On/Off states              | Select/Deselect options   |
+| Label        | No built-in label          | Built-in label            |
+| Common Use   | Settings (WiFi, Bluetooth) | Forms, multi-select lists |
 
 ---
 
@@ -1099,10 +1161,12 @@ Bar(min_value: int = 0, max_value: int = 100)
 Creates a horizontal progress bar with the specified range.
 
 **Parameters:**
+
 - `min_value` (int, optional): Minimum value (default: 0)
 - `max_value` (int, optional): Maximum value (default: 100)
 
 **Example:**
+
 ```python
 bar = rm690b0_lvgl.Bar(min_value=0, max_value=100)
 ```
@@ -1151,10 +1215,12 @@ bar.set_range(min_value: int, max_value: int) -> None
 ```
 
 **Parameters:**
+
 - `min_value` (int): New minimum value
 - `max_value` (int): New maximum value
 
 **Example:**
+
 ```python
 bar.set_range(0, 200)
 ```
@@ -1186,13 +1252,13 @@ for i in range(0, 101, 10):
 
 #### Bar Use Cases
 
-| Use Case | Example | Range |
-|----------|---------|-------|
-| Progress | File download | 0-100% |
-| Battery Level | Power indicator | 0-100% |
-| Volume | Audio level | 0-100 |
-| Temperature | Thermometer | -20 to 50°C |
-| Score | Game points | 0-1000 |
+| Use Case      | Example         | Range       |
+| ------------- | --------------- | ----------- |
+| Progress      | File download   | 0-100%      |
+| Battery Level | Power indicator | 0-100%      |
+| Volume        | Audio level     | 0-100       |
+| Temperature   | Thermometer     | -20 to 50°C |
+| Score         | Game points     | 0-1000      |
 
 ---
 
@@ -1209,10 +1275,12 @@ Arc(min_value: int = 0, max_value: int = 100)
 Creates a circular arc (knob) with the specified range.
 
 **Parameters:**
+
 - `min_value` (int, optional): Minimum value (default: 0)
 - `max_value` (int, optional): Maximum value (default: 100)
 
 **Example:**
+
 ```python
 arc = rm690b0_lvgl.Arc(min_value=0, max_value=100)
 ```
@@ -1260,6 +1328,7 @@ arc.on_change = my_callback
 ```
 
 **Callback Signature:**
+
 ```python
 def callback(arc: Arc) -> None:
     # arc is the Arc instance
@@ -1279,10 +1348,12 @@ arc.set_range(min_value: int, max_value: int) -> None
 ```
 
 **Parameters:**
+
 - `min_value` (int): New minimum value
 - `max_value` (int): New maximum value
 
 **Example:**
+
 ```python
 arc.set_range(0, 200)
 ```
@@ -1310,13 +1381,13 @@ volume_arc.value = 50  # Triggers callback
 
 #### Arc Use Cases
 
-| Use Case | Example | Range |
-|----------|---------|-------|
-| Volume Control | Audio knob | 0-100 |
-| Temperature | Thermostat dial | 15-30°C |
-| Brightness | Display dimmer | 0-255 |
-| Speed | Fan/motor control | 0-10 |
-| Progress | Circular progress | 0-100% |
+| Use Case       | Example           | Range   |
+| -------------- | ----------------- | ------- |
+| Volume Control | Audio knob        | 0-100   |
+| Temperature    | Thermostat dial   | 15-30°C |
+| Brightness     | Display dimmer    | 0-255   |
+| Speed          | Fan/motor control | 0-10    |
+| Progress       | Circular progress | 0-100%  |
 
 ---
 
@@ -1333,9 +1404,11 @@ Dropdown(options: str = "Option 1\nOption 2\nOption 3")
 Creates a dropdown menu with options specified as a newline-separated string.
 
 **Parameters:**
+
 - `options` (str, optional): Newline-separated list of options (default: "Option 1\nOption 2\nOption 3")
 
 **Example:**
+
 ```python
 dropdown = rm690b0_lvgl.Dropdown(options="Red\nGreen\nBlue")
 ```
@@ -1373,6 +1446,7 @@ dropdown.on_change = my_callback
 ```
 
 **Callback Signature:**
+
 ```python
 def callback(dropdown: Dropdown) -> None:
     # dropdown is the Dropdown instance
@@ -1392,9 +1466,11 @@ dropdown.set_options(options: str) -> None
 ```
 
 **Parameters:**
+
 - `options` (str): Newline-separated list of options
 
 **Example:**
+
 ```python
 dropdown.set_options("Small\nMedium\nLarge\nXL")
 ```
@@ -1408,10 +1484,12 @@ dropdown.add_option(option: str, pos: int = -1) -> None
 ```
 
 **Parameters:**
+
 - `option` (str): Option text to add
 - `pos` (int, optional): Position to insert (-1 = end, default: -1)
 
 **Example:**
+
 ```python
 dropdown.add_option("Extra Large")  # Add at end
 dropdown.add_option("Tiny", 0)      # Add at beginning
@@ -1426,6 +1504,7 @@ dropdown.clear_options() -> None
 ```
 
 **Example:**
+
 ```python
 dropdown.clear_options()
 dropdown.add_option("New Option 1")
@@ -1455,13 +1534,13 @@ theme_dd.selected = 0  # Start with "Light"
 
 #### Dropdown Use Cases
 
-| Use Case | Example Options | Default |
-|----------|----------------|---------|
-| Theme Selection | Light\nDark\nAuto | Light |
-| Language | English\nSpanish\nFrench | English |
-| Quality | Low\nMedium\nHigh\nUltra | Medium |
-| Sort By | Name\nDate\nSize | Name |
-| Speed | 1x\n1.5x\n2x | 1x |
+| Use Case        | Example Options          | Default |
+| --------------- | ------------------------ | ------- |
+| Theme Selection | Light\nDark\nAuto        | Light   |
+| Language        | English\nSpanish\nFrench | English |
+| Quality         | Low\nMedium\nHigh\nUltra | Medium  |
+| Sort By         | Name\nDate\nSize         | Name    |
+| Speed           | 1x\n1.5x\n2x             | 1x      |
 
 ---
 
@@ -1480,6 +1559,7 @@ Image()
 Creates an empty image widget. Use `set_src()` to set the image source.
 
 **Example:**
+
 ```python
 img = rm690b0_lvgl.Image()
 ```
@@ -1501,13 +1581,16 @@ img.set_src(src: str) -> None
 ```
 
 **Parameters:**
+
 - `src` (str): Image source - file path or LVGL symbol
 
 **Supported Sources:**
+
 - **File path:** "/sd/image.bin" (LVGL binary format)
 - **Built-in symbols:** "LV_SYMBOL_HOME", "LV_SYMBOL_SETTINGS", "LV_SYMBOL_WIFI", etc.
 
 **Example:**
+
 ```python
 # Using built-in symbol
 img.set_src("LV_SYMBOL_HOME")
@@ -1525,9 +1608,11 @@ img.set_angle(angle: int) -> None
 ```
 
 **Parameters:**
+
 - `angle` (int): Rotation angle in degrees (0-360)
 
 **Example:**
+
 ```python
 img.set_angle(45)   # Rotate 45 degrees
 img.set_angle(180)  # Flip upside down
@@ -1542,9 +1627,11 @@ img.set_zoom(zoom: int) -> None
 ```
 
 **Parameters:**
+
 - `zoom` (int): Zoom level (256 = 100%, 512 = 200%, 128 = 50%)
 
 **Example:**
+
 ```python
 img.set_zoom(256)  # 100% (normal size)
 img.set_zoom(512)  # 200% (double size)
@@ -1560,9 +1647,11 @@ img.set_color(color: int) -> None
 ```
 
 **Parameters:**
+
 - `color` (int): RGB888 color value (0x000000 to 0xFFFFFF)
 
 **Example:**
+
 ```python
 img.set_color(0xFF0000)  # Red
 img.set_color(0x0000FF)  # Blue
@@ -1578,9 +1667,11 @@ img.load_bmp(bmp_data: bytes) -> None
 ```
 
 **Parameters:**
+
 - `bmp_data` (bytes): BMP file data as bytes
 
 **Example:**
+
 ```python
 # Load BMP from file
 with open("/sd/photo.bmp", "rb") as f:
@@ -1603,9 +1694,11 @@ img.load_jpeg(jpeg_data: bytes) -> None
 ```
 
 **Parameters:**
+
 - `jpeg_data` (bytes): JPEG file data as bytes
 
 **Example:**
+
 ```python
 # Load JPEG from file
 with open("/sd/photo.jpg", "rb") as f:
@@ -1654,33 +1747,34 @@ logo.set_angle(15)   # Slight tilt
 
 Common symbols you can use:
 
-| Symbol | Description | Symbol | Description |
-|--------|-------------|--------|-------------|
-| `LV_SYMBOL_AUDIO` | Speaker | `LV_SYMBOL_VIDEO` | Video |
-| `LV_SYMBOL_LIST` | List | `LV_SYMBOL_OK` | Checkmark |
-| `LV_SYMBOL_CLOSE` | X | `LV_SYMBOL_POWER` | Power |
-| `LV_SYMBOL_SETTINGS` | Gear | `LV_SYMBOL_HOME` | House |
-| `LV_SYMBOL_DOWNLOAD` | Down arrow | `LV_SYMBOL_UPLOAD` | Up arrow |
-| `LV_SYMBOL_LOOP` | Refresh | `LV_SYMBOL_VOLUME_MAX` | Volume |
-| `LV_SYMBOL_IMAGE` | Picture | `LV_SYMBOL_EDIT` | Pencil |
-| `LV_SYMBOL_PREV` | Previous | `LV_SYMBOL_NEXT` | Next |
-| `LV_SYMBOL_EJECT` | Eject | `LV_SYMBOL_LEFT` | Left arrow |
-| `LV_SYMBOL_RIGHT` | Right arrow | `LV_SYMBOL_PLUS` | Plus |
-| `LV_SYMBOL_MINUS` | Minus | `LV_SYMBOL_WARNING` | Warning |
-| `LV_SYMBOL_BATTERY_FULL` | Battery | `LV_SYMBOL_BLUETOOTH` | BT |
-| `LV_SYMBOL_GPS` | GPS | `LV_SYMBOL_WIFI` | WiFi |
+| Symbol                   | Description | Symbol                 | Description |
+| ------------------------ | ----------- | ---------------------- | ----------- |
+| `LV_SYMBOL_AUDIO`        | Speaker     | `LV_SYMBOL_VIDEO`      | Video       |
+| `LV_SYMBOL_LIST`         | List        | `LV_SYMBOL_OK`         | Checkmark   |
+| `LV_SYMBOL_CLOSE`        | X           | `LV_SYMBOL_POWER`      | Power       |
+| `LV_SYMBOL_SETTINGS`     | Gear        | `LV_SYMBOL_HOME`       | House       |
+| `LV_SYMBOL_DOWNLOAD`     | Down arrow  | `LV_SYMBOL_UPLOAD`     | Up arrow    |
+| `LV_SYMBOL_LOOP`         | Refresh     | `LV_SYMBOL_VOLUME_MAX` | Volume      |
+| `LV_SYMBOL_IMAGE`        | Picture     | `LV_SYMBOL_EDIT`       | Pencil      |
+| `LV_SYMBOL_PREV`         | Previous    | `LV_SYMBOL_NEXT`       | Next        |
+| `LV_SYMBOL_EJECT`        | Eject       | `LV_SYMBOL_LEFT`       | Left arrow  |
+| `LV_SYMBOL_RIGHT`        | Right arrow | `LV_SYMBOL_PLUS`       | Plus        |
+| `LV_SYMBOL_MINUS`        | Minus       | `LV_SYMBOL_WARNING`    | Warning     |
+| `LV_SYMBOL_BATTERY_FULL` | Battery     | `LV_SYMBOL_BLUETOOTH`  | BT          |
+| `LV_SYMBOL_GPS`          | GPS         | `LV_SYMBOL_WIFI`       | WiFi        |
 
 #### Image Use Cases
 
-| Use Case | Widget Type | Method | Example |
-|----------|-------------|--------|---------|
-| Status Icons | **Label** | Set text to Unicode | WiFi, Battery, GPS indicators |
-| Navigation Icons | **Label** | Set text to Unicode | Home, Back, Settings buttons |
-| Photos | **Image** | `load_jpeg()` | JPEG photos from SD card |
-| Graphics | **Image** | `load_bmp()` | BMP graphics from SD card |
-| Logos | **Image** | `load_bmp()` or `load_jpeg()` | Company logo, app icon |
+| Use Case         | Widget Type | Method                        | Example                       |
+| ---------------- | ----------- | ----------------------------- | ----------------------------- |
+| Status Icons     | **Label**   | Set text to Unicode           | WiFi, Battery, GPS indicators |
+| Navigation Icons | **Label**   | Set text to Unicode           | Home, Back, Settings buttons  |
+| Photos           | **Image**   | `load_jpeg()`                 | JPEG photos from SD card      |
+| Graphics         | **Image**   | `load_bmp()`                  | BMP graphics from SD card     |
+| Logos            | **Image**   | `load_bmp()` or `load_jpeg()` | Company logo, app icon        |
 
 **Important Notes:**
+
 - **For icons:** Use **Label** widget with LVGL symbol Unicode strings (e.g., `"\xef\x87\xab"` for WiFi)
 - **For photos/images:** Use **Image** widget with `load_bmp()` or `load_jpeg()` to load from bytes
 - The Image widget uses the rm690b0 driver's native BMP and JPEG decoders
@@ -1712,6 +1806,7 @@ Use the helpers `CHART_TYPE_*` and `CHART_AXIS_*` constants exposed from the mod
 #### Class: `ChartSeries`
 
 `Chart.add_series()` returns a `ChartSeries` helper with:
+
 - `set_points(values)` — Replace all data points.
 - `set_point(index, value)` — Update a single point.
 - `append(value)` — Append value using LVGL's rolling buffer.
@@ -1820,7 +1915,6 @@ line.line_color = 0xFF55AA
 line.y_invert = True
 ```
 
-
 ### Class: `Spinner`
 
 Loading indicator widget (rotating arc). Inherits from `Widget`.
@@ -1834,10 +1928,12 @@ Spinner(time: int = 1000, arc_length: int = 60)
 Creates a spinner widget.
 
 **Parameters:**
+
 - `time` (int, optional): Duration of one revolution in milliseconds (default: 1000)
 - `arc_length` (int, optional): Length of the spinning arc in degrees (default: 60)
 
 **Example:**
+
 ```python
 spinner = rm690b0_lvgl.Spinner(time=2000, arc_length=90)
 spinner.set_style_arc_color(0x0000FF)
@@ -1860,6 +1956,7 @@ spinner.set_style_arc_color(color: int) -> None
 ```
 
 **Parameters:**
+
 - `color` (int): RGB888 color value
 
 ##### `set_style_arc_width(width)`
@@ -1871,6 +1968,7 @@ spinner.set_style_arc_width(width: int) -> None
 ```
 
 **Parameters:**
+
 - `width` (int): Width in pixels
 
 #### Complete Spinner Example
@@ -1902,9 +2000,11 @@ Roller(options: str = "Option 1\nOption 2\nOption 3")
 Creates a roller widget.
 
 **Parameters:**
+
 - `options` (str, optional): Newline-separated list of options
 
 **Example:**
+
 ```python
 roller = rm690b0_lvgl.Roller(options="January\nFebruary\nMarch")
 ```
@@ -1958,6 +2058,7 @@ roller.set_options(options: str, mode: int = 0) -> None
 ```
 
 **Parameters:**
+
 - `options` (str): Newline-separated options
 - `mode` (int, optional): Animation mode (0: Normal, 1: Infinite)
 
@@ -1992,6 +2093,7 @@ Container()
 Creates a container widget.
 
 **Example:**
+
 ```python
 cont = rm690b0_lvgl.Container()
 cont.width = 300
@@ -2015,6 +2117,7 @@ cont.set_flex_flow(flow: int) -> None
 ```
 
 **Parameters:**
+
 - `flow` (int): 0=ROW, 1=COLUMN, 2=ROW_WRAP, 3=COLUMN_WRAP
 
 ##### `set_flex_align(justify, align, align_cross)`
@@ -2026,6 +2129,7 @@ cont.set_flex_align(justify: int, align: int, align_cross: int) -> None
 ```
 
 **Parameters:**
+
 - `justify` (int): Main axis alignment (0=START, 1=CENTER, 2=END, 3=SPACE_BETWEEN, 4=SPACE_AROUND, 5=SPACE_EVENLY)
 - `align` (int): Cross axis alignment (0=START, 1=CENTER, 2=END, 3=STRETCH)
 - `align_cross` (int): Track alignment (0=START, 1=CENTER, 2=END, 3=STRETCH)
@@ -2044,7 +2148,7 @@ cont.height = 200
 cont.set_style_bg_color(0xFFFFFF)
 
 # Set flex layout (Column, Center, Center)
-cont.set_flex_flow(1) 
+cont.set_flex_flow(1)
 cont.set_flex_align(1, 1, 1)
 ```
 
@@ -2059,8 +2163,8 @@ tv = rm690b0_lvgl.Tabview(tab_pos, tab_size)
 ```
 
 - **Parameters:**
-    - `tab_pos` (int): Position of the tabs. Use `rm690b0_lvgl.DIR_TOP`, `DIR_BOTTOM`, `DIR_LEFT`, or `DIR_RIGHT`. Default is `DIR_TOP`.
-    - `tab_size` (int): Height (for top/bottom) or width (for left/right) of the tab bar. Default is 50.
+  - `tab_pos` (int): Position of the tabs. Use `rm690b0_lvgl.DIR_TOP`, `DIR_BOTTOM`, `DIR_LEFT`, or `DIR_RIGHT`. Default is `DIR_TOP`.
+  - `tab_size` (int): Height (for top/bottom) or width (for left/right) of the tab bar. Default is 50.
 
 #### Methods
 
@@ -2073,9 +2177,9 @@ tab_cont = tv.add_tab("Tab Name")
 ```
 
 - **Parameters:**
-    - `name` (str): The title of the tab.
+  - `name` (str): The title of the tab.
 - **Returns:**
-    - `Container`: A widget representing the content area of the tab. You can add child widgets to this container.
+  - `Container`: A widget representing the content area of the tab. You can add child widgets to this container.
 
 #### Complete Tabview Example
 
@@ -2115,31 +2219,31 @@ table = rm690b0_lvgl.Table()
 Set the number of columns.
 
 - **Parameters:**
-    - `cnt` (int): Number of columns.
+  - `cnt` (int): Number of columns.
 
 ##### `set_row_cnt(cnt)`
 
 Set the number of rows.
 
 - **Parameters:**
-    - `cnt` (int): Number of rows.
+  - `cnt` (int): Number of rows.
 
 ##### `set_col_width(col, width)`
 
 Set the width of a specific column.
 
 - **Parameters:**
-    - `col` (int): Column index (0-based).
-    - `width` (int): Width in pixels.
+  - `col` (int): Column index (0-based).
+  - `width` (int): Width in pixels.
 
 ##### `set_cell_value(row, col, text)`
 
 Set the text content of a cell.
 
 - **Parameters:**
-    - `row` (int): Row index (0-based).
-    - `col` (int): Column index (0-based).
-    - `text` (str): Text content.
+  - `row` (int): Row index (0-based).
+  - `col` (int): Column index (0-based).
+  - `text` (str): Text content.
 
 #### Complete Table Example
 
@@ -2177,7 +2281,7 @@ btnm = rm690b0_lvgl.Buttonmatrix(buttons)
 ```
 
 - **Parameters:**
-    - `buttons` (list): Optional initial list of button texts. Use `"\n"` as a button text to start a new row.
+  - `buttons` (list): Optional initial list of button texts. Use `"\n"` as a button text to start a new row.
 
 #### Properties (Read/Write)
 
@@ -2187,7 +2291,7 @@ Inherits all properties from [Widget](#base-class-widget).
 
 The index of the currently selected button.
 
-##### `selected_btn_text: str` *(read-only)*
+##### `selected_btn_text: str` _(read-only)_
 
 Human-readable text of the selected button. Returns an empty string
 if the index is invalid or the entry is a row break (`"\n"`).
@@ -2203,7 +2307,7 @@ Callback function invoked when a button is clicked.
 Set the button texts.
 
 - **Parameters:**
-    - `buttons` (list): List of button texts. Use `"\n"` as an item to break the row.
+  - `buttons` (list): List of button texts. Use `"\n"` as an item to break the row.
 
 #### Complete Buttonmatrix Example
 
@@ -2216,9 +2320,9 @@ def on_keypad(btnm):
     print(f"Buttonmatrix: Btn {idx} -> '{txt}'")
 
 # Create calculator layout
-keys = ["1", "2", "3", "\n", 
-        "4", "5", "6", "\n", 
-        "7", "8", "9", "\n", 
+keys = ["1", "2", "3", "\n",
+        "4", "5", "6", "\n",
+        "7", "8", "9", "\n",
         "*", "0", "#", ""]
 
 kp = rm690b0_lvgl.Buttonmatrix(keys)
@@ -2311,7 +2415,7 @@ properties (`x`, `y`, `width`, `height`, styling helpers).
   `_SPECIAL`, `_NUMBER`, etc.).
 - `popovers: bool` — Enables LVGL key popovers (press-and-hold bubble).
 - `on_change: callable` — Fired when a key is pressed.
-- `selected_btn_text: str` *(read-only)* — Label of the last pressed key.
+- `selected_btn_text: str` _(read-only)_ — Label of the last pressed key.
 
 #### Methods
 
@@ -2391,17 +2495,17 @@ Callback function invoked when a date is selected.
 Set the currently visible month.
 
 - **Parameters:**
-    - `year` (int): Year to show.
-    - `month` (int): Month to show (1-12).
+  - `year` (int): Year to show.
+  - `month` (int): Month to show (1-12).
 
 ##### `set_today_date(year, month, day)`
 
 Set the "today" date (highlighted).
 
 - **Parameters:**
-    - `year` (int): Current year.
-    - `month` (int): Current month.
-    - `day` (int): Current day.
+  - `year` (int): Current year.
+  - `month` (int): Current month.
+  - `day` (int): Current day.
 
 #### Complete Calendar Example
 
@@ -2430,10 +2534,10 @@ mbox = rm690b0_lvgl.Msgbox(title, text, buttons, close_btn)
 ```
 
 - **Parameters:**
-    - `title` (str): Title text (e.g., "Warning").
-    - `text` (str): Message body text.
-    - `buttons` (list): List of button labels (strings). **Must end with an empty string `""`**.
-    - `close_btn` (bool): `True` to display a close (X) button, `False` otherwise.
+  - `title` (str): Title text (e.g., "Warning").
+  - `text` (str): Message body text.
+  - `buttons` (list): List of button labels (strings). **Must end with an empty string `""`**.
+  - `close_btn` (bool): `True` to display a close (X) button, `False` otherwise.
 
 #### Properties (Read/Write)
 
@@ -2444,7 +2548,7 @@ Inherits all properties from [Widget](#base-class-widget).
 Callback function invoked when a button is clicked. The callback receives the index of the clicked button.
 
 - **Callback Signature:** `def callback(index)`
-    - `index` (int): Index of the button in the list (0, 1, ...). Returns `-1` if the close button was clicked.
+  - `index` (int): Index of the button in the list (0, 1, ...). Returns `-1` if the close button was clicked.
 
 #### Methods
 
@@ -2472,7 +2576,7 @@ def on_mbox_click(idx):
         print("Action cancelled.")
     else:
         print("Dialog closed.")
-    
+
     # Close the message box
     if mbox:
         mbox.close()
@@ -2496,6 +2600,12 @@ mbox.y = 80
 ---
 
 ## Examples
+
+### Example 0: TTF Font Testing
+
+A dedicated script demonstrating TTF font loading, scaling, and memory monitoring.
+
+**File:** `examples/lvgl_test_ttf.py`
 
 ### Example 1: Simple Counter
 
@@ -2669,16 +2779,19 @@ btn_down.on_click = decrease_brightness
 ### Memory Architecture
 
 **LVGL Display Buffers:**
+
 - 2 buffers × 600 pixels × 30 rows × 2 bytes = 72 KB total
 - Allocated in PSRAM for large buffer support
 - Double-buffered for smooth rendering
 
 **Widget Memory:**
+
 - Each widget allocates LVGL object (~100-500 bytes depending on type)
 - Python wrapper objects (~50-100 bytes each)
 - Total widget overhead: ~150-600 bytes per widget
 
 **Memory Efficiency:**
+
 - Widgets share display buffers
 - No per-widget framebuffers
 - Only dirty regions are redrawn
@@ -2741,10 +2854,12 @@ This happens inside `lvgl_touch_read_cb()`, so widgets receive correct landscape
 **Added to CircuitPython Build:**
 
 1. **`py/circuitpy_defns.mk`**:
+
    - `SRC_BINDINGS_ENUMS`: Widget.c, Label.c, Button.c, RM690B0_LVGL.c
    - `SRC_COMMON_HAL_ALL`: Widget.c, Label.c, Button.c, RM690B0_LVGL.c
 
 2. **`shared-bindings/rm690b0_lvgl/`**:
+
    - `__init__.c` - Module initialization
    - `RM690B0_LVGL.c` / `.h` - Manager class
    - `Widget.c` / `.h` - Base widget class
@@ -2760,12 +2875,14 @@ This happens inside `lvgl_touch_read_cb()`, so widgets receive correct landscape
 ### Type System & Inheritance
 
 **Property Inheritance:**
+
 - Label and Button inherit from Widget
 - Properties (x, y, width, height) are explicitly added to child locals_dict
 - `MP_TYPE_FLAG_HAS_SPECIAL_ACCESSORS` enables property support
 - `MP_PROPERTY_GETSET` macro creates read/write properties
 
 **Type Hierarchy:**
+
 ```
 mp_obj_type_t
     └─> rm690b0_lvgl_widget_type (Widget)
@@ -2812,6 +2929,7 @@ mp_obj_type_t
 **Causes & Solutions:**
 
 1. **Forgot to call `init_rendering()`:**
+
    ```python
    lvgl = rm690b0_lvgl.RM690B0_LVGL()
    lvgl.init_display()
@@ -2819,6 +2937,7 @@ mp_obj_type_t
    ```
 
 2. **Not calling `task_handler()` in loop:**
+
    ```python
    while True:
        lvgl.task_handler()  # ← Required for rendering
@@ -2826,6 +2945,7 @@ mp_obj_type_t
    ```
 
 3. **Widgets positioned off-screen:**
+
    ```python
    # Check coordinates are within bounds
    label = rm690b0_lvgl.Label("Text", x=50, y=50)  # OK
@@ -2840,6 +2960,32 @@ mp_obj_type_t
 
 ---
 
+#### Issue: Board Resets/Freezes when Loading Fonts
+
+**Symptoms:**
+
+- The board restarts when increasing font size (e.g., from 64 to 80).
+- The board freezes (unresponsive UI) after applying a font, even if it seemingly loaded.
+
+**Causes & Solutions:**
+
+1. **Memory Exhaustion (RAM/PSRAM):**
+   Large fonts require significant memory for both the TTF data and the rasterization cache.
+
+   - **Solution:** Reduce the font size or use a more compact TTF file.
+   - **Solution:** Monitor `gc.mem_free()` before and after loading.
+
+2. **Garbage Collection (GC) Issues:**
+   If a `Font` object is collected by Python's GC while LVGL still has a pointer to its internal data, it can cause a crash.
+
+   - **Solution:** Keep a global reference to your font objects.
+
+3. **CPU-Intensive Rasterization:**
+   Rasterizing large glyphs (especially >60px) from TTF in real-time is extremely slow on ESP32. If the first render takes too long, it may trigger a watchdog reset or appear as a freeze.
+   - **Solution:** Limit TTF sizes to reasonable values (<50px recommended for real-time). For larger titles, consider using pre-rendered bitmap fonts (.c files).
+
+---
+
 #### Issue: Touch Not Working
 
 **Symptoms:** Touch input doesn't trigger widget events
@@ -2847,6 +2993,7 @@ mp_obj_type_t
 **Causes & Solutions:**
 
 1. **Touch not initialized:**
+
    ```python
    lvgl = rm690b0_lvgl.RM690B0_LVGL()
    lvgl.init_display()
@@ -2854,6 +3001,7 @@ mp_obj_type_t
    ```
 
 2. **Missing `task_handler()` call:**
+
    ```python
    # Touch events processed in task_handler()
    while True:
@@ -2862,6 +3010,7 @@ mp_obj_type_t
    ```
 
 3. **I2C bus conflict:**
+
    - Check no other code is using I2C simultaneously
    - Touch controller is at address 0x38
 
@@ -2878,6 +3027,7 @@ mp_obj_type_t
 **Causes & Solutions:**
 
 1. **Font file too large:**
+
    ```python
    # Use smaller font files (< 500KB recommended)
    # Subset fonts to reduce size:
@@ -2885,21 +3035,23 @@ mp_obj_type_t
    ```
 
 2. **Not freeing memory before load:**
+
    ```python
    import gc
-   
+
    # Free memory before loading font
    gc.collect()
    font = rm690b0_lvgl.Font("fonts/calibri.ttf", 24)
    ```
 
 3. **Loading fonts repeatedly:**
+
    ```python
    # BAD - loads font every frame
    while True:
        font = rm690b0_lvgl.Font("font.ttf", 24)  # Memory leak!
        lvgl.task_handler()
-   
+
    # GOOD - load once at startup
    font = rm690b0_lvgl.Font("font.ttf", 24)
    while True:
@@ -2907,13 +3059,14 @@ mp_obj_type_t
    ```
 
 4. **Multiple large fonts loaded:**
+
    ```python
    # Keep only necessary fonts in memory
    font1 = rm690b0_lvgl.Font("font1.ttf", 24)
    # ... use font1 ...
    font1.deinit()  # Free when done
    gc.collect()
-   
+
    font2 = rm690b0_lvgl.Font("font2.ttf", 24)
    ```
 
@@ -2928,13 +3081,14 @@ mp_obj_type_t
 **Solutions:**
 
 1. **Avoid `gc.collect()` in main UI loop:**
+
    ```python
    # BAD
    while True:
        lvgl.task_handler()
        gc.collect()  # ← Don't do this!
        time.sleep(0.01)
-   
+
    # GOOD
    while True:
        lvgl.task_handler()
@@ -2942,12 +3096,13 @@ mp_obj_type_t
    ```
 
 2. **Load TTF fonts once at startup:**
+
    ```python
    # Load all fonts before entering main loop
    gc.collect()  # OK to call here
    font1 = rm690b0_lvgl.Font("font1.ttf", 24)
    font2 = rm690b0_lvgl.Font("font2.ttf", 16)
-   
+
    # Now enter main loop without further allocations
    while True:
        lvgl.task_handler()
@@ -2955,10 +3110,11 @@ mp_obj_type_t
    ```
 
 3. **Minimize large heap allocations during UI:**
+
    ```python
    # Pre-allocate large buffers at startup if needed
    buffer = bytearray(1024)  # Do this once
-   
+
    # Don't create large objects in loop
    while True:
        lvgl.task_handler()
@@ -2979,12 +3135,13 @@ mp_obj_type_t
 **Causes & Solutions:**
 
 1. **`task_handler()` called too infrequently:**
+
    ```python
    # BAD - 100ms delay = 10 FPS max
    while True:
        lvgl.task_handler()
        time.sleep(0.1)
-   
+
    # GOOD - 10ms delay = 100 FPS max
    while True:
        lvgl.task_handler()
@@ -2992,18 +3149,20 @@ mp_obj_type_t
    ```
 
 2. **Too many widgets:**
+
    ```python
    # Keep widget count reasonable (< 50 visible widgets)
    # Hide widgets when not needed instead of creating/destroying
    ```
 
 3. **Expensive operations in callbacks:**
+
    ```python
    def on_click_bad(event):
        # BAD - blocking operation
        time.sleep(1)
        process_large_file()
-   
+
    def on_click_good(event):
        # GOOD - quick operations only
        label.text = "Clicked"
@@ -3044,15 +3203,16 @@ lvgl.task_handler()
 **Causes & Solutions:**
 
 1. **Callback syntax error:**
+
    ```python
    # BAD - not callable
    button.on_click = print("Clicked")  # Executes immediately!
-   
+
    # GOOD - function reference
    def on_click(event):
        print("Clicked")
    button.on_click = on_click
-   
+
    # GOOD - lambda
    button.on_click = lambda e: print("Clicked")
    ```
@@ -3087,6 +3247,7 @@ except OSError as e:
 ```
 
 **Upload fonts:**
+
 ```bash
 mpremote mkdir :fonts
 mpremote cp fonts/calibri.ttf :fonts/calibri.ttf
@@ -3097,24 +3258,26 @@ mpremote cp fonts/calibri.ttf :fonts/calibri.ttf
 ### Performance Debugging
 
 **Measure Frame Time:**
+
 ```python
 import time
 
 last_time = time.monotonic()
 while True:
     lvgl.task_handler()
-    
+
     current_time = time.monotonic()
     frame_time = current_time - last_time
     last_time = current_time
-    
+
     if frame_time > 0.02:  # > 20ms = < 50 FPS
         print(f"Slow frame: {frame_time*1000:.1f} ms")
-    
+
     time.sleep(0.01)
 ```
 
 **Monitor Memory:**
+
 ```python
 import gc
 
@@ -3138,15 +3301,18 @@ print(f"Free after UI: {gc.mem_free()} bytes")
 ### Getting Help
 
 **Documentation:**
+
 - Review [RM690B0_DRIVER.md](RM690B0_DRIVER.md) for standalone driver
 - Check [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) for deep technical details
 - See [examples/](../examples/) for working code
 
 **Known Issues:**
+
 - LVGL+touch freezing under GC pressure (documented)
 - Use standalone driver for production apps
 
 **Debugging Steps:**
+
 1. Test with minimal example first
 2. Add complexity incrementally
 3. Check memory with `gc.mem_free()`
@@ -3161,19 +3327,20 @@ print(f"Free after UI: {gc.mem_free()} bytes")
 
 **Current Implementation Coverage: ~80%** (24/30+ widgets)
 
-| Widget Category | ESP-IDF Examples Use | Python API Status |
-|----------------|---------------------|-------------------|
-| **Core** | ✅ obj, label, image, button | ⚠️ Partial (Image pending) |
-| **Interactive** | ✅ slider, switch, checkbox, arc | ✅ Implemented |
-| **Progress** | ✅ bar, spinner | ✅ Implemented |
-| **Selection** | ✅ dropdown, roller, table, btnmatrix, calendar, spinbox, list | ⚠️ Partial (Calendar pending) |
-| **Text Input** | ✅ textarea, keyboard | ✅ Implemented |
-| **Navigation** | ✅ tabview | ✅ Implemented |
-| **Data Viz** | ✅ chart, scale, canvas, line | ✅ Implemented |
-| **Dialogs** | ✅ msgbox | ✅ Implemented |
-| **Advanced** | ✅ animimg | ❌ Not implemented |
+| Widget Category | ESP-IDF Examples Use                                           | Python API Status             |
+| --------------- | -------------------------------------------------------------- | ----------------------------- |
+| **Core**        | ✅ obj, label, image, button                                   | ⚠️ Partial (Image pending)    |
+| **Interactive** | ✅ slider, switch, checkbox, arc                               | ✅ Implemented                |
+| **Progress**    | ✅ bar, spinner                                                | ✅ Implemented                |
+| **Selection**   | ✅ dropdown, roller, table, btnmatrix, calendar, spinbox, list | ⚠️ Partial (Calendar pending) |
+| **Text Input**  | ✅ textarea, keyboard                                          | ✅ Implemented                |
+| **Navigation**  | ✅ tabview                                                     | ✅ Implemented                |
+| **Data Viz**    | ✅ chart, scale, canvas, line                                  | ✅ Implemented                |
+| **Dialogs**     | ✅ msgbox                                                      | ✅ Implemented                |
+| **Advanced**    | ✅ animimg                                                     | ❌ Not implemented            |
 
 **Priority Gaps for Production Use:**
+
 1. **High Priority**: Image + Calendar (parity with ESP-IDF demos)
 2. **Medium Priority**: Animimg / QRCode (animated assets and encoded widgets)
 
@@ -3182,32 +3349,38 @@ print(f"Free after UI: {gc.mem_free()} bytes")
 The following widgets are planned for future implementation to expand the Python API:
 
 **Tier 1: Core & Selection Parity**
+
 1. **Image** - Complete LVGL image wrapper (BMP/JPEG/source binding)
 2. **Calendar** - Date picker widget (headers + callbacks)
 
 **Tier 2: Advanced/Specialized**
+
 1. **Animimg** - Animated image widget
 2. **QRCode** - QR code generator/display (requires extra library)
 
 ### Completed Widgets ✅
 
 **Core Widgets**
+
 - ✅ **Widget** - Base container class (lv_obj)
 - ✅ **Label** - Text display
 - ✅ **Button** - Clickable button with callback
 - 🚧 **Image** - Planned bitmap/JPEG widget (bindings pending)
 
 **Interactive Controls**
+
 - ✅ **Slider** - Range value selector
 - ✅ **Checkbox** - Toggle with label
 - ✅ **Switch** - On/off toggle
 - ✅ **Arc** - Circular knob/dial
 
 **Display/Feedback Widgets**
+
 - ✅ **Bar** - Progress/level indicator
 - ✅ **Spinner** - Loading/progress indicator
 
 **Selection Widgets**
+
 - ✅ **Dropdown** - Selection menu
 - ✅ **Roller** - Scrollable selection widget
 - ✅ **List** - Scrollable list container with items
@@ -3217,17 +3390,21 @@ The following widgets are planned for future implementation to expand the Python
 - 🚧 **Calendar** - Date picker (planned)
 
 **Dialogs**
+
 - ✅ **Msgbox** - Modal message box dialog
 
 **Layout Containers**
+
 - ✅ **Container** - Layout and scrolling container
 - ✅ **Tabview** - Multi-page navigation
 
 **Text Input**
+
 - ✅ **Textarea** - Multi-line text input with focus/submit callbacks
 - ✅ **Keyboard** - On-screen keyboard with popover support
 
 **Data Visualization**
+
 - ✅ **Chart** - Multi-series line/bar/scatter plotting
 - ✅ **Scale** - Meter-based gauge with ticks/labels
 - ✅ **Canvas** - Off-screen pixel buffer with drawing helpers

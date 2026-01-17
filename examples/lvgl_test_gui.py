@@ -67,7 +67,7 @@ widget_colors = []
 def apply_theme(theme_dark=False):
     global THEME_DARK
     THEME_DARK = theme_dark
-    for (widget, func, dark, light) in widget_colors:
+    for widget, func, dark, light in widget_colors:
         getattr(widget, "set_" + func + "_color")(dark if theme_dark else light)
         lvgl.set_theme_color(
             primary=0x0066FF,
@@ -110,7 +110,7 @@ lvgl.task_handler()
 title.x = (SCREEN_WIDTH - 120) // 2  # Center horizontally
 title.y = 10
 title.set_text_color(0xFFFFFF if THEME_DARK else 0x000080)  # Navy Blue
-widget_colors.append([title, "text", 0xFFFFFF, 0x000080])
+widget_colors.append((title, "text", 0xFFFFFF, 0x000080))
 
 # Remove temporary label
 loading.delete()
@@ -134,7 +134,7 @@ prog_cont.y = 40
 prog_cont.width = 390
 prog_cont.height = 70
 prog_cont.set_style_bg_color(0x101010 if THEME_DARK else 0xE0E0E0)
-widget_colors.append([prog_cont, "style_bg", 0x101010, 0xE0E0E0])
+widget_colors.append((prog_cont, "style_bg", 0x101010, 0xE0E0E0))
 prog_cont.set_padding(10)
 prog_cont.set_flex_flow(rm690b0_lvgl.FLEX_FLOW_ROW)
 prog_cont.set_flex_align(
@@ -650,7 +650,7 @@ chart_lbl = rm690b0_lvgl.Label(text="Chart: Temperature vs Humidity")
 chart_lbl.x = 20
 chart_lbl.y = 830
 chart_lbl.set_text_color(0xE0E0E0 if THEME_DARK else 0x202020)
-widget_colors.append([chart_lbl, "text", 0xE0E0E0, 0x202020])
+widget_colors.append((chart_lbl, "text", 0xE0E0E0, 0x202020))
 
 chart = rm690b0_lvgl.Chart(chart_type=rm690b0_lvgl.CHART_TYPE_LINE)
 chart.x = 20
