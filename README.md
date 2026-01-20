@@ -23,15 +23,15 @@ Complete CircuitPython support for the Waveshare ESP32-S3 Touch AMOLED 2.41 boar
 
 ### Hardware Specifications
 
-| Component | Specification |
-|-----------|---------------|
-| **Board** | Waveshare ESP32-S3 Touch AMOLED 2.41 |
-| **MCU** | ESP32-S3 (Dual-core Xtensa LX7) |
-| **Flash** | 16 MB |
-| **PSRAM** | 8 MB |
-| **Display** | RM690B0 AMOLED, 600×450 pixels |
-| **Interface** | QSPI (80 MHz) |
-| **Touch** | FT6336U I2C Capacitive Touch |
+| Component     | Specification                        |
+| ------------- | ------------------------------------ |
+| **Board**     | Waveshare ESP32-S3 Touch AMOLED 2.41 |
+| **MCU**       | ESP32-S3 (Dual-core Xtensa LX7)      |
+| **Flash**     | 16 MB                                |
+| **PSRAM**     | 8 MB                                 |
+| **Display**   | RM690B0 AMOLED, 600×450 pixels       |
+| **Interface** | QSPI (80 MHz)                        |
+| **Touch**     | FT6336U I2C Capacitive Touch         |
 
 ---
 
@@ -48,27 +48,32 @@ Complete CircuitPython support for the Waveshare ESP32-S3 Touch AMOLED 2.41 boar
 ### 📁 [`examples/`](examples/) - 25+ Ready-to-Run Examples
 
 **Display Driver Examples:**
+
 - `test_basic_gfx.py` - Interactive graphics and fonts
 - `test_all_fonts.py` - All 7 fonts showcase
 - `test_animation.py` - 60 FPS animation
 - `test_sd_gfx.py` - BMP/JPEG loading
 
 **LVGL Examples:**
+
 - `lvgl_test_gui.py` - Complete widget demo
 - `lvgl_test_symbols.py` - LVGL symbols
 
 **Games:**
+
 - `game_flappy_bird.py` - Flappy Bird clone
 - `game_snake.py` - Snake (touchscreen)
 - `game_pacman.py` - Pac-Man
 
 **Hardware Tests:**
+
 - `test_board_hardware.py` - Complete validation
 - `test_hw_nav_switch.py` - I2C joystick
 - `test_espsdcard.py` - SD card throughput
 - `test_espnow.py` - ESP-NOW validation
 
 **Benchmarks:**
+
 - `benchmark_gfx_conversion.py` - Image conversion performance
 - `benchmark_gfx_display.py` - Primitive throughput
 - `benchmark_simple_flush.py` - DMA/flush stress test
@@ -78,6 +83,7 @@ See [examples/README.md](examples/README.md) for complete documentation.
 ### 📁 [`fonts/`](fonts/) - TTF to Bitmap Converter
 
 Convert any TrueType font to RM690B0 format:
+
 - `ttf_to_rm690b0.py` - Font converter
 - `test_converted_font.py` - Font validator
 - Complete documentation in [fonts/README.md](fonts/README.md)
@@ -85,6 +91,7 @@ Convert any TrueType font to RM690B0 format:
 ### 📁 [`firmware/`](firmware/) - Pre-built Firmware
 
 Two versions available:
+
 - `firmware-rm690b0.bin` - Stable (display driver only)
 - `firmware-rm690b0-lvgl.bin` - Beta (with LVGL)
 
@@ -106,6 +113,7 @@ See [firmware/README.md](firmware/README.md) for flashing instructions.
    - Beta (LVGL): `firmware/firmware-rm690b0-lvgl.bin`
 
 2. **Flash to board:**
+
    ```bash
    esptool.py --chip esp32s3 -p /dev/ttyACM0 \
      --baud 921600 write_flash 0x0 firmware/firmware-rm690b0.bin
@@ -121,15 +129,17 @@ See [firmware/README.md](firmware/README.md) for flashing instructions.
 ### Option B: Build from Source
 
 1. **Clone repository:**
+
    ```bash
    # Stable branch
    git clone https://github.com/ppsx/circuitpython.git -b rm690b0-driver-clean
-   
+
    # Or LVGL branch
    git clone https://github.com/ppsx/circuitpython.git -b lvgl
    ```
 
 2. **Build:**
+
    ```bash
    cd circuitpython
    make -C ports/espressif BOARD=waveshare_esp32_s3_amoled_241
@@ -209,7 +219,7 @@ while True:
 ✅ **Graphics** - Lines, circles, rectangles, fills  
 ✅ **Images** - BMP and JPEG with hardware decoder  
 ✅ **Double Buffering** - Zero tearing animations  
-✅ **Performance** - 60+ FPS capable  
+✅ **Performance** - 60+ FPS capable
 
 ### LVGL Integration (`rm690b0_lvgl`)
 
@@ -217,7 +227,7 @@ while True:
 ✅ **TTF Fonts** - Custom font support  
 ✅ **Touch Input** - Automatic coordinate transformation  
 ✅ **Event System** - Python callbacks  
-⚠️ **Beta Status** - Functional with known GC/touch issue  
+⚠️ **Beta Status** - Functional with known GC/touch issue
 
 **Available Widgets:** Label, Button, Slider, Checkbox, Switch, Bar, Arc, Dropdown, Roller, Spinner, Container, Tabview, Table, Buttonmatrix, Textarea, Keyboard, Chart, Canvas, Image, Calendar, Msgbox, and more.
 
@@ -225,12 +235,12 @@ while True:
 
 ## Performance
 
-| Operation | Time | Notes |
-|-----------|------|-------|
-| Full screen fill | ~25 ms | Hardware DMA limit |
-| Circle (r=50) | ~2 ms | Optimized algorithm |
-| Text (16×16) | ~1.2 ms | Native font rendering |
-| JPEG decode | ~145 ms | Hardware decoder |
+| Operation        | Time    | Notes                 |
+| ---------------- | ------- | --------------------- |
+| Full screen fill | ~25 ms  | Hardware DMA limit    |
+| Circle (r=50)    | ~2 ms   | Optimized algorithm   |
+| Text (16×16)     | ~1.2 ms | Native font rendering |
+| JPEG decode      | ~145 ms | Hardware decoder      |
 
 **See [docs/TECHNICAL_NOTES.md](docs/TECHNICAL_NOTES.md) for detailed benchmarks.**
 
@@ -239,24 +249,26 @@ while True:
 ## Hardware
 
 ### Required
+
 - Waveshare ESP32-S3 Touch AMOLED 2.41 board
 - USB-C cable (data-capable)
 
 ### Optional
+
 - SparkFun Qwiic Joystick (digital I2C)
 - microSD card
 - Additional I2C devices
 
 ### Pin Configuration
 
-| Function | GPIO | Device | I2C Address |
-|----------|------|--------|-------------|
-| Display QSPI | 9-14, 21, 16 | RM690B0 | - |
-| Touch I2C | 47 (SDA), 48 (SCL) | FT6336U | 0x38 |
-| RTC I2C | 47, 48 | PCF85063 | 0x51 |
-| IMU I2C | 47, 48 | QMI8658C | 0x6B |
-| IO Expander | 47, 48 | PCA9554 | 0x20 |
-| SD Card SPI | 2, 4-6 | Optional | - |
+| Function     | GPIO               | Device   | I2C Address |
+| ------------ | ------------------ | -------- | ----------- |
+| Display QSPI | 9-14, 21, 16       | RM690B0  | -           |
+| Touch I2C    | 47 (SDA), 48 (SCL) | FT6336U  | 0x38        |
+| RTC I2C      | 47, 48             | PCF85063 | 0x51        |
+| IMU I2C      | 47, 48             | QMI8658C | 0x6B        |
+| IO Expander  | 47, 48             | PCA9554  | 0x20        |
+| SD Card SPI  | 2, 4-6             | Optional | -           |
 
 **See [docs/TECHNICAL_NOTES.md#pin-configuration](docs/TECHNICAL_NOTES.md) for complete details.**
 
@@ -264,25 +276,27 @@ while True:
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [RM690B0_DRIVER.md](docs/RM690B0_DRIVER.md) | Complete display driver API |
-| [RM690B0_LVGL.md](docs/RM690B0_LVGL.md) | LVGL widgets and integration |
+| Document                                      | Description                      |
+| --------------------------------------------- | -------------------------------- |
+| [RM690B0_DRIVER.md](docs/RM690B0_DRIVER.md)   | Complete display driver API      |
+| [RM690B0_LVGL.md](docs/RM690B0_LVGL.md)       | LVGL widgets and integration     |
 | [TECHNICAL_NOTES.md](docs/TECHNICAL_NOTES.md) | Architecture and troubleshooting |
-| [examples/README.md](examples/README.md) | All examples documentation |
-| [firmware/README.md](firmware/README.md) | Flashing instructions |
-| [fonts/README.md](fonts/README.md) | Font converter guide |
+| [examples/README.md](examples/README.md)      | All examples documentation       |
+| [firmware/README.md](firmware/README.md)      | Flashing instructions            |
+| [fonts/README.md](fonts/README.md)            | Font converter guide             |
 
 ---
 
 ## CircuitPython Branches
 
 ### Main Branch (Stable) ✅
+
 **Repository:** https://github.com/ppsx/circuitpython/tree/rm690b0-driver-clean  
 **Status:** Production Ready  
 **Use for:** Production applications, games, embedded displays
 
 ### LVGL Branch (Beta) ⚠️
+
 **Repository:** https://github.com/ppsx/circuitpython/tree/lvgl  
 **Status:** Functional with known GC/touch issue  
 **Use for:** Prototyping, rich UIs, widget-based interfaces
@@ -295,6 +309,7 @@ while True:
 **Phase 6:** 🚧 In Progress (Documentation + Widget Expansion)
 
 ### Production Ready ✅
+
 - rm690b0 driver - Stable and fast
 - Native text system - 7 fonts + converter
 - Graphics primitives - All optimized
@@ -303,6 +318,7 @@ while True:
 - Examples - 25+ demos
 
 ### Known Issues ⚠️
+
 - **LVGL+touch freeze** under heavy GC pressure
 - **Workaround:** Avoid `gc.collect()` in UI loop, load TTF fonts once at startup
 
@@ -313,18 +329,22 @@ while True:
 ## Troubleshooting
 
 **Display shows nothing:**
+
 - Check `display.init_display()` was called
 - Try `display.brightness = 1.0`
 
 **Touch not working:**
+
 - Use `board.TP_SCL` and `board.TP_SDA` (not `board.SCL/SDA`)
 - Initialize after display: `lvgl.init_touch(i2c)`
 
 **LVGL touch freezes:**
+
 - Avoid `gc.collect()` in main loop
 - Load TTF fonts once at startup
 
 **Memory errors:**
+
 - Use `swap_buffers(copy=False)` for animations
 - Close files after reading
 
@@ -359,14 +379,17 @@ See full license in source code.
 ## Links
 
 **Repositories:**
+
 - Main: https://github.com/ppsx/circuitpython/tree/rm690b0-driver-clean
 - LVGL: https://github.com/ppsx/circuitpython/tree/lvgl
 
 **Hardware:**
+
 - Waveshare: https://www.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-2.41
 - ESP32-S3: https://www.espressif.com/
 
 **Documentation:**
+
 - [Complete docs](docs/)
 - [Examples](examples/)
 - [Font tools](fonts/)
@@ -381,6 +404,18 @@ See full license in source code.
 
 ---
 
-**Last Updated:** 2025-12-29
+**Last Updated:** 2026-01-20
 
 **Enjoy building with RM690B0 on ESP32-S3!** 🎉
+
+---
+
+## Showcase
+
+### 🎮 ESP32-Doom (PrBoom Port)
+
+A highly optimized port of Doom running natively on this board using ESP-IDF.
+
+- **Performance:** **65 FPS** (stable) at full **600x450** resolution.
+- **Optimizations:** QSPI 80MHz, Double Buffered DMA, Internal RAM.
+- **Repo:** [esp32-doom](https://github.com/ppsx/esp32-doom)
