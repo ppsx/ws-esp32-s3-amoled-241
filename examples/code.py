@@ -198,23 +198,26 @@ def main():
     col2_x = 315
     btn_w = 260
     btn_h = 70
-    
+
     y1 = 100
     y2 = 190
-    y_exit = 310
-    
+    y3 = 280
+    y_exit = 370
+
     # Column 1
     flappy_button = Button(col1_x, y1, btn_w, btn_h, "FLAPPY BIRD")
     snake_button = Button(col1_x, y2, btn_w, btn_h, "SNAKE")
-    
+    minesweeper_button = Button(col1_x, y3, btn_w, btn_h, "MINESWEEPER")
+
     # Column 2
     pacman_button = Button(col2_x, y1, btn_w, btn_h, "PAC-MAN")
     sokoban_button = Button(col2_x, y2, btn_w, btn_h, "SOKOBAN")
-    
+
     # Exit (Centered)
     exit_button = Button((display.width - 300) // 2, y_exit, 300, btn_h, "EXIT")
     
     buttons = [flappy_button, snake_button, pacman_button, sokoban_button, exit_button]
+    buttons = [flappy_button, snake_button, pacman_button, sokoban_button, minesweeper_button, exit_button]
 
     # Draw initial menu
     draw_menu(display, buttons)
@@ -235,14 +238,15 @@ def main():
                         btn.draw(display, BUTTON_PRESSED_COLOR)
                         display.swap_buffers()
                         time.sleep(0.2)
-                        
+
                         if btn == flappy_button: selected = "flappy"
                         elif btn == snake_button: selected = "snake"
                         elif btn == pacman_button: selected = "pacman"
                         elif btn == sokoban_button: selected = "sokoban"
+                        elif btn == minesweeper_button: selected = "minesweeper"
                         elif btn == exit_button: selected = "exit"
                         break
-                        
+
             time.sleep(0.05)  # Small delay to reduce CPU usage
 
     except KeyboardInterrupt:
@@ -298,6 +302,15 @@ def main():
             print("Error: game_sokoban.py not found!")
         except Exception as e:
             print(f"Error running Sokoban: {e}")
+    elif selected == "minesweeper":
+        print("\nStarting Minesweeper...\n")
+        try:
+            import game_minesweeper
+            game_minesweeper.main()
+        except ImportError:
+            print("Error: game_minesweeper.py not found!")
+        except Exception as e:
+            print(f"Error running Minesweeper: {e}")
     else:
         print("\nExiting to REPL.")
 
