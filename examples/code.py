@@ -215,8 +215,7 @@ def main():
 
     # Exit (Centered)
     exit_button = Button((display.width - 300) // 2, y_exit, 300, btn_h, "EXIT")
-    
-    buttons = [flappy_button, snake_button, pacman_button, sokoban_button, exit_button]
+
     buttons = [flappy_button, snake_button, pacman_button, sokoban_button, minesweeper_button, exit_button]
 
     # Draw initial menu
