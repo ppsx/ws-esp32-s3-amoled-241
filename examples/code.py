@@ -156,7 +156,7 @@ class Button:
         draw_text(display, self.text, text_x, text_y, TEXT_COLOR)
 
 
-def draw_menu(display, flappy_button, snake_button, pacman_button, exit_button):
+def draw_menu(display, buttons):
     """Draw the main menu."""
     display.fill_color(BG_COLOR)
 
@@ -167,10 +167,8 @@ def draw_menu(display, flappy_button, snake_button, pacman_button, exit_button):
     draw_text(display, title, title_x, 40, TEXT_COLOR)
 
     # Draw buttons
-    flappy_button.draw(display)
-    snake_button.draw(display)
-    pacman_button.draw(display)
-    exit_button.draw(display)
+    for button in buttons:
+        button.draw(display)
 
     display.swap_buffers()
 
@@ -194,21 +192,32 @@ def main():
     # Initialize touch
     touch = TouchInput()
 
-    # Create buttons
-    button_width = 300
-    button_height = 70
-    button_x = (display.width - button_width) // 2
-
-    flappy_button = Button(button_x, 90, button_width, button_height, "FLAPPY BIRD")
-
-    snake_button = Button(button_x, 170, button_width, button_height, "SNAKE")
-
-    pacman_button = Button(button_x, 250, button_width, button_height, "PAC-MAN")
-
-    exit_button = Button(button_x, 330, button_width, button_height, "EXIT")
+    # Create buttons (2-column layout)
+    # Screen 600 wide. 2 cols of 260 width. Gaps.
+    col1_x = 25
+    col2_x = 315
+    btn_w = 260
+    btn_h = 70
+    
+    y1 = 100
+    y2 = 190
+    y_exit = 310
+    
+    # Column 1
+    flappy_button = Button(col1_x, y1, btn_w, btn_h, "FLAPPY BIRD")
+    snake_button = Button(col1_x, y2, btn_w, btn_h, "SNAKE")
+    
+    # Column 2
+    pacman_button = Button(col2_x, y1, btn_w, btn_h, "PAC-MAN")
+    sokoban_button = Button(col2_x, y2, btn_w, btn_h, "SOKOBAN")
+    
+    # Exit (Centered)
+    exit_button = Button((display.width - 300) // 2, y_exit, 300, btn_h, "EXIT")
+    
+    buttons = [flappy_button, snake_button, pacman_button, sokoban_button, exit_button]
 
     # Draw initial menu
-    draw_menu(display, flappy_button, snake_button, pacman_button, exit_button)
+    draw_menu(display, buttons)
 
     selected = None
     try:
@@ -220,38 +229,20 @@ def main():
                 x, y = touch_point
                 print(f"Touch detected at: ({x}, {y})")
 
-                if flappy_button.contains(x, y):
-                    print("Flappy Bird button pressed!")
-                    # Visual feedback
-                    flappy_button.draw(display, BUTTON_PRESSED_COLOR)
-                    display.swap_buffers()
-                    time.sleep(0.2)
-                    selected = "flappy"
-
-                elif snake_button.contains(x, y):
-                    print("Snake button pressed!")
-                    # Visual feedback
-                    snake_button.draw(display, BUTTON_PRESSED_COLOR)
-                    display.swap_buffers()
-                    time.sleep(0.2)
-                    selected = "snake"
-
-                elif pacman_button.contains(x, y):
-                    print("Pac-Man button pressed!")
-                    # Visual feedback
-                    pacman_button.draw(display, BUTTON_PRESSED_COLOR)
-                    display.swap_buffers()
-                    time.sleep(0.2)
-                    selected = "pacman"
-
-                elif exit_button.contains(x, y):
-                    print("Exit button pressed!")
-                    # Visual feedback
-                    exit_button.draw(display, BUTTON_PRESSED_COLOR)
-                    display.swap_buffers()
-                    time.sleep(0.2)
-                    selected = "exit"
-
+                for btn in buttons:
+                    if btn.contains(x, y):
+                        print(f"{btn.text} button pressed!")
+                        btn.draw(display, BUTTON_PRESSED_COLOR)
+                        display.swap_buffers()
+                        time.sleep(0.2)
+                        
+                        if btn == flappy_button: selected = "flappy"
+                        elif btn == snake_button: selected = "snake"
+                        elif btn == pacman_button: selected = "pacman"
+                        elif btn == sokoban_button: selected = "sokoban"
+                        elif btn == exit_button: selected = "exit"
+                        break
+                        
             time.sleep(0.05)  # Small delay to reduce CPU usage
 
     except KeyboardInterrupt:
@@ -298,6 +289,15 @@ def main():
             print("Error: game_pacman.py not found!")
         except Exception as e:
             print(f"Error running Pac-Man: {e}")
+    elif selected == "sokoban":
+        print("\nStarting Sokoban...\n")
+        try:
+            import game_sokoban
+            game_sokoban.main()
+        except ImportError:
+            print("Error: game_sokoban.py not found!")
+        except Exception as e:
+            print(f"Error running Sokoban: {e}")
     else:
         print("\nExiting to REPL.")
 
