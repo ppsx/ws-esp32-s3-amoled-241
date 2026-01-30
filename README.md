@@ -120,6 +120,7 @@ See [firmware/README.md](firmware/README.md) for flashing instructions.
    ```
 
 3. **Deploy examples:**
+
    ```bash
    cp examples/test_all_fonts.py /media/CIRCUITPY/code.py
    ```
@@ -146,6 +147,7 @@ See [firmware/README.md](firmware/README.md) for flashing instructions.
    ```
 
 3. **Flash:**
+
    ```bash
    make -C ports/espressif BOARD=waveshare_esp32_s3_amoled_241 flash
    ```

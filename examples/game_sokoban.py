@@ -483,33 +483,62 @@ def draw_game(display, game, offset_x, offset_y, cell_size, ticks=0):
 
 def draw_menu(display, items, selected_idx):
     w, h = display.width, display.height
-    mw, mh = 200, 40 * len(items) + 20
-    mx, my = (w - mw) // 2, (h - mh) // 2
     
-    display.fill_rect(mx, my, mw, mh, BG_COLOR)
-    display.rect(mx, my, mw, mh, rm690b0.WHITE)
-    
+    # Calculate menu dimensions based on items
+    item_h = 40
+    menu_h = len(items) * item_h + 40
+    menu_w = 450
+
+    mx = (w - menu_w) // 2
+    my = (h - menu_h) // 2
+
+    # Shadow
+    display.fill_rect(mx + 5, my + 5, menu_w, menu_h, rgb565(10, 10, 10))
+
+    # Background
+    display.fill_rect(mx, my, menu_w, menu_h, rgb565(30, 30, 40))
+
+    # Border (Double)
+    display.rect(mx, my, menu_w, menu_h, rm690b0.WHITE)
+    display.rect(mx+2, my+2, menu_w-4, menu_h-4, rm690b0.WHITE)
+
+    # Title or Separator
+    display.hline(mx, my + 10, menu_w, rm690b0.WHITE)
+
     for i, item in enumerate(items):
-        color = rm690b0.GREEN if i == selected_idx else rm690b0.WHITE
-        # Draw text using large font
+        y = my + 20 + i * item_h
+
+        # Selection Bar
+        if i == selected_idx:
+            display.fill_rect(mx + 10, y, menu_w - 20, item_h - 4, rgb565(60, 60, 80))
+            color = rm690b0.GREEN
+            prefix = "> "
+        else:
+            color = rm690b0.WHITE
+            prefix = "  "
+
         display.set_font(FONT_LARGE)
-        display.text(mx + 20, my + 15 + i*40, item, color=color)
+        # Center text
+        text = prefix + item
+        # Approx width for centering (24x24 font -> ~12-14px char width avg?)
+        # Let's just align left with padding
+        display.text(mx + 30, y + 4, text, color=color)
 
 def main():
     print("Sokoban starting...")
     display = rm690b0.RM690B0()
     display.init_display()
     display.brightness = 1.0
-    
+
     i2c = busio.I2C(board.TP_SCL, board.TP_SDA, frequency=400000)
     joystick = None
     touch = None
-    
+
     try:
         joystick = JoystickInput(i2c)
     except Exception as e:
         print(f"Joystick init error: {e}")
-        
+
     try:
         touch = TouchInput(i2c)
     except Exception as e:
@@ -517,14 +546,14 @@ def main():
 
     level_idx = 0
     game = None
-    
+
     def load_level(idx):
         if idx < 0: idx = len(LEVELS) - 1
         if idx >= len(LEVELS): idx = 0
         return idx, SokobanGame(LEVELS[idx])
-        
+
     level_idx, game = load_level(level_idx)
-    
+
     cell_size = 20  # Base size, maybe scale?
     # Max dims: 450x600 (portrait) or 600x450 (landscape)
     # Most levels are small, some are large.
@@ -533,15 +562,14 @@ def main():
     width = display.width # 600?
     height = display.height # 450?
 
-    
     menu_items = ["RESUME", "UNDO", "RESET", "NEXT LEVEL", "PREV LEVEL", "EXIT"]
     menu_open = False
     menu_sel = 0
-    
+
     last_act_time = 0
     act_delay = 0.15 # Repeat rate
     solved_timestamp = None
-    
+
     while True:
         # Animation update loop (Run first!)
         if game.update():
@@ -550,15 +578,15 @@ def main():
         # Calculate scaling
         max_w = display.width - 20
         max_h = display.height - 20
-        
+
         scale_w = max_w // game.cols
         scale_h = max_h // game.rows
         cell_size = min(scale_w, scale_h)
         if cell_size > 40: cell_size = 40
-        
+
         offset_x = (display.width - game.cols * cell_size) // 2
         offset_y = (display.height - game.rows * cell_size) // 2
-        
+
         # Drawing
         if menu_open:
             draw_menu(display, menu_items, menu_sel)
@@ -569,50 +597,43 @@ def main():
             display.set_font(FONT_SMALL)
             display.text(10, 10, f"Level {level_idx+1}/{len(LEVELS)}", color=TEXT_COLOR)
             display.text(10, 30, f"Moves: {game.moves} Pushes: {game.pushes}", color=TEXT_COLOR)
-            
+
             if game.is_solved():
                 display.set_font(FONT_LARGE)
                 display.text(display.width//2 - 60, display.height//2, "SOLVED!", color=rm690b0.GREEN)
-                
+
         display.swap_buffers()
-        
+
         # Input Handling
         d = None
         center = False
-        
+
         if joystick:
             d = joystick.get_action()
             if joystick.is_center_pressed():
                 center = True
-        
+
         if not d and not center and touch:
             d = touch.get_action()
             if touch.is_center_pressed():
                 center = True
-                
+
         now = time.monotonic()
         if now - last_act_time < act_delay:
             continue
-            
+
         if center:
             last_act_time = now
             if game.is_solved() and not menu_open:
                 # Next level
                 level_idx, game = load_level(level_idx + 1)
                 solved_timestamp = None
+            elif not menu_open:
+                 # Open Menu
+                 menu_open = True
+                 menu_sel = 0
             else:
-                menu_open = not menu_open
-                menu_sel = 0
-                
-        elif menu_open:
-            if d == DIR_UP:
-                menu_sel = (menu_sel - 1) % len(menu_items)
-                last_act_time = now
-            elif d == DIR_DOWN:
-                menu_sel = (menu_sel + 1) % len(menu_items)
-                last_act_time = now
-            elif d == DIR_RIGHT:
-                 # Select
+                 # Select Item in Menu
                  item = menu_items[menu_sel]
                  if item == "RESUME":
                      menu_open = False
@@ -630,8 +651,18 @@ def main():
                      menu_open = False
                  elif item == "EXIT":
                      break
-                 last_act_time = now
-                 
+
+        elif menu_open:
+            if d == DIR_UP:
+                menu_sel = (menu_sel - 1) % len(menu_items)
+                last_act_time = now
+            elif d == DIR_DOWN:
+                menu_sel = (menu_sel + 1) % len(menu_items)
+                last_act_time = now
+            elif d == DIR_RIGHT:
+                 # Also allow Right as Select
+                 pass
+
         elif game.is_solved():
             # Wait for center to go next
             pass
@@ -652,4 +683,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-        
+

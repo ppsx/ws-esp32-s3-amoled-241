@@ -216,7 +216,14 @@ def main():
     # Exit (Centered)
     exit_button = Button((display.width - 300) // 2, y_exit, 300, btn_h, "EXIT")
 
-    buttons = [flappy_button, snake_button, pacman_button, sokoban_button, minesweeper_button, exit_button]
+    buttons = [
+        flappy_button,
+        snake_button,
+        pacman_button,
+        sokoban_button,
+        minesweeper_button,
+        exit_button,
+    ]
 
     # Draw initial menu
     draw_menu(display, buttons)
@@ -238,12 +245,18 @@ def main():
                         display.swap_buffers()
                         time.sleep(0.2)
 
-                        if btn == flappy_button: selected = "flappy"
-                        elif btn == snake_button: selected = "snake"
-                        elif btn == pacman_button: selected = "pacman"
-                        elif btn == sokoban_button: selected = "sokoban"
-                        elif btn == minesweeper_button: selected = "minesweeper"
-                        elif btn == exit_button: selected = "exit"
+                        if btn == flappy_button:
+                            selected = "flappy"
+                        elif btn == snake_button:
+                            selected = "snake"
+                        elif btn == pacman_button:
+                            selected = "pacman"
+                        elif btn == sokoban_button:
+                            selected = "sokoban"
+                        elif btn == minesweeper_button:
+                            selected = "minesweeper"
+                        elif btn == exit_button:
+                            selected = "exit"
                         break
 
             time.sleep(0.05)  # Small delay to reduce CPU usage
@@ -296,6 +309,7 @@ def main():
         print("\nStarting Sokoban...\n")
         try:
             import game_sokoban
+
             game_sokoban.main()
         except ImportError:
             print("Error: game_sokoban.py not found!")
@@ -305,6 +319,7 @@ def main():
         print("\nStarting Minesweeper...\n")
         try:
             import game_minesweeper
+
             game_minesweeper.main()
         except ImportError:
             print("Error: game_minesweeper.py not found!")
