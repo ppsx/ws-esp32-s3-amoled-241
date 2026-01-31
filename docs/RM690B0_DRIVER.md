@@ -976,10 +976,16 @@ gc.collect()
 **SD Card Access:**
 
 ```python
-import espsdcard
+import board
+import busio
+import sdcardio
+import storage
 
 # Mount SD card
-sd = espsdcard.SDCard("/sd")
+spi = busio.SPI(board.SD_SCK, board.SD_MOSI, board.SD_MISO)
+sd = sdcardio.SDCard(spi, board.SD_CS, baudrate=20000000)
+vfs = storage.VfsFat(sd)
+storage.mount(vfs, "/sd")
 
 # Load image
 with open("/sd/images/logo.bmp", "rb") as f:
@@ -988,8 +994,7 @@ with open("/sd/images/logo.bmp", "rb") as f:
 display.blit_bmp(100, 100, data)
 display.swap_buffers()
 
-# Unmount
-sd.deinit()
+# Note: Unmounting is not typically needed in main loop
 ```
 
 ---
@@ -1072,6 +1077,7 @@ def lighten(color):
 ### Rendering Performance
 
 **Benchmark Results:**
+
 | Operation | Time | Notes |
 |-----------|------|-------|
 | Full screen fill | ~25–34 ms | Hardware limited by DMA, both single/double buffer tracked |
@@ -1349,11 +1355,19 @@ import rm690b0
 import os
 import time
 
+import board
+import busio
+import sdcardio
+import storage
+
 display = rm690b0.RM690B0()
 display.init_display()
 
 # Mount SD card
-sd = espsdcard.SDCard("/sd")
+spi = busio.SPI(board.SD_SCK, board.SD_MOSI, board.SD_MISO)
+sd = sdcardio.SDCard(spi, board.SD_CS, baudrate=20000000)
+vfs = storage.VfsFat(sd)
+storage.mount(vfs, "/sd")
 
 # Get list of images
 images = [f for f in os.listdir("/sd/images")
@@ -1477,6 +1491,7 @@ PSRAM Layout:
    ```
 
 3. **Brightness set to 0:**
+
    ```python
    display.brightness = 1.0  # Full brightness
    ```
@@ -1528,6 +1543,7 @@ display.fill_color(RED)  # Correct
    ```
 
 3. **Text rendered off-screen:**
+
    ```python
    # Check coordinates are within bounds
    display.text(700, 10, "Hello", 0xFFFF)  # x=700 is off-screen!
@@ -1558,6 +1574,7 @@ display.fill_color(RED)  # Correct
    ```
 
 3. **Profile your code:**
+
    ```python
    import time
    start = time.monotonic()

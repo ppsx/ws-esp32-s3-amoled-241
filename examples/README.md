@@ -36,11 +36,11 @@ Copy any example to your device as `code.py`:
 
 ```bash
 # Using mpremote
-mpremote cp flappy_bird_clone.py :code.py
+mpremote cp game_flappy_bird.py :code.py
 mpremote reset
 
 # Using ampy
-ampy put flappy_bird_clone.py /code.py
+ampy put game_flappy_bird.py /code.py
 ampy reset
 ```
 
@@ -199,7 +199,7 @@ import test_animation_bg
 
 These examples use the LVGL integration for rich UI widgets.
 
-### test_gui.py
+### lvgl_test_gui.py
 
 **Description:** Comprehensive LVGL widget demonstration.
 
@@ -231,7 +231,7 @@ These examples use the LVGL integration for rich UI widgets.
 **Usage:**
 
 ```python
-import test_gui
+import lvgl_test_gui
 # Interact with widgets via touch
 ```
 
@@ -282,7 +282,7 @@ import lvgl_icons_example
 
 ---
 
-### test_symbols.py
+### lvgl_test_symbols.py
 
 **Description:** Test and display all available LVGL symbols.
 
@@ -295,7 +295,27 @@ import lvgl_icons_example
 **Usage:**
 
 ```python
-import test_symbols
+import lvgl_test_symbols
+```
+
+---
+
+### lvgl_test_ttf.py
+
+**Description:** Demonstrates loading and scaling TrueType fonts.
+
+**Features:**
+
+- Dynamic font loading from .ttf files
+- Multiple sizes from single file (24, 32, 48, 64px)
+- Text coloring
+- Interactive size/color toggle
+
+**Usage:**
+
+```python
+import lvgl_test_ttf
+# Tap "Color" button to cycle styles
 ```
 
 ---
@@ -327,7 +347,7 @@ Complete game implementations using the display and touch input.
 
 ---
 
-### flappy_bird_clone.py
+### game_flappy_bird.py
 
 **Description:** Complete Flappy Bird clone with touch controls.
 
@@ -348,7 +368,7 @@ Complete game implementations using the display and touch input.
 **Usage:**
 
 ```python
-import flappy_bird_clone
+import game_flappy_bird
 # Or select from code.py menu
 ```
 
@@ -362,7 +382,7 @@ import flappy_bird_clone
 
 ---
 
-### snake_game.py
+### game_snake.py
 
 **Description:** Classic Snake game with joystick controls.
 
@@ -387,7 +407,7 @@ import flappy_bird_clone
 **Usage:**
 
 ```python
-import snake_game
+import game_snake
 # Or select from code.py menu
 ```
 
@@ -397,6 +417,82 @@ import snake_game
 - Eat red food to grow and score points
 - Game speeds up as you score more
 - Hit walls or yourself = game over
+
+---
+
+### game_pacman.py
+
+**Description:** Full-featured Pac-Man clone with multiple maps.
+
+**Features:**
+
+- 5 Maps (Classic + 4 Ms. Pac-Man variants)
+- Complete Ghost AI (Blinky, Pinky, Inky, Clyde)
+- Scatter / Chase / Frightened modes
+- Power Pellets and Ghost eating
+
+**Controls:**
+
+- **Joystick/Swipe:** Change direction
+
+**Usage:**
+
+```python
+import game_pacman
+```
+
+---
+
+### game_sokoban.py
+
+**Description:** Classic puzzle game where you push crates to goals.
+
+**Features:**
+
+- Multiple levels (from Bansoko)
+- Animated movement
+- Unlimited Undo system
+- Auto-advance levels
+- In-game menu
+
+**Controls:**
+
+- **Joystick/Swipe:** Move
+- **Center/Tap:** Open Menu / Select
+- **Menu Options:** Undo, Reset, Next/Prev Level
+
+**Usage:**
+
+```python
+import game_sokoban
+# Requires game_sokoban_levels.py
+```
+
+---
+
+### game_minesweeper.py
+
+**Description:** Full-featured Minesweeper clone.
+
+**Features:**
+
+- recursive flood-fill for empty areas
+- Flagging system
+- Timer and mine counter
+- Win/Loss animations
+
+**Controls:**
+
+- **Joystick:** Move cursor
+- **Button Short / Tap:** Toggle Flag
+- **Button Long / Long Press:** Reveal Tile
+- **Smiley Face:** Restart Game
+
+**Usage:**
+
+```python
+import game_minesweeper
+```
 
 ---
 
@@ -433,33 +529,6 @@ Tests for specific hardware peripherals and sensors.
 import test_hw_nav_switch
 # Press switches to see LED changes
 ```
-
----
-
-### test_espsdcard.py
-
-**Description:** SD card read/write test using espsdcard module.
-
-**Features:**
-
-- SD card mounting
-- File operations (read/write)
-- Directory listing
-- Performance testing
-
-**Usage:**
-
-```python
-import test_espsdcard
-# Requires SD card inserted
-```
-
-**Key Operations:**
-
-- Mount/unmount
-- File creation and reading
-- Directory operations
-- Error handling
 
 ---
 
@@ -580,6 +649,50 @@ import benchmark_simple_flush
 
 ---
 
+### benchmark_sdcard.py
+
+**Description:** Comparison benchmark script for testing SD card performance (Write, Read, Read-ZeroCopy).
+
+**Features:**
+
+- Write speed test (64KB chunks)
+- Read speed test (standard allocation)
+- Read speed test (zero-copy into pre-allocated buffer)
+- Detailed speed reporting in KB/s or MB/s
+
+**Usage:**
+
+```python
+import benchmark_sdcard
+# Benchmark runs automatically on import
+```
+
+**Key Operations:**
+
+- Mounting VFS with optimized settings
+- Large block file operations
+- GC management for consistent timing
+
+### benchmark_text.py
+
+**Description:** Measures text rendering performance in Single and Double Buffer modes.
+
+**Features:**
+
+- Tests multiple font sizes (8x8, 24x24, 32x48)
+- Benchmarks short vs long strings
+- Simulates vertical menu list rendering
+- Reports Characters Per Second (CPS)
+
+**Usage:**
+
+```python
+import benchmark_text
+# Results table printed to console
+```
+
+---
+
 ## Setup Instructions
 
 ### 1. Install CircuitPython
@@ -597,14 +710,14 @@ esptool.py --chip esp32s3 --port /dev/ttyACM0 write_flash 0x0 circuitpython.bin
 
 ```bash
 # Mount device as USB drive
-cp flappy_bird_clone.py /media/CIRCUITPY/code.py
+cp game_flappy_bird.py /media/CIRCUITPY/code.py
 ```
 
 **Method 2: mpremote**
 
 ```bash
 pip install mpremote
-mpremote cp flappy_bird_clone.py :code.py
+mpremote cp game_flappy_bird.py :code.py
 mpremote reset
 ```
 
@@ -612,7 +725,7 @@ mpremote reset
 
 ```bash
 pip install adafruit-ampy
-ampy --port /dev/ttyACM0 put flappy_bird_clone.py /code.py
+ampy --port /dev/ttyACM0 put game_flappy_bird.py /code.py
 ampy --port /dev/ttyACM0 reset
 ```
 
@@ -895,7 +1008,6 @@ display_y = touch_x
 ### Hardware Tests
 
 - `test_hw_nav_switch.py` - 5-way switch + RGB LED
-- `test_espsdcard.py` - SD card operations
 - `test_board_hardware.py` - Complete hardware check
 
 ### Benchmarks

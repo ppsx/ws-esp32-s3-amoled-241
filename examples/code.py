@@ -1,6 +1,5 @@
 """
 Startup menu for ESP32-S3 CircuitPython
-Displays three buttons: "Flappy Bird", "Snake", and "Exit"
 """
 
 import time

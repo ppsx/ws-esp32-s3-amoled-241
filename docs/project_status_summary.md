@@ -61,7 +61,7 @@
 ## Confirmed Constraints & Decisions
 
 - 30-line DMA ceiling on the RM690B0/ESP32-S3 path is hard hardware limit; attempts at 60+ line chunks fail and are intentionally avoided.
-- SD card pipelines remain optional: retry throttling and chunked reads prevent hard resets, but the production path favours internal flash due to reliability.
+- SD card pipelines optimized: `sdcardio` now achieves parity with native drivers (~645 KB/s) via VFS block device optimization and 20 MHz clocking.
 - Image format support limited to BMP and JPEG only; PNG was intentionally not implemented due to high PSRAM memory requirements. BMP acceleration and JPEG performance optimization remain potential enhancement targets.
 - Board-specific configuration (pins, timing, offsets) fully externalized to `mpconfigboard.h` files for easy porting to new hardware.
 

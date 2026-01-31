@@ -10,7 +10,8 @@ import os
 import time
 
 import board
-import espsdcard
+import busio
+import sdcardio
 import rm690b0
 import storage
 
@@ -25,13 +26,13 @@ display.init_display()
 display.brightness = 1.0
 print("✓ Display initialized")
 
-# 2. Initialize SD Card (Native SDMMC Interface)
-# Using espsdcard provides ~645 KB/s read speeds vs ~200 KB/s for SPI
+# 2. Initialize SD Card (Optimized sdcardio)
+# Optimized sdcardio provides ~645 KB/s read speeds (same as old espsdcard)
 print("\nInitializing SD card...")
 try:
-    sd = espsdcard.SDCard(
-        cs=board.SD_CS, miso=board.SD_MISO, mosi=board.SD_MOSI, clk=board.SD_CLK
-    )
+    spi = busio.SPI(board.SD_CLK, MOSI=board.SD_MOSI, MISO=board.SD_MISO)
+    # Explicitly set 20MHz baudrate to match ESP-IDF defaults
+    sd = sdcardio.SDCard(spi, board.SD_CS, baudrate=20000000)
     vfs = storage.VfsFat(sd)
     storage.mount(vfs, "/sd")
     print("✓ SD card mounted at /sd")

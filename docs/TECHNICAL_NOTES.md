@@ -21,6 +21,7 @@ The driver implements robust synchronization using a FreeRTOS semaphore to manag
 **Problem:** Using estimated delays (busy-waiting) creates a race condition where the CPU might write to the DMA buffer before the previous transfer completes, causing visual artifacts (tearing/corruption).
 
 **Solution:**
+
 - A binary semaphore (`transfer_done_sem`) tracks DMA status.
 - A callback (`rm690b0_on_color_trans_done`) releases the semaphore from ISR when hardware signals completion.
 - `flush_region` waits on the semaphore before reusing the transfer buffer.
@@ -52,11 +53,13 @@ The driver implements robust synchronization using a FreeRTOS semaphore to manag
 ### Circle Rendering Performance
 
 Original implementation was 39× slower due to:
+
 - Pixel-by-pixel rendering
 - Repeated function call overhead
 - No batching of operations
 
 **Solution:** Span-based rendering with framebuffer batching
+
 - Collect horizontal spans per scanline
 - Batch writes to framebuffer
 - Result: 39× performance improvement
@@ -66,6 +69,7 @@ Original implementation was 39× slower due to:
 **Issue:** Double-drawing of edges caused visual artifacts
 
 **Solution:** Careful coordinate management
+
 - Horizontal lines: y coordinate boundary handling
 - Vertical lines: x coordinate boundary handling
 - Fill operations: proper inclusive/exclusive bounds
@@ -75,6 +79,7 @@ Original implementation was 39× slower due to:
 **Previous Approach:** Optional recursive tiling into 100×100 blocks.
 
 **Updated Approach (Current):** Single-pass fill after clipping + rotation mapping
+
 - Avoids recursion overhead and repeated clip/map operations
 - Uses block-doubling (fill first row, then memcpy-doubling rows) for large fills
 - Especially beneficial for `fill_color()` and large UI background clears
@@ -84,6 +89,7 @@ Original implementation was 39× slower due to:
 **Issue:** `line()` used Bresenham in logical coordinates but wrote directly to the physical framebuffer without applying rotation mapping.
 
 **Fix:** Convert endpoints to physical coordinates before Bresenham
+
 - Prevents incorrect placement when rotation != 0
 - Prevents potential out-of-bounds writes when logical dimensions differ from physical stride
 
@@ -92,6 +98,7 @@ Original implementation was 39× slower due to:
 **Issue:** Glyph rasterizers used per-pixel bounds checks only, which is safe but wastes work for partially off-screen text.
 
 **Fix:** Early-exit + per-glyph clipping window
+
 - Skip glyphs completely off-screen
 - Only iterate visible rows/columns when partially clipped
 - Reduces per-pixel overhead near edges and for scrolling text
@@ -101,6 +108,7 @@ Original implementation was 39× slower due to:
 **Hardware Constraint:** RM690B0/ESP32-S3 requires even-pixel alignment for DMA
 
 **Solution:** PSRAM framebuffer + staging buffer
+
 1. Maintain full framebuffer in PSRAM (no alignment restrictions)
 2. Allow odd-pixel drawing at any coordinate
 3. Copy dirty regions to DMA-safe staging buffer
@@ -111,6 +119,7 @@ Original implementation was 39× slower due to:
 **Hard Limit:** ESP32-S3 LCD peripheral limited to 30 lines per DMA transfer
 
 **Impact:**
+
 - Full screen (450 lines) requires 15 DMA operations
 - Attempted 60+ line chunks fail consistently
 - This is a hardware limitation, not a driver bug
@@ -122,6 +131,7 @@ Original implementation was 39× slower due to:
 **Original Issue:** Edge replication caused artifacts
 
 **Solution:** Read from framebuffer at expanded coordinates with bounds checking
+
 - Prevents out-of-bounds access
 - Maintains proper color values at edges
 
@@ -130,6 +140,7 @@ Original implementation was 39× slower due to:
 **Issue:** Pixel-by-pixel rendering is correct but slow for full-screen images.
 
 **Fix:** Fast path for rotation=0 + clipping-aware loops
+
 - For rotation=0, copy rows directly into the framebuffer with tight loops
 - Apply RGB565 byte/bit swapping consistently
 - For other rotations, fall back to per-pixel rotated writes (correctness-first)
@@ -147,12 +158,14 @@ The project uses AI-assisted documentation.
 ### Documentation Standards
 
 **Status Markers:**
+
 - ✅ Complete/Working
 - ❌ Not supported/Not implemented
 - 🚧 In progress
 - ⚠️ Needs attention
 
 **Code Examples:**
+
 - Must be tested and working
 - Include expected output when relevant
 - Note CircuitPython version requirements
@@ -169,26 +182,25 @@ The project uses AI-assisted documentation.
 
 ## 4. Storage & I/O Considerations
 
-### SD Card - espsdcard Module
+### SD Card - Optimized sdcardio Module
 
-**Status:** ✅ **FULLY WORKING** - The native `espsdcard` module using ESP-IDF drivers provides reliable SD card access.
+**Status:** ✅ **FULLY WORKING** - The standard `sdcardio` module, when properly configured with 20 MHz clock and VFS optimization, provides reliable and fast SD card access (~645 KB/s).
 
-**Solution:** Custom `espsdcard` module replaces the unreliable `sdcardio` module with native ESP-IDF SDMMC drivers, solving all stability issues.
+**Solution:** Use `sdcardio` with `busio.SPI` and sets `baudrate=20000000`.
 
 #### Quick Start
 
 ```python
 import board
-import espsdcard
+import busio
+import sdcardio
 import storage
 
-# Initialize SD card
-sd = espsdcard.SDCard(
-    cs=board.SD_CS,
-    miso=board.SD_MISO,
-    mosi=board.SD_MOSI,
-    clk=board.SD_CLK
-)
+# Initialize SPI bus
+spi = busio.SPI(board.SD_SCK, board.SD_MOSI, board.SD_MISO)
+
+# Initialize SD card (20 MHz is critical for stability/speed optimal point)
+sd = sdcardio.SDCard(spi, board.SD_CS, baudrate=20000000)
 
 # Mount filesystem
 vfs = storage.VfsFat(sd)
@@ -198,14 +210,13 @@ storage.mount(vfs, "/sd")
 with open("/sd/image.bmp", "rb") as f:
     data = f.read()
 
-# Always cleanup when done
-storage.umount("/sd")
-sd.deinit()
+# Note: Unmounting is typically not needed in main loop for embedded apps
 ```
 
 #### Best Practices
 
 **Reading Files:**
+
 - **Optimal chunk size:** 64KB for `read()`, 256KB-1MB for `readinto()` with pre-allocated buffers
 - **Performance:** ~645 KB/s with pre-allocated buffers, ~610 KB/s with standard reads
 - **For images:** Pre-allocate buffer of exact file size, use `readinto()` for best performance
@@ -217,12 +228,12 @@ buffer = bytearray(size)
 with open("/sd/image.bmp", "rb") as f:
     offset = 0
     while offset < size:
-        bytes_read = f.readinto(memoryview(buffer)[offset:offset + 1048576])
+        bytes_read = f.readinto(memoryview(buffer)[offset:offset + 65536])
         if bytes_read is None or bytes_read == 0:
             break
         offset += bytes_read
 
-# Standard method: Chunked reading (610 KB/s)
+# Standard method: Chunked reading
 chunks = []
 with open("/sd/image.bmp", "rb") as f:
     while True:
@@ -233,35 +244,31 @@ with open("/sd/image.bmp", "rb") as f:
 data = b"".join(chunks)
 ```
 
-**Writing Files:**
-- Write speed: ~134-199 KB/s
-- Always explicitly `deinit()` the SD card object after unmounting
+**Writes:**
 
-**Context Manager:**
+- Always ensure `baudrate=20000000` is used during initialization.
+
+**Common Pattern:**
+
 ```python
-# Automatic cleanup
-with espsdcard.SDCard(cs=board.SD_CS, miso=board.SD_MISO, 
-                       mosi=board.SD_MOSI, clk=board.SD_CLK) as sd:
-    vfs = storage.VfsFat(sd)
-    storage.mount(vfs, "/sd")
-    # Use SD card
-    storage.umount("/sd")
-# sd.deinit() called automatically
+# Setup helper
+def mount_sd():
+    try:
+        spi = busio.SPI(board.SD_SCK, board.SD_MOSI, board.SD_MISO)
+        sd = sdcardio.SDCard(spi, board.SD_CS, baudrate=20000000)
+        vfs = storage.VfsFat(sd)
+        storage.mount(vfs, "/sd")
+        return True
+    except OSError:
+        return False
 ```
 
 **Key Features:**
-- ✅ Reliable reads/writes (no random I/O errors)
-- ✅ File reopening works correctly
-- ✅ Seek operations fully supported
-- ✅ Multiple file access patterns
-- ✅ Proper resource cleanup
-- ✅ 100% API compatible with `sdcardio`
 
-**Migration from sdcardio:**
-```python
-# Just change the import - code stays the same!
-import espsdcard as sdcardio  # Drop-in replacement
-```
+- ✅ Reliable reads/writes with standard CircuitPython API
+- ✅ No custom modules required
+- ✅ ~645 KB/s read speed (parity with native drivers)
+- ✅ Compatible with standard libraries
 
 ### Flash vs PSRAM vs SD Card Storage
 
@@ -269,16 +276,18 @@ import espsdcard as sdcardio  # Drop-in replacement
 |---------|-----------|-------------|------|----------|
 | Internal Flash | Fast, reliable | Slow (wear) | ~3-4 MB usable | Small images, fonts, critical assets |
 | PSRAM | Very fast | Very fast | ~6-8 MB usable | Runtime buffers, image cache, framebuffer |
-| SD Card (espsdcard) | 645 KB/s (readinto)<br>610 KB/s (read) | ~134-199 KB/s | Limited by card | Large assets, user files, logs |
+| SD Card (sdcardio) | 645 KB/s (readinto)<br>610 KB/s (read) | ~134-199 KB/s | Limited by card | Large assets, user files, logs |
 
 ### Image Loading Pipeline
 
 **Optimal Strategy:**
+
 1. **Small images (<100KB):** Load from flash directly
 2. **Medium images (<1MB):** Load from SD card to PSRAM cache using pre-allocated buffer
 3. **Large images (>1MB):** Stream from SD card in chunks or pre-load to PSRAM
 
-**SD Card Loading (espsdcard):**
+**SD Card Loading (sdcardio):**
+
 ```python
 # For display: load entire image to buffer
 size = os.stat("/sd/image.bmp")[6]
@@ -296,14 +305,17 @@ with open("/sd/image.bmp", "rb") as f:
 ### File Format Recommendations
 
 **For Speed:**
+
 - RAW RGB565 (no decode overhead, direct DMA to display)
 - Pre-converted and stored in flash, PSRAM, or SD card
 
 **For Size:**
+
 - JPEG (10-20× compression, hardware decoder on ESP32-S3, ideal for SD card)
 - BMP (simple format, works well with SD card streaming)
 
 **Storage Strategy:**
+
 - **Flash:** Critical UI elements, small icons (<100KB)
 - **PSRAM:** Active framebuffers, frequently used images
 - **SD Card:** Large image library, user content, logs
@@ -323,16 +335,19 @@ with open("/sd/image.bmp", "rb") as f:
 ### ESP32-S3 Considerations
 
 **PSRAM:**
+
 - Available: ~8 MB
 - Access: Slightly slower than internal RAM but acceptable
 - Best for: Framebuffers, image caches, large allocations
 
 **DMA:**
+
 - Requires internal RAM for DMA operations
 - Cannot DMA directly from PSRAM
 - Solution: Staging buffer in DMA-capable memory
 
 **LCD Peripheral:**
+
 - 30-line transfer limit (hardware constraint)
 - 80 MHz QSPI clock maximum (tested stable)
 - 32-bit command mode for RM690B0
@@ -342,20 +357,24 @@ with open("/sd/image.bmp", "rb") as f:
 **Resolution:** 600×450 (landscape) or 450×600 (portrait)
 
 **Pixel Format:** RGB565 only
+
 - 2 bytes per pixel
 - Full framebuffer: 600×450×2 = 540,000 bytes (~527 KB)
 
 **Command Mode:** QSPI with 32-bit commands
+
 - Quad mode flag must be set
 - Commands are 32-bit, parameters are 8-bit
 - DC pin not used in QSPI mode
 
 **Timing Requirements:**
+
 - Minimum 50µs between small operations
 - Scale up to 500µs for large transfers
 - Hardware processing time is non-negotiable
 
 **Y-Gap:** 16-pixel offset for Waveshare board
+
 - Manufacturer calibration quirk
 - Must be applied to all Y coordinates
 - Configurable via `CIRCUITPY_RM690B0_Y_GAP`
@@ -369,6 +388,7 @@ with open("/sd/image.bmp", "rb") as f:
 **Cause:** DMA transfer buffer reuse before the previous transfer completes (race condition).
 
 **Solution:** Semaphore-based DMA synchronization
+
 - A binary semaphore tracks when the last DMA transfer is complete
 - The LCD IO completion callback releases the semaphore from ISR
 - The flush loop waits on the semaphore before reusing the DMA staging buffer
@@ -378,21 +398,24 @@ with open("/sd/image.bmp", "rb") as f:
 **Cause:** Excessive per-operation overhead when flushing many tiny regions.
 
 **Solution:**
+
 - Prefer batching operations (draw into framebuffer first, flush once via `swap_buffers()` in double-buffer mode)
 - Reduce flush frequency for many tiny updates (group UI updates per frame/tick)
 - Semaphore-based synchronization prevents corruption without relying on arbitrary delays
 
 ### Issue: SD Card Access
 
-**Solution:** Use the `espsdcard` module (native ESP-IDF drivers) instead of `sdcardio`
+**Solution:** Use standard `sdcardio` with `baudrate=20000000` (20 MHz).
 
 **Common Issues:**
+
 - **File not found:** Check filepath includes `/sd/` prefix
 - **Slow performance:** Use pre-allocated buffers with `readinto()` (645 KB/s vs 610 KB/s)
 - **Memory errors:** Use chunked reading for files >1MB
 - **Reinitialization fails:** Always call `sd.deinit()` before creating new SD card object
 
 **Best Practices:**
+
 - Use 64KB chunks for `read()`, 256KB-1MB for `readinto()`
 - Pre-allocate buffers for best performance
 - Always cleanup with `deinit()` or use context manager
@@ -402,6 +425,7 @@ with open("/sd/image.bmp", "rb") as f:
 **Cause:** Attempting to DMA from odd addresses or PSRAM
 
 **Solution:**
+
 - Maintain framebuffer in PSRAM (no restrictions)
 - Use staging buffer in DMA-capable memory
 - Copy dirty regions before flush
@@ -456,6 +480,7 @@ Trying to allocate 58.6 KB chunk → FAILS (no single block large enough)
 ### Driver Optimization Applied
 
 **Original Configuration:**
+
 ```c
 // Before (line 93):
 #define RM690B0_MAX_CHUNK_PIXELS   (LCD_H_RES * 50)
@@ -464,6 +489,7 @@ Trying to allocate 58.6 KB chunk → FAILS (no single block large enough)
 ```
 
 **Optimized Configuration:**
+
 ```c
 // After (line 93):
 #define RM690B0_MAX_CHUNK_PIXELS   (LCD_H_RES * 20)
@@ -472,12 +498,14 @@ Trying to allocate 58.6 KB chunk → FAILS (no single block large enough)
 ```
 
 **Benefits:**
+
 - **2.5× smaller allocation** (23.4 KB vs 58.6 KB)
 - Much higher probability of finding contiguous block
 - Reduces fragmentation pressure
 - More room for Python heap growth
 
 **Trade-offs:**
+
 - Slightly more DMA transfers per flush (2-3× more)
 - Each transfer has overhead (~50µs setup)
 - Net performance impact: **minimal** (~0.7ms per full frame)
@@ -487,6 +515,7 @@ Trying to allocate 58.6 KB chunk → FAILS (no single block large enough)
 **Full Screen Flush (600×450):**
 
 Before (50 lines/chunk):
+
 ```
 Chunks needed: 450 / 50 = 9 chunks
 Setup overhead: 9 × 50µs = 0.45ms
@@ -495,6 +524,7 @@ TOTAL: ~8.5ms
 ```
 
 After (20 lines/chunk):
+
 ```
 Chunks needed: 450 / 20 = 23 chunks  
 Setup overhead: 23 × 50µs = 1.15ms
@@ -505,6 +535,7 @@ TOTAL: ~9.2ms
 **Impact:** +0.7ms per full flush (~8% slower)
 
 **Typical Game Frame (dirty regions):**
+
 ```
 Most frames don't flush full screen.
 Small regions (e.g., 100×100) still fit in one chunk.
@@ -514,6 +545,7 @@ IMPACT: NONE for typical usage
 ### Prevention Strategies for Developers
 
 1. **Strategic Garbage Collection:**
+
    ```python
    import gc
    
@@ -525,6 +557,7 @@ IMPACT: NONE for typical usage
    ```
 
 2. **Minimize Allocations in Game Loop:**
+
    ```python
    # Bad - creates new objects every frame
    def update():
@@ -541,6 +574,7 @@ IMPACT: NONE for typical usage
    ```
 
 3. **Batch Drawing Operations:**
+
    ```python
    # Inefficient - many Python→C calls
    for tile in 868_tiles:
@@ -551,6 +585,7 @@ IMPACT: NONE for typical usage
    ```
 
 4. **Avoid Premature Buffer Activation:**
+
    ```python
    # Don't do this
    display.init_display()
@@ -564,16 +599,20 @@ IMPACT: NONE for typical usage
 ### Alternative Solutions Considered
 
 **1. Use SPIRAM for chunk_buffer** ❌
+
 - Problem: DMA can't transfer from SPIRAM (hardware limitation)
 
 **2. Static buffer** ❌
+
 - Problem: Wastes 58.6 KB even when display not used
 
 **3. Reduce to 10 lines** ❓
+
 - Trade-off: Even safer but 4-5× more transfers
 - Verdict: 20 lines is optimal balance
 
 **4. Graceful degradation** 🔄
+
 - Future consideration: Try 20, then 10, then 5 lines if allocation fails
 
 ### Verification Test
@@ -637,6 +676,7 @@ make BOARD=waveshare_esp32s3_amoled_241
 ### Long-term Recommendations
 
 1. **Make chunk size configurable:**
+
    ```c
    #ifndef RM690B0_CHUNK_LINES
    #define RM690B0_CHUNK_LINES 20
@@ -644,6 +684,7 @@ make BOARD=waveshare_esp32s3_amoled_241
    ```
 
 2. **Add DMA memory diagnostic:**
+
    ```c
    size_t dma_free = heap_caps_get_free_size(MALLOC_CAP_DMA);
    size_t dma_largest = heap_caps_get_largest_free_block(MALLOC_CAP_DMA);
@@ -651,6 +692,7 @@ make BOARD=waveshare_esp32s3_amoled_241
    ```
 
 3. **Implement graceful degradation:**
+
    ```c
    // Try 20 lines, then 10, then 5, then 1
    for (int lines = 20; lines >= 1; lines /= 2) {
@@ -671,33 +713,38 @@ make BOARD=waveshare_esp32s3_amoled_241
 ## 8. Future Optimization Opportunities
 
 ### Short Term
+
 - [ ] Profile BMP decoder for optimization opportunities
 - [ ] Implement zero-copy paths where possible
 - [ ] Tune JPEG decoder parameters for speed/quality tradeoff
 - [ ] Add performance counters for profiling
 
 ### Medium Term
+
 - [ ] Investigate DMA chaining to reduce overhead
 - [ ] Test higher SPI clock frequencies (>80 MHz)
 - [ ] Implement image format detection/auto-conversion
 - [ ] Add streaming decode for large images
 
 ### Long Term
+
 - [ ] Video playback feasibility study
 - [ ] Multi-buffer strategies for animation
 
 ---
 
-## 8. Testing & Validation
+## 9. Testing & Validation
 
 ### Performance Testing
 
 **Tools:**
+
 - `time.monotonic_ns()` for microsecond precision
 - Custom benchmark scripts in `test_scripts/`
 - Memory profiling with `gc.mem_free()`
 
 **Test Cases:**
+
 - Single pixel rendering
 - Line drawing (horizontal, vertical, diagonal)
 - Rectangles (filled and outlined)
@@ -708,12 +755,14 @@ make BOARD=waveshare_esp32s3_amoled_241
 ### Memory Testing
 
 **Stress Tests:**
+
 - Repeated large allocations
 - Fragmentation scenarios
 - PSRAM limit testing
 - GC behavior under load
 
 **Monitoring:**
+
 - Track free memory before/after operations
 - Detect memory leaks (baseline comparison)
 - Measure peak memory usage
@@ -721,6 +770,7 @@ make BOARD=waveshare_esp32s3_amoled_241
 ### Visual Validation
 
 **Artifact Checks:**
+
 - Edge cases (0,0 and max coordinates)
 - Odd/even pixel boundaries
 - Color accuracy (known test patterns)
@@ -728,7 +778,7 @@ make BOARD=waveshare_esp32s3_amoled_241
 
 ---
 
-## 9. Development Tips
+## 10. Development Tips
 
 ### Debugging Display Issues
 
@@ -764,11 +814,12 @@ print(f"Memory used: {before - after} bytes")
 
 ---
 
-## 10. Touch-Display Integration
+## 11. Touch-Display Integration
 
 ### Architecture Overview
 
 The Waveshare ESP32-S3-Touch-AMOLED-2.41 integrates two independent controllers:
+
 - **RM690B0 Display Controller:** QSPI-connected AMOLED (600×450 landscape)
 - **FT6336U Touch Controller:** I2C-connected capacitive touch (450×600 portrait)
 
@@ -795,6 +846,7 @@ These controllers operate independently with separate communication buses and no
 #### Touch Pins (FT6336U via I2C)
 
 Touch controller shares the board's main I2C bus:
+
 - **I2C Address:** 0x38
 - **SCL:** GPIO48 (shared with RTC, IMU, I/O expander)
 - **SDA:** GPIO47 (shared with RTC, IMU, I/O expander)
@@ -991,6 +1043,7 @@ display.swap_buffers()
 #### Recommended Polling Strategy
 
 **Option 1: Continuous Polling (Best for Drawing)**
+
 ```python
 while True:
     if touch.touched:
@@ -1001,6 +1054,7 @@ while True:
 ```
 
 **Option 2: Event-Based (Best for UI)**
+
 ```python
 while True:
     if touch.touched:
@@ -1024,11 +1078,13 @@ while True:
 #### Bus Conflicts
 
 **I2C Bus Sharing (Touch + RTC + IMU + I/O Expander):**
+
 - No conflicts—I2C handles multi-device arbitration
 - Each device has unique address (Touch: 0x38)
 - Sequential access is automatically managed
 
 **Display QSPI:**
+
 - Completely independent from I2C
 - No interference with touch operations
 
@@ -1114,7 +1170,7 @@ while True:
 
 ---
 
-## 11. Text Rendering System
+## 12. Text Rendering System
 
 ### Status: ✅ IMPLEMENTED
 
@@ -1125,6 +1181,7 @@ while True:
 The RM690B0 driver includes a native text rendering system with 7 built-in bitmap fonts, providing fast, lightweight text display without LVGL or TTF dependencies.
 
 **Key Features:**
+
 - 7 embedded fonts: 8×8, 16×16, 16×24, 24×24, 24×32, 32×32, 32×48 pixels
 - Row-based bitmap format (MSB-first horizontal rendering)
 - ASCII character set (0x20-0x7E, 95 characters)
@@ -1144,6 +1201,7 @@ The RM690B0 driver includes a native text rendering system with 7 built-in bitma
 ### API Design
 
 **Basic Usage:**
+
 ```python
 import rm690b0
 
@@ -1169,6 +1227,7 @@ display.text(10, 420, "Status: OK", color=rm690b0.GREEN)
 ```
 
 **Available Font IDs:**
+
 - `0` = 8×8 pixels (smallest, ~760 bytes)
 - `1` = 16×16 pixels (Liberation Sans, ~30 KB)
 - `2` = 16×24 pixels (Liberation Mono Bold, ~45 KB)
@@ -1176,6 +1235,7 @@ display.text(10, 420, "Status: OK", color=rm690b0.GREEN)
 - `4` = 24×32 pixels (~91 KB)
 - `5` = 32×32 pixels (~121 KB)
 - `6` = 32×48 pixels (largest, ~182 KB)
+
 ```
 
 ### Bitmap Font Format
@@ -1189,6 +1249,7 @@ display.text(10, 420, "Status: OK", color=rm690b0.GREEN)
 
 **Example: 16×16 Character**
 ```
+
 Width: 16 pixels → 2 bytes per row
 Height: 16 rows
 Total: 32 bytes per character
@@ -1202,6 +1263,7 @@ Row storage:
 Bit layout per row:
 byte0: [7][6][5][4][3][2][1][0] = pixels 0-7 (left)
 byte1: [7][6][5][4][3][2][1][0] = pixels 8-15 (right)
+
 ```
 
 **C Array Format:**
@@ -1218,6 +1280,7 @@ static const uint8_t rm690b0_font_16x16_data[95][32] = {
 ### Implementation Details
 
 **Font Selection Flow:**
+
 ```
 1. User: display.set_font(1)  # Select 16×16 font
    ↓
@@ -1240,6 +1303,7 @@ static const uint8_t rm690b0_font_16x16_data[95][32] = {
 ```
 
 **C Rendering Functions:**
+
 ```c
 // Font selection
 void common_hal_rm690b0_rm690b0_set_font(
@@ -1270,6 +1334,7 @@ static void rm690b0_draw_glyph_32x48(...);
 ### Quick Start Examples
 
 **Basic Text Rendering:**
+
 ```python
 import rm690b0
 
@@ -1291,6 +1356,7 @@ display.swap_buffers()
 ```
 
 **Complete Example:**
+
 ```python
 import rm690b0
 import gc
@@ -1355,6 +1421,7 @@ Render UTF-8 text string at specified coordinates.
 - **Performance:** 0.3-7.7 ms for "Hello World" depending on font size
 
 **Examples:**
+
 ```python
 # Transparent white text
 display.text(10, 10, "Hello", color=rm690b0.WHITE)
@@ -1372,36 +1439,43 @@ display.text(10, 130, "Custom", color=rm690b0.GREEN, background=rm690b0.BLUE)
 ### Built-in Fonts
 
 **Font 0: 8×8 Monospace (ID=0)**
+
 - Size: 8×8 pixels, ~760 bytes
 - Source: Basic fixed-width bitmap font
 - Use: Debug output, status bars, dense information
 
 **Font 1: 16×16 Liberation Sans (ID=1)**
+
 - Size: 16×16 pixels, ~30 KB
 - Source: Liberation Sans (converted from TTF)
 - Use: Standard UI text, readable content, menus
 
 **Font 2: 16×24 Liberation Mono Bold (ID=2)**
+
 - Size: 16×24 pixels, ~45 KB
 - Source: Liberation Mono Bold (converted from TTF)
 - Use: Code display, terminal text, monospace needs
 
 **Font 3: 24×24 Monospace (ID=3)**
+
 - Size: 24×24 pixels, ~68 KB
 - Source: Liberation Sans 24pt (converted from TTF)
 - Use: Headers, prominent labels
 
 **Font 4: 24×32 Monospace (ID=4)**
+
 - Size: 24×32 pixels, ~91 KB
 - Source: Custom tall font
 - Use: Tall text displays
 
 **Font 5: 32×32 Monospace (ID=5)**
+
 - Size: 32×32 pixels, ~121 KB
 - Source: Large display font
 - Use: Digital displays, large headers
 
 **Font 6: 32×48 Monospace (ID=6)**
+
 - Size: 32×48 pixels, ~182 KB
 - Source: Largest display font
 - Use: Maximum readability, clock displays
@@ -1411,6 +1485,7 @@ display.text(10, 130, "Custom", color=rm690b0.GREEN, background=rm690b0.BLUE)
 ### Features
 
 **Implemented (Phase 5 Complete):**
+
 - ✅ 7 built-in fonts (8×8 to 32×48)
 - ✅ `set_font(id)` method for font selection
 - ✅ `text(x, y, str, color, bg)` method
@@ -1424,6 +1499,7 @@ display.text(10, 130, "Custom", color=rm690b0.GREEN, background=rm690b0.BLUE)
 - ✅ Independent from LVGL
 
 **Future Enhancements:**
+
 - Extended character sets (Latin-1, Unicode blocks)
 - Variable-width fonts (proportional spacing)
 - Anti-aliased fonts (grayscale rendering)
@@ -1434,6 +1510,7 @@ display.text(10, 130, "Custom", color=rm690b0.GREEN, background=rm690b0.BLUE)
 ### Performance Characteristics
 
 **Rendering Speed (per character):**
+
 - 8×8 font: ~20-40 μs/char (64 pixels)
 - 16×16 font: ~80-120 μs/char (256 pixels)
 - 24×24 font: ~180-250 μs/char (576 pixels)
@@ -1441,6 +1518,7 @@ display.text(10, 130, "Custom", color=rm690b0.GREEN, background=rm690b0.BLUE)
 - 32×48 font: ~480-700 μs/char (1536 pixels)
 
 **Typical String Performance:**
+
 - "Hello World" (11 chars):
   - 8×8: ~0.3-0.4 ms
   - 16×16: ~1.0-1.3 ms
@@ -1448,12 +1526,14 @@ display.text(10, 130, "Custom", color=rm690b0.GREEN, background=rm690b0.BLUE)
   - 32×48: ~5.3-7.7 ms
 
 **Memory Usage:**
+
 - Runtime: Minimal (static font arrays in flash)
 - No heap allocations during rendering
 - No font caching overhead
 - Stack usage: <200 bytes per text() call
 
 **Comparison:**
+
 - Native text: 0.3-7.7 ms for "Hello World"
 - LVGL text: 5-20 ms (with full UI overhead)
 - DisplayIO text: 50-200 ms (full layer composition)
@@ -1466,6 +1546,7 @@ display.text(10, 130, "Custom", color=rm690b0.GREEN, background=rm690b0.BLUE)
 Converts any TrueType font to RM690B0 bitmap format.
 
 **Features:**
+
 - Any TTF font file as input
 - Configurable character dimensions (WxH pixels)
 - Supports non-square sizes (e.g., 16×12, 24×32)
@@ -1476,6 +1557,7 @@ Converts any TrueType font to RM690B0 bitmap format.
 - Generates C header files
 
 **Usage Examples:**
+
 ```bash
 # Basic conversion
 python ttf_to_rm690b0.py font.ttf -w 16 -t 16 -o font_16x16.h
@@ -1491,6 +1573,7 @@ python ttf_to_rm690b0.py font.ttf -w 16 -t 24 --start 0x30 --end 0x39 -o digits.
 ```
 
 **Conversion Options:**
+
 - `-w WIDTH` or `--width WIDTH` — Character width in pixels (required)
 - `-t HEIGHT` or `--height HEIGHT` — Character height in pixels (required)
 - `-o OUTPUT` or `--output OUTPUT` — Output header file path (required)
@@ -1502,6 +1585,7 @@ python ttf_to_rm690b0.py font.ttf -w 16 -t 24 --start 0x30 --end 0x39 -o digits.
 - `--preview CHAR` — Preview character as ASCII art
 
 **Advanced Examples:**
+
 ```bash
 # Large font (32×32)
 python ttf_to_rm690b0.py font.ttf -w 32 -t 32 -o font_32x32.h
@@ -1535,6 +1619,7 @@ python test_converted_font.py font_16x16.h --all
 ```
 
 **Integration Workflow:**
+
 1. Convert TTF: `python ttf_to_rm690b0.py font.ttf -w 20 -t 20 -o font_20x20.h`
 2. Validate: `python test_converted_font.py font_20x20.h --char A`
 3. Copy to driver: `cp font_20x20.h .../common-hal/rm690b0/fonts/`
@@ -1545,13 +1630,15 @@ python test_converted_font.py font_16x16.h --all
 ### Font Resources
 
 **Where to Find TTF Fonts:**
-- Google Fonts: https://fonts.google.com (free, open source)
-- Font Squirrel: https://www.fontsquirrel.com (free for commercial)
+
+- Google Fonts: <https://fonts.google.com> (free, open source)
+- Font Squirrel: <https://www.fontsquirrel.com> (free for commercial)
 - System fonts: `/usr/share/fonts/truetype/` (Linux)
 - Liberation Fonts: SIL OFL licensed (used in built-in fonts)
 - DejaVu Fonts: Free, extended character support
 
 **Recommended Open-Source Fonts:**
+
 - Liberation Sans/Serif/Mono (Arial/Times/Courier alternatives)
 - DejaVu Sans/Serif/Mono (extended Unicode)
 - Noto Sans (multi-language support)
@@ -1560,6 +1647,7 @@ python test_converted_font.py font_16x16.h --all
 - Ubuntu Font Family (contemporary design)
 
 **Font Licensing:**
+
 - Ensure TTF font license allows embedding/distribution
 - Common open licenses: SIL OFL 1.1, Apache 2.0, GPL
 - Liberation Fonts: SIL OFL (free use, attribution required)
@@ -1570,6 +1658,7 @@ python test_converted_font.py font_16x16.h --all
 RM690B0 fonts use a **row-based bitmap format** optimized for horizontal rendering:
 
 **Key Characteristics:**
+
 - Horizontal orientation (scan rows left-to-right)
 - 1 bit per pixel (monochrome)
 - Byte-aligned rows (padded to whole bytes)
@@ -1577,6 +1666,7 @@ RM690B0 fonts use a **row-based bitmap format** optimized for horizontal renderi
 - Fixed-width fonts (each character same width)
 
 **Storage Layout:**
+
 ```c
 static const uint8_t rm690b0_font_16x16_data[95][32] = {
     // Character 0x20 (space)
@@ -1590,17 +1680,20 @@ static const uint8_t rm690b0_font_16x16_data[95][32] = {
 ```
 
 **Bit Ordering:**
+
 - MSB = leftmost pixel in row
 - LSB = rightmost pixel
 - Example: `0xC3` = `11000011` = `██    ██` (2 pixels on, 4 off, 2 on)
 
 **Character Indexing:**
+
 - Array index = `codepoint - 0x20`
 - Example: 'A' (0x41) → array index 0x41 - 0x20 = 33
 
 ### Native Text vs LVGL Text
 
 **Native Text (rm690b0.text()):**
+
 - ✅ Lightweight (no framework overhead)
 - ✅ Fast rendering (microseconds per character)
 - ✅ 7 built-in fonts (no file loading)
@@ -1612,6 +1705,7 @@ static const uint8_t rm690b0_font_16x16_data[95][32] = {
 - **Use for:** Debug output, status text, simple labels, performance-critical text
 
 **LVGL Text (rm690b0_lvgl.Label):**
+
 - ✅ Rich text features (alignment, wrapping)
 - ✅ TTF font support (any size, style)
 - ✅ Dynamic layout and styling
@@ -1623,6 +1717,7 @@ static const uint8_t rm690b0_font_16x16_data[95][32] = {
 - **Use for:** Complex UIs, rich text, interactive applications, TTF fonts
 
 **Both Can Coexist:**
+
 ```python
 import rm690b0
 import rm690b0_lvgl
@@ -1651,6 +1746,7 @@ lvgl.task_handler()
 ```
 
 **Choose Based On Needs:**
+
 - Simple status/debug text → Native text API
 - Complex interactive UI → LVGL
 - Mix both for optimal performance + features

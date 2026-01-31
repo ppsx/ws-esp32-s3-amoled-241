@@ -50,8 +50,8 @@ current_status:
   display_driver: Production-ready for standalone rendering with native text support (rm690b0)
   native_text: ✅ COMPLETE - 7 built-in bitmap fonts (8x8 to 32x48), set_font(id) + text(x,y,str,color,bg) API, TTF conversion toolchain
   lvgl_integration: Feature-complete, but NOT production-ready - known critical bug - LVGL + touch can become unresponsive under GC pressure (frequent gc.collect() / large heap allocations like TTF). Supports dynamic theme switching (Light/Dark) with pure black AMOLED background.
-  sd_card: ✅ SOLVED - espsdcard module provides reliable SD card access using native ESP-IDF drivers
-  esp_modules: espnow enabled, espcamera disabled, espulp available, espidf enabled, espsdcard enabled
+  sd_card: ✅ SOLVED - optimized `sdcardio` module provides reliable SD card access (~645KB/s) utilizing native ESP-IDF drivers via VFS
+  esp_modules: espnow enabled, espcamera disabled, espulp available, espidf enabled, espsdcard removed
   next_milestone: Phase 6 - Documentation, Stability & Widget Library Expansion (Slider, Checkbox, Switch, etc.)
 
 major_task:
@@ -63,7 +63,7 @@ implementation_plan_summary:
   - ✅ ESP-IDF vendor panel (`esp_lcd_rm690b0.c`) mirrored into the board support package with QSPI command wrapping and MADCTL handling.
   - ✅ `common-hal/rm690b0` driver allocates DMA-safe frame buffers with double-buffering support, proxies `esp_lcd_panel_draw_bitmap`, and exposes fill/line/rect primitives plus rotation and brightness control.
   - ✅ `shared-bindings/rm690b0` module surfaces the Python API for drawing primitives, rotation, and brightness control.
-  - ✅ SD card support: Native `espsdcard` module provides reliable 645 KB/s reads with pre-allocated buffers, solving all previous sdcardio stability issues.
+  - ✅ SD card support: Optimized `sdcardio` module achieves ~645 KB/s parity with native drivers by using 64KB transfer chunks and 20MHz clock. `espsdcard` module removed.
   - ✅ LVGL v8.x library compiled and integrated into CircuitPython firmware.
   - ✅ LVGL display driver with flush callback using existing RM690B0 DMA paths, rendering at 100+ FPS with zero artifacts.
   - ✅ LVGL touch input driver with automatic portrait→landscape coordinate transformation for FT6336U.
@@ -76,14 +76,47 @@ implementation_plan_summary:
   - ✅ Phase 6 Tasks: Create Getting Started guides, expand widget library with 9-13 additional widgets (Slider, Checkbox, Switch, Arc, Bar, Image, Textarea, Dropdown, Roller, Panel, Tabview, Spinner, Chart).
 
 issues_solved:
-  - { name: 32-bit QSPI command framing, id: qspi_cmd_width, solution: Uses `esp_lcd_panel_io_spi` with `lcd_cmd_bits=32` and quad mode }
-  - { name: Initialization timing, id: init_sequence, solution: Ported proven RM690B0 command table with per-step delays }
-  - { name: Column/row offsets, id: address_windows, solution: Adds configurable X/Y gap tracking inside the panel driver }
-  - { name: BGR color swap, id: color_swap, solution: Adjusts MADCTL and swaps green/blue channels before transfers }
-  - { name: Even-pixel DMA requirement, id: dma_alignment, solution: PSRAM framebuffer with aligned flushes preserves odd-pixel updates while satisfying DMA }
-  - { name: Sparse line rendering artifacts, id: padding_artifacts, solution: Modified vertical and horizontal padding to read from framebuffer at expanded coordinates instead of duplicating edge pixels }
-  - { name: Right edge artifacts, id: bounds_checking, solution: Added bounds checking to horizontal padding loops to prevent out-of-bounds framebuffer access }
-  - { name: Hardware timing artifacts, id: timing_delay, solution: Implemented adaptive delay formula (pixels_transferred / 36, minimum 50µs) that scales with transfer size to prevent color mixing }
+  - {
+      name: 32-bit QSPI command framing,
+      id: qspi_cmd_width,
+      solution: Uses `esp_lcd_panel_io_spi` with `lcd_cmd_bits=32` and quad mode,
+    }
+  - {
+      name: Initialization timing,
+      id: init_sequence,
+      solution: Ported proven RM690B0 command table with per-step delays,
+    }
+  - {
+      name: Column/row offsets,
+      id: address_windows,
+      solution: Adds configurable X/Y gap tracking inside the panel driver,
+    }
+  - {
+      name: BGR color swap,
+      id: color_swap,
+      solution: Adjusts MADCTL and swaps green/blue channels before transfers,
+    }
+  - {
+      name: Even-pixel DMA requirement,
+      id: dma_alignment,
+      solution: PSRAM framebuffer with aligned flushes preserves odd-pixel updates while satisfying DMA,
+    }
+  - {
+      name: Sparse line rendering artifacts,
+      id: padding_artifacts,
+      solution: Modified vertical and horizontal padding to read from framebuffer at expanded coordinates instead of duplicating edge pixels,
+    }
+  - {
+      name: Right edge artifacts,
+      id: bounds_checking,
+      solution: Added bounds checking to horizontal padding loops to prevent out-of-bounds framebuffer access,
+    }
+  - {
+      name: Hardware timing artifacts,
+      id: timing_delay,
+      solution: Implemented adaptive delay formula (pixels_transferred / 36,
+      minimum 50µs) that scales with transfer size to prevent color mixing,
+    }
 
 working_features:
   rm690b0_module:
