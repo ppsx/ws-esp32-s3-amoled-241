@@ -129,7 +129,7 @@ working_features:
     - API now exposes runtime getters for rotation, size, and brightness, enabling external validation scripts without baked-in tests.
     - PSRAM-backed framebuffer mirrors the panel so odd-pixel drawing and bitmap uploads preserve neighbours while still aligning DMA writes.
     - Single-pixel precision rendering at any coordinate (odd or even) without artifacts.
-    - Image conversion supports BMP and JPEG formats; JPEG decoding on ESP32-S3 uses ESP-IDF's hardware-accelerated `esp_jpeg` decoder.
+    - Image conversion via `convert_bmp` (C optimized) and `jpegio` (hardware accelerated), supporting direct byte-swapped output.
     - Double-buffering with `swap_buffers()` enables flicker-free updates and smooth animations.
     - Adaptive hardware timing delay ensures clean rendering at all operation sizes (50µs for small operations, 500µs for large bitmaps).
     - "Native text rendering: `set_font(id)` selects from 7 built-in fonts (0=8x8, 1=16x16, 2=16x24, 3=24x24, 4=24x32, 5=32x32, 6=32x48)."
@@ -160,7 +160,7 @@ limitations:
   - Widget library currently limited to 3 widgets (Widget, Label, Button); 9-13 additional widgets planned for Phase 6.
   - No Getting Started guides yet; documentation in progress.
   - "`board.DISPLAY` auto-initialization not implemented (manual initialization required)."
-  - "`blit_buffer()` assumes RGB565 sources; developers must pre-convert assets (the new JPEG loader handles this only on ESP32 when explicitly invoked)."
+  - "`blit_buffer()` supports standard RGB565; for best performance with `convert_bmp` or `jpegio`, use `dest_is_swapped=True`."
   - JPEG decode depends on ESP-IDF's `esp_jpeg` decoder; non-ESP builds currently return `IMG_ERR_UNSUPPORTED`.
   - Adaptive delay adds minimum 50µs overhead per operation (acceptable for most use cases).
   - "LVGL + touch stability under GC pressure: frequent `gc.collect()` in the UI loop or heavy heap allocations (e.g. TTF fonts) can cause touch/LVGL to stop responding; known bug in the current port. Workaround: avoid explicit `gc.collect()` in the main loop and load large assets early."

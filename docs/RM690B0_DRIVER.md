@@ -873,83 +873,73 @@ The RM690B0 driver supports loading and displaying BMP and JPEG images.
 
 **Supported Formats:**
 
-- ✅ BMP: 24-bit RGB (uncompressed)
-- ✅ JPEG: Hardware-accelerated decoding (ESP32-S3 JPEG engine)
+- ✅ BMP: 24-bit RGB (converted to 16-bit RGB565 via `convert_bmp`)
+- ✅ JPEG: Hardware-accelerated decoding (via `jpegio`)
 
-### `blit_bmp(x, y, bmp_data)`
+### `convert_bmp(bmp_data, destination_bitmap)`
 
-Display BMP image from memory.
+Converts 24-bit BMP data to a 16-bit RGB565 `displayio.Bitmap` in-place, handling necessary byte swapping for optimal display performance.
 
 ```python
-display.blit_bmp(x, y, bmp_data)
+display.convert_bmp(bmp_data, bitmap)
 ```
 
 **Parameters:**
 
-- `x, y` (int): Top-left position for image
-- `bmp_data` (bytes): BMP file data (header + pixels)
+- `bmp_data` (bytes): Source BMP file data (header + pixels).
+- `destination_bitmap` (displayio.Bitmap): Destination bitmap of correct size (width, height, 65535 colors).
 
-**Returns:** None
+**Performance:**
 
-**Requirements:**
-
-- BMP must be 24-bit RGB format
-- Uncompressed only
-- Any reasonable size supported
+- optimized C implementation
+- Performs 24-bit → 16-bit conversion
+- Applies Big-Endian byte swapping directly for DMA readiness
 
 **Example:**
 
 ```python
-# Load BMP from file
-with open("/sd/logo.bmp", "rb") as f:
-    bmp_data = f.read()
+# Load BMP data
+with open("/sd/image.bmp", "rb") as f:
+    data = f.read()
 
-# Display at position (100, 100)
-display.blit_bmp(100, 100, bmp_data)
-display.swap_buffers()
+# Create destination bitmap
+bitmap = displayio.Bitmap(width, height, 65535)
+
+# Convert
+display.convert_bmp(data, bitmap)
+
+# Display (note dest_is_swapped=True)
+display.blit_buffer(x, y, width, height, bitmap, dest_is_swapped=True)
 ```
+
+### `blit_buffer(x, y, width, height, buffer, dest_is_swapped=False)`
+
+Enhanced blit function supporting pre-swapped data.
+
+**Parameters:**
+
+- ... (standard parameters)
+- `dest_is_swapped` (bool): If `True`, data is assumed to be Big-Endian (display native) and will NOT be swapped. Use this for `convert_bmp` results and JPEG decoded data.
 
 ---
 
-### `blit_jpeg(x, y, jpeg_data)`
+### JPEG Support
 
-Display JPEG image from memory (hardware accelerated).
-
-```python
-display.blit_jpeg(x, y, jpeg_data)
-```
-
-**Parameters:**
-
-- `x, y` (int): Top-left position for image
-- `jpeg_data` (bytes): JPEG file data
-
-**Returns:** None
-
-**Performance:** Hardware JPEG decoder (ESP32-S3) with block streaming
-
-**Requirements:**
-
-- Standard JPEG format
-- Any reasonable size supported
-- Hardware decoding handles most JPEG variants
-
-**Memory usage & safety:**
-
-- Decoder no longer allocates a full-frame PSRAM buffer (~540 KB for 600×450); pixels are streamed block-by-block straight to the framebuffer, so fragmented PSRAM is no longer a blocker.
-- Callback receives at most a 16×16 block (`≤512 B`), so even tiny JPEGs (e.g. 4×20 px) decode without special handling.
-- Double-buffering stays intact: JPEG writes into the active back buffer and respects clipping/rotation.
+JPEG decoding is handled via the separate `jpegio` module, which utilizes the ESP32-S3 hardware decoder.
 
 **Example:**
 
 ```python
-# Load JPEG from file
-with open("/sd/photo.jpg", "rb") as f:
-    jpeg_data = f.read()
+import jpegio
+import displayio
 
-# Display at position (50, 50)
-display.blit_jpeg(50, 50, jpeg_data)
-display.swap_buffers()
+decoder = jpegio.JpegDecoder()
+width, height = decoder.open("/sd/image.jpg")
+bitmap = displayio.Bitmap(width, height, 65535)
+decoder.decode(bitmap)
+
+# Display (JPEG decoder outputs Big-Endian on ESP32-S3)
+display.blit_buffer(x, y, width, height, bitmap, dest_is_swapped=True)
 ```
 
 ---
@@ -1383,9 +1373,21 @@ def show_image(filename):
         data = f.read()
 
     if filename.endswith('.bmp'):
-        display.blit_bmp(50, 50, data)
+        # For BMP: Read data, convert, and blit
+        # (Assuming dimensions are known or parsed - simplified for example)
+        # In real usage, parse header or hardcode size
+        w, h = 600, 450 
+        bitmap = displayio.Bitmap(w, h, 65535)
+        display.convert_bmp(data, bitmap)
+        display.blit_buffer(50, 50, w, h, bitmap, dest_is_swapped=True)
     else:
-        display.blit_jpeg(50, 50, data)
+        # For JPEG: Use generic jpegio
+        import jpegio
+        decoder = jpegio.JpegDecoder()
+        w, h = decoder.open(f"/sd/images/{filename}")
+        bitmap = displayio.Bitmap(w, h, 65535)
+        decoder.decode(bitmap)
+        display.blit_buffer(50, 50, w, h, bitmap, dest_is_swapped=True)
 
     # Show filename
     display.set_font(1)

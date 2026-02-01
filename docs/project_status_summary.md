@@ -17,14 +17,15 @@
 ### Phase 1-4: Standalone Driver (COMPLETE)
 
 - Rendering core refactored around framebuffer batching, lazy allocations, and clip helpers verified in `CODE_VERIFICATION_COMPLETE.md`
-- Image conversion layer supports BMP and JPEG formats only—PNG support was not implemented to avoid high PSRAM demands—while the redundant RAW conversion function was removed to cut a 56 ms overhead
+- Image support refactored: Dedicated `image_converter` module removed in favor of `jpegio` with hardware acceleration and optimized C-level `convert_bmp` for 24-bit bitmap loading. Both paths now support direct RGB565 byte-swapped output for zero-copy DMA.
+- Redundant RAW conversion function was removed to cut a 56 ms overhead.
 - Double-buffering with `swap_buffers()` API enables flicker-free updates and smooth animations
 - Native text rendering API with 7 built-in bitmap fonts (8×8, 16×16, 16×24, 24×24, 24×32, 32×32, 32×48 pixels)
 - Text rendering features: `set_font(id)` for font selection, `text(x,y,str,color,bg)` for rendering, transparent or solid backgrounds, UTF-8 support, ASCII 0x20-0x7E (95 chars)
 - TTF-to-bitmap conversion toolchain: `ttf_to_rm690b0.py` (457 lines) converts any TrueType font, `test_converted_font.py` (377 lines) validates/previews fonts
 - Total font size: ~538 KB in flash for all 7 fonts; rendering performance: 0.3-7.7 ms for "Hello World" (10-500× faster than DisplayIO)
-- Unified benchmarking and diagnostics scripts consolidate prior tooling, ship quick/diagnostic/memory-efficient modes, and document runbooks in the README and benchmark guides
-- JPEG conversion on ESP32-S3 leverages ESP-IDF's hardware-accelerated `esp_jpeg` decoder for faster image loads (10-50x faster than software decoding)
+- Unified benchmarking and diagnostics scripts consolidate prior tooling, ship quick/diagnostic/memory-efficient modes, and document runbooks in the README and benchmark guides.
+- JPEG support leverages `jpegio` and ESP-IDF's hardware-accelerated `esp_jpeg` decoder for fast loads (10-50x faster) directly to swap-ready buffers.
 - All pin definitions properly configured through board config files (`mpconfigboard.h`) with no hardcoded GPIO numbers in driver code
 - Streaming JPEG path now writes decoded blocks directly into the framebuffer, eliminating the previous ~540 KB PSRAM allocation and making image blits resilient to memory fragmentation.
 - `examples/benchmark_simple_flush.py` benchmarks both buffering modes plus partial-width/full-width rectangles and circle paths, guarding the new fill/circle optimizations against regressions.

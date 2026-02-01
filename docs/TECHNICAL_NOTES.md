@@ -137,15 +137,22 @@ Original implementation was 39× slower due to:
 
 ### Image Blitting Optimizations (BMP/JPEG)
 
-**Issue:** Pixel-by-pixel rendering is correct but slow for full-screen images.
+**Issue:** Pixel-by-pixel rendering is correct but slow for full-screen images. Custom `blit_bmp`/`blit_jpeg` methods tightly coupled the driver to image formats.
 
-**Fix:** Fast path for rotation=0 + clipping-aware loops
+**Fix:** Standardized optimized path via `blit_buffer(dest_is_swapped=True)`
 
-- For rotation=0, copy rows directly into the framebuffer with tight loops
-- Apply RGB565 byte/bit swapping consistently
-- For other rotations, fall back to per-pixel rotated writes (correctness-first)
-- Eliminates visual artifacts from duplicate pixels
-- JPEG path now streams TJpgDec blocks (≤16×16) straight into the framebuffer via `esp_jpeg` callbacks, so there is no longer a 540 KB PSRAM allocation per image and small images/fragmented heaps decode reliably.
+- **BMP (24-bit):**
+  - New `convert_bmp(bmp_data, destination_bitmap)` C-level method efficiently converts RGB888 to RGB565.
+  - Crucially, it applies Big-Endian byte swapping *during* conversion.
+  - The resulting bitmap is "pre-swapped" (physically Big-Endian in RAM).
+  - Passing `dest_is_swapped=True` to `blit_buffer` allows direct DMA streaming (zero-copy), massively improving performance.
+
+- **JPEG:**
+  - Standard `jpegio` module uses the ESP32-S3 hardware decoder.
+  - The hardware decoder outputs Big-Endian RGB565 (swapped bytes).
+  - Previously, `blit_buffer` (default) would swap these again, breaking colors.
+  - Now, `dest_is_swapped=True` correctly signals that the buffer is already in display-native format.
+  - Streaming decode is still supported by decoding into smaller reusable bitmaps (chunks).
 
 ---
 

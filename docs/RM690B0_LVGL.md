@@ -1710,7 +1710,7 @@ img.y = 100
 img.load_jpeg(jpeg_data)
 ```
 
-**Note:** Uses the rm690b0 driver's image converter to decode JPEG files.
+**Note:** Uses the ESP32-S3 hardware JPEG decoder for optimal performance.
 
 #### Complete Image Example
 
@@ -2953,6 +2953,7 @@ mp_obj_type_t
    ```
 
 4. **Widget hidden by default:**
+
    ```python
    # Some widgets may need explicit visibility
    widget.set_style_bg_opa(255)  # Make opaque
@@ -3169,6 +3170,7 @@ mp_obj_type_t
    ```
 
 4. **Heavy drawing operations:**
+
    ```python
    # Minimize full-screen redraws
    # Update only changed widgets
@@ -3220,6 +3222,7 @@ lvgl.task_handler()
 2. **Touch not working (see Touch Not Working section)**
 
 3. **Widget not clickable:**
+
    ```python
    # Labels aren't clickable by default
    # Use Button for clickable elements
