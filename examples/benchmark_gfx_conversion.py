@@ -20,7 +20,11 @@ import gc
 import os
 import sys
 import time
-
+import struct
+import io
+import bitmaptools
+import jpegio
+import displayio
 import rm690b0
 
 # =============================================================================
@@ -109,6 +113,24 @@ def show_black_screen(display, message=None):
     display.swap_buffers()
     if message:
         print(f"\n>>> {message} <<<")
+
+
+def get_bmp_parameters(data):
+    """Extract width, height, and data offset from BMP data."""
+    if isinstance(data, (bytes, bytearray, memoryview)):
+        # Data Offset at 0x0A (4 bytes)
+        offset = struct.unpack_from("<I", data, 10)[0]
+        # Width/Height at 0x12 (18)
+        width, height = struct.unpack_from("<ii", data, 18)
+    else:
+        # Assuming BytesIO or file-like
+        pos = data.tell()
+        data.seek(10)
+        offset = struct.unpack("<I", data.read(4))[0]
+        data.seek(18)
+        width, height = struct.unpack("<ii", data.read(8))
+        data.seek(pos)
+    return width, abs(height), offset
 
 
 # =============================================================================
@@ -202,18 +224,20 @@ def preload_files(verbose=True):
 # =============================================================================
 
 
-def convert_image(format_name, data, width=None, height=None):
+def convert_image(format_name, data, display=None, width=None, height=None):
     """
-    Convert image data to RGB565.
+    Convert image data to RGB565 using optimal methods (convert_bmp/jpegio).
 
-    Returns: (buffer, info) or raises exception
+    Returns: (buffer, info)
+    Info dict includes "swapped": True/False to indicate to blit_buffer.
     """
     if format_name == "RAW":
         # RAW is already RGB565 format - ZERO CONVERSION NEEDED!
-        # Data goes directly to display with no processing
-        # This is instant (< 0.1ms) - just returns the data
         w = width or CONFIG["raw_dimensions"]["width"]
         h = height or CONFIG["raw_dimensions"]["height"]
+        # For consistency, we wrap it in a Bitmap or just return buffer?
+        # blit_buffer accepts generic buffer, so data is fine.
+        # But to match return signature (bitmap, info), we can return data as is.
         info = {
             "width": w,
             "height": h,
@@ -221,19 +245,64 @@ def convert_image(format_name, data, width=None, height=None):
             "bit_depth": 16,
             "channels": 3,
             "has_alpha": False,
+            "swapped": False, # RAW assumed standard (or handled manually)
         }
-        return data, info  # Direct passthrough - no conversion!
+        return data, info
+
     elif format_name == "BMP":
-        return rm690b0.bmp_to_rgb565(data)
+        # Parse dimensions
+        w, h, offset = get_bmp_parameters(data)
+
+        # Create destination bitmap
+        bitmap = displayio.Bitmap(w, h, 65535)
+
+        if display and hasattr(display, "convert_bmp"):
+            # Optimal path: C-level 24->16 conversion + swap
+            display.convert_bmp(data, bitmap)
+            swapped = True
+        else:
+            # Fallback path: bitmaptools (slow, LE only, requires 16-bit BMP)
+            stream = io.BytesIO(data)
+            stream.seek(offset)
+            bitmaptools.readinto(bitmap, stream, bits_per_pixel=16)
+            swapped = False
+
+        info = {
+            "width": w,
+            "height": h,
+            "data_size": w * h * 2,
+            "bit_depth": 16,
+            "channels": 3,
+            "has_alpha": False,
+            "swapped": swapped,
+        }
+        return bitmap, info
+
     elif format_name == "JPG":
-        if not hasattr(rm690b0, "jpg_to_rgb565"):
-            raise NotImplementedError("JPEG not yet implemented")
-        return rm690b0.jpg_to_rgb565(data)
+        # Use jpegio
+        decoder = jpegio.JpegDecoder()
+        stream = io.BytesIO(data)
+        w, h = decoder.open(stream)
+
+        bitmap = displayio.Bitmap(w, h, 65535)
+        decoder.decode(bitmap)
+
+        info = {
+            "width": w,
+            "height": h,
+            "data_size": w * h * 2,
+            "bit_depth": 16,
+            "channels": 3,
+            "has_alpha": False,
+            "swapped": True, # JPEG on ESP32-S3 is BE
+        }
+        return bitmap, info
+
     else:
         raise ValueError(f"Unknown format: {format_name}")
 
 
-def benchmark_conversion(format_name, data, iterations=10, debug_memory=False):
+def benchmark_conversion(format_name, data, display, iterations=10, debug_memory=False):
     """
     Benchmark conversion performance.
 
@@ -248,7 +317,7 @@ def benchmark_conversion(format_name, data, iterations=10, debug_memory=False):
     if format_name != "RAW":  # RAW needs no warmup - it's instant
         try:
             gc.collect()
-            warmup_buffer, _ = convert_image(format_name, data)
+            warmup_buffer, _ = convert_image(format_name, data, display=display)
             del warmup_buffer
             warmup_buffer = None
             gc.collect()
@@ -271,7 +340,7 @@ def benchmark_conversion(format_name, data, iterations=10, debug_memory=False):
         t_start = time.monotonic()
 
         try:
-            buffer, info = convert_image(format_name, data)
+            buffer, info = convert_image(format_name, data, display=display)
         except Exception as e:
             if i == 0:
                 raise  # Re-raise on first iteration
@@ -306,13 +375,16 @@ def benchmark_conversion(format_name, data, iterations=10, debug_memory=False):
     return buffer, info, times
 
 
-def benchmark_display(display, buffer, width, height, iterations=5):
+def benchmark_display(display, buffer, width, height, iterations=5, swapped=False):
     """Benchmark display performance."""
     times = []
 
     for i in range(iterations):
         t_start = time.monotonic()
-        display.blit_buffer(0, 0, width, height, buffer)
+        if swapped:
+            display.blit_buffer(0, 0, width, height, buffer, dest_is_swapped=True)
+        else:
+            display.blit_buffer(0, 0, width, height, buffer)
         display.swap_buffers()
         t_elapsed = time.monotonic() - t_start
         times.append(t_elapsed)
@@ -357,11 +429,16 @@ def quick_test():
 
         try:
             t_start = time.monotonic()
-            buffer, info = convert_image(fmt, data)
+            buffer, info = convert_image(fmt, data, display=display)
             t_convert = time.monotonic() - t_start
 
             t_start = time.monotonic()
-            display.blit_buffer(0, 0, info["width"], info["height"], buffer)
+            # Handle swapping flag if present
+            swapped = info.get("swapped", False)
+            if swapped:
+                display.blit_buffer(0, 0, info["width"], info["height"], buffer, dest_is_swapped=True)
+            else:
+                display.blit_buffer(0, 0, info["width"], info["height"], buffer)
             display.swap_buffers()
             t_display = time.monotonic() - t_start
 
@@ -496,7 +573,7 @@ def full_benchmark(iterations=10, memory_efficient=False):
             # Enable debug for BMP to track memory issues
             debug_mode = fmt == "BMP" and iterations > 5
             buffer, info, conv_times = benchmark_conversion(
-                fmt, data, iterations, debug_memory=debug_mode
+                fmt, data, display, iterations, debug_memory=debug_mode
             )
 
             conv_min, conv_max, conv_avg = calculate_stats(conv_times)
@@ -504,7 +581,7 @@ def full_benchmark(iterations=10, memory_efficient=False):
             # Display benchmark
             print(f"Running display benchmark (5 iterations)...")
             disp_times = benchmark_display(
-                display, buffer, info["width"], info["height"], 5
+                display, buffer, info["width"], info["height"], 5, swapped=info.get("swapped", False)
             )
             disp_min, disp_max, disp_avg = calculate_stats(disp_times)
 
@@ -560,7 +637,11 @@ def full_benchmark(iterations=10, memory_efficient=False):
 
             # Display image
             print(f"\nDisplaying {fmt} image for {CONFIG['display_time']}s...")
-            display.blit_buffer(0, 0, info["width"], info["height"], buffer)
+            swapped = info.get("swapped", False)
+            if swapped:
+                display.blit_buffer(0, 0, info["width"], info["height"], buffer, dest_is_swapped=True)
+            else:
+                display.blit_buffer(0, 0, info["width"], info["height"], buffer)
             display.swap_buffers()
             time.sleep(CONFIG["display_time"])
 
@@ -880,12 +961,16 @@ def format_comparison():
 
             print("Converting to RGB565...")
             t_start = time.monotonic()
-            buffer, info = convert_image(fmt, data)
+            buffer, info = convert_image(fmt, data, display=display)
             t_convert = time.monotonic() - t_start
 
             print("Displaying image...")
             t_start = time.monotonic()
-            display.blit_buffer(0, 0, info["width"], info["height"], buffer)
+            swapped = info.get("swapped", False)
+            if swapped:
+                display.blit_buffer(0, 0, info["width"], info["height"], buffer, dest_is_swapped=True)
+            else:
+                display.blit_buffer(0, 0, info["width"], info["height"], buffer)
             display.swap_buffers()
             t_display = time.monotonic() - t_start
 
