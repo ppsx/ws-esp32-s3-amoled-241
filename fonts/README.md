@@ -34,19 +34,19 @@ pip install Pillow
 
 ### Basic Workflow
 
-**Step 1: Convert TTF to Header File**
+#### Step 1: Convert TTF to Header File
 
 ```bash
 python ttf_to_rm690b0.py YourFont.ttf -w 16 -t 16 -o my_font.h
 ```
 
-**Step 2: Test the Generated Font**
+#### Step 2: Test the Generated Font
 
 ```bash
 python test_converted_font.py my_font.h --char A
 ```
 
-**Step 3: Integrate into RM690B0 Driver**
+#### Step 3: Integrate into RM690B0 Driver
 
 1. Copy `my_font.h` to: `ports/espressif/common-hal/rm690b0/fonts/`
 2. Include in `RM690B0.c`: `#include "fonts/my_font.h"`
@@ -100,18 +100,18 @@ python ttf_to_rm690b0.py font.ttf -w 16 -t 12 -o font_16x12.h
 
 ### Main Converter: `ttf_to_rm690b0.py`
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `ttf_file` | Input TTF font file (required) | - |
-| `-w, --width` | Character width in pixels (required) | - |
-| `-t, --height` | Character height in pixels (required) | - |
-| `-o, --output` | Output header file path (required) | - |
-| `-n, --name` | Font array name | `rm690b0_font_{W}x{H}` |
-| `-s, --size` | TTF font size in points | Same as height |
-| `--start` | First character code | `0x20` (space) |
-| `--end` | Last character code | `0x7E` (~) |
-| `--baseline` | Baseline offset adjustment | `0` |
-| `--preview` | Preview specific character | None |
+| Option         | Description                           | Default                |
+| -------------- | ------------------------------------- | ---------------------- |
+| `ttf_file`     | Input TTF font file (required)        | -                      |
+| `-w, --width`  | Character width in pixels (required)  | -                      |
+| `-t, --height` | Character height in pixels (required) | -                      |
+| `-o, --output` | Output header file path (required)    | -                      |
+| `-n, --name`   | Font array name                       | `rm690b0_font_{W}x{H}` |
+| `-s, --size`   | TTF font size in points               | Same as height         |
+| `--start`      | First character code                  | `0x20` (space)         |
+| `--end`        | Last character code                   | `0x7E` (~)             |
+| `--baseline`   | Baseline offset adjustment            | `0`                    |
+| `--preview`    | Preview specific character            | None                   |
 
 ### Font Validator: `test_converted_font.py`
 
@@ -186,7 +186,8 @@ python ttf_to_rm690b0.py font.ttf -w 16 -t 16 \
 ```
 
 Output will include ASCII art preview:
-```
+
+```text
 Preview of character 'A' (0x41):
 ================
 ................
@@ -247,7 +248,8 @@ python ttf_to_rm690b0.py MyFont.ttf -w 20 -t 20 -o my_font_20x20.h
 ### Step 2: Add to Driver
 
 Place the generated header file in:
-```
+
+```bash
 ports/espressif/common-hal/rm690b0/fonts/my_font_20x20.h
 ```
 
@@ -315,38 +317,42 @@ Update the font selection logic in the driver to handle the new font ID.
 
 ### Common Font Sizes
 
-| Size | Best For | Example Command |
-|------|----------|-----------------|
-| 8×8 | Debug output, tiny text | `python ttf_to_rm690b0.py font.ttf -w 8 -t 8 -o font_8x8.h` |
-| 12×16 | Small UI text | `python ttf_to_rm690b0.py font.ttf -w 12 -t 16 -o font_12x16.h` |
-| 16×16 | Standard UI | `python ttf_to_rm690b0.py font.ttf -w 16 -t 16 -o font_16x16.h` |
-| 24×24 | Headers | `python ttf_to_rm690b0.py font.ttf -w 24 -t 24 -o font_24x24.h` |
-| 32×32 | Large display | `python ttf_to_rm690b0.py font.ttf -w 32 -t 32 -o font_32x32.h` |
+| Size  | Best For                | Example Command                                                 |
+| ----- | ----------------------- | --------------------------------------------------------------- |
+| 8×8   | Debug output, tiny text | `python ttf_to_rm690b0.py font.ttf -w 8 -t 8 -o font_8x8.h`     |
+| 12×16 | Small UI text           | `python ttf_to_rm690b0.py font.ttf -w 12 -t 16 -o font_12x16.h` |
+| 16×16 | Standard UI             | `python ttf_to_rm690b0.py font.ttf -w 16 -t 16 -o font_16x16.h` |
+| 24×24 | Headers                 | `python ttf_to_rm690b0.py font.ttf -w 24 -t 24 -o font_24x24.h` |
+| 32×32 | Large display           | `python ttf_to_rm690b0.py font.ttf -w 32 -t 32 -o font_32x32.h` |
 
 ### Use Cases by Size
 
-**Small Fonts (6×8, 8×8, 8×12)**
+#### Small Fonts (6×8, 8×8, 8×12)
+
 - Debug output
 - Serial console
 - Status bars
 - Dense information display
 - Terminal emulation
 
-**Medium Fonts (12×16, 16×16, 16×20)**
+#### Medium Fonts (12×16, 16×16, 16×20)
+
 - Standard UI text
 - Menu items
 - Button labels
 - User-facing messages
 - Form fields
 
-**Large Fonts (20×20, 24×24, 32×32)**
+#### Large Fonts (20×20, 24×24, 32×32)
+
 - Screen titles
 - Headers
 - Important notifications
 - Digital clock displays
 - Large numeric displays
 
-**Special Purpose**
+#### Special Purpose
+
 - **Digits only** (`--start 0x30 --end 0x39`): Clock, counter
 - **Uppercase only** (`--start 0x41 --end 0x5A`): Headers
 - **Symbols only**: Icons, indicators
@@ -354,7 +360,7 @@ Update the font selection logic in the driver to handle the new font ID.
 
 ### Memory Usage
 
-```
+```text
 Memory = num_chars × height × bytes_per_row
        = num_chars × height × ⌈width / 8⌉
 
@@ -367,7 +373,7 @@ Examples:
 
 ### Performance Impact
 
-```
+```text
 Rendering time ≈ width × height × pixel_write_time
 
 Relative speed (compared to 8×8):
@@ -433,11 +439,13 @@ python test_converted_font.py font.h --char O    # Letter O
 ### 1. Choose the Right Font Size Parameter
 
 If characters look too small in the bitmap:
+
 ```bash
 python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --size 18 -o font.h
 ```
 
 If characters are clipped:
+
 ```bash
 python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --size 14 -o font.h
 ```
@@ -445,11 +453,13 @@ python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --size 14 -o font.h
 ### 2. Adjust Baseline for Vertical Centering
 
 If characters appear too high:
+
 ```bash
 python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --baseline 2 -o font.h
 ```
 
 If characters appear too low:
+
 ```bash
 python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --baseline -2 -o font.h
 ```
@@ -472,21 +482,25 @@ python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --preview Q -o font.h
 ### 5. Font Selection Tips
 
 **For UI:**
+
 - Use sans-serif fonts (Liberation Sans, DejaVu Sans)
 - 12×16 or 16×16 for readability
 - Regular weight (not bold or thin)
 
 **For Code/Terminal:**
+
 - Use monospace fonts (Liberation Mono, DejaVu Sans Mono)
 - 8×8 or 8×12 for compact display
 - Bold or regular weight
 
 **For Headers:**
+
 - Use bold fonts
 - 24×24 or larger
 - Sans-serif or serif
 
 **For Digits:**
+
 - Use monospace or tabular fonts
 - Custom range (--start 0x30 --end 0x39)
 - Slightly larger than body text
@@ -498,6 +512,7 @@ python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --preview Q -o font.h
 ### Problem: Characters look blurry or unclear
 
 **Solution**: Increase the font size parameter:
+
 ```bash
 python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --size 20 -o font.h
 ```
@@ -505,6 +520,7 @@ python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --size 20 -o font.h
 ### Problem: Characters are clipped at top/bottom
 
 **Solution**: Reduce font size or adjust baseline:
+
 ```bash
 python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --size 14 --baseline 1 -o font.h
 ```
@@ -512,6 +528,7 @@ python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --size 14 --baseline 1 -o font.h
 ### Problem: "Pillow library is required"
 
 **Solution**: Install Pillow:
+
 ```bash
 pip install Pillow
 ```
@@ -519,6 +536,7 @@ pip install Pillow
 ### Problem: Font file not found
 
 **Solution**: Use absolute path or check current directory:
+
 ```bash
 python ttf_to_rm690b0.py /full/path/to/font.ttf -w 16 -t 16 -o font.h
 ```
@@ -526,6 +544,7 @@ python ttf_to_rm690b0.py /full/path/to/font.ttf -w 16 -t 16 -o font.h
 ### Problem: Characters look different than expected
 
 **Solution**: Preview individual characters to verify:
+
 ```bash
 python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --preview A -o test.h
 ```
@@ -533,6 +552,7 @@ python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --preview A -o test.h
 ### Problem: Characters too small/large in cell
 
 **Solution**: Adjust the `--size` parameter:
+
 ```bash
 # Try different sizes
 python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --size 14 -o font.h  # Smaller
@@ -542,6 +562,7 @@ python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --size 18 -o font.h  # Larger
 ### Problem: Vertical alignment issues
 
 **Solution**: Use `--baseline` to shift characters:
+
 ```bash
 python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --baseline 2 -o font.h   # Down
 python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --baseline -1 -o font.h  # Up
@@ -554,6 +575,7 @@ python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --baseline -1 -o font.h  # Up
 ### Where to Find TTF Fonts
 
 **Linux:**
+
 ```bash
 # List available fonts
 fc-list
@@ -565,13 +587,15 @@ fc-list
 ```
 
 **macOS:**
+
 ```bash
 /System/Library/Fonts/                   # System fonts
 ~/Library/Fonts/                         # User fonts
 ```
 
 **Windows:**
-```
+
+```cmd
 C:\Windows\Fonts\                        # All fonts
 ```
 
@@ -579,30 +603,32 @@ C:\Windows\Fonts\                        # All fonts
 
 - **Liberation fonts**: `/usr/share/fonts/truetype/liberation/` (SIL OFL licensed)
 - **DejaVu fonts**: `/usr/share/fonts/truetype/dejavu/` (free, extended characters)
-- **Google Fonts**: https://fonts.google.com (free, open source)
-- **Font Squirrel**: https://www.fontsquirrel.com (free for commercial use)
+- **Google Fonts**: <https://fonts.google.com> (free, open source)
+- **Font Squirrel**: <https://www.fontsquirrel.com> (free for commercial use)
 
 ### Recommended Open-Source Fonts
 
-| Font | License | Best For |
-|------|---------|----------|
-| Liberation Sans | SIL OFL | General UI (Arial alternative) |
-| Liberation Mono | SIL OFL | Code, monospace (Courier alternative) |
-| DejaVu Sans | Free | Extended characters, Unicode |
-| DejaVu Sans Mono | Free | Terminal, code editor |
-| Noto Sans | SIL OFL | Multi-language support |
-| Roboto | Apache 2.0 | Modern UI, Android-style |
-| Source Sans Pro | SIL OFL | Clean, readable UI |
-| Ubuntu | Ubuntu Font License | Contemporary design |
+| Font             | License             | Best For                              |
+| ---------------- | ------------------- | ------------------------------------- |
+| Liberation Sans  | SIL OFL             | General UI (Arial alternative)        |
+| Liberation Mono  | SIL OFL             | Code, monospace (Courier alternative) |
+| DejaVu Sans      | Free                | Extended characters, Unicode          |
+| DejaVu Sans Mono | Free                | Terminal, code editor                 |
+| Noto Sans        | SIL OFL             | Multi-language support                |
+| Roboto           | Apache 2.0          | Modern UI, Android-style              |
+| Source Sans Pro  | SIL OFL             | Clean, readable UI                    |
+| Ubuntu           | Ubuntu Font License | Contemporary design                   |
 
 ### Font License Considerations
 
 When using this tool, ensure you have the right to:
+
 1. Use the TTF font file
 2. Convert it to bitmap format
 3. Embed it in your firmware
 
 **Common Open Licenses:**
+
 - **SIL OFL 1.1**: Free use, requires attribution
 - **Apache 2.0**: Free use, permissive
 - **GPL**: Free use, derivative works must be GPL
@@ -649,12 +675,14 @@ static const uint8_t rm690b0_font_16x16_data[95][32] = {
 ### Bitmap Format
 
 **Row-based storage (horizontal):**
+
 - Each character: `height × bytes_per_row`
 - `bytes_per_row = (width + 7) / 8`
 - Bit order: MSB = leftmost pixel
 - Value: 1 = foreground, 0 = background
 
 **Example for 16×16 font:**
+
 - 16 rows × 2 bytes per row = 32 bytes per character
 - Bit 15 (MSB of high byte) = leftmost pixel
 - Bit 0 (LSB of low byte) = rightmost pixel
@@ -671,12 +699,13 @@ static const uint8_t rm690b0_font_16x16_data[95][32] = {
 ### Character Centering
 
 Characters are automatically centered within the target dimensions:
+
 - **Horizontal**: Center based on character width
 - **Vertical**: Center based on character height + baseline offset
 
 ### Bit Ordering
 
-```
+```text
 For 16-pixel row:
 Byte 0: [bit7][bit6][bit5][bit4][bit3][bit2][bit1][bit0]
         |<------- pixels 0-7 (left side) ------------>|
@@ -692,19 +721,20 @@ LSB (bit 0 of byte 1) = rightmost pixel
 
 ## Comparison with convert_font_16x16.py
 
-| Feature | ttf_to_rm690b0.py | convert_font_16x16.py |
-|---------|-------------------|----------------------|
-| Input format | Any TTF file | MikroElektronika C files |
-| Size flexibility | Any WxH | Fixed 16×16 only |
-| Font sources | Unlimited | Liberation Sans only |
-| Preview mode | Yes (ASCII art) | No |
-| Baseline adjust | Yes | No |
-| Size tuning | Yes (--size) | No |
-| Character range | Customizable | Fixed 0x20-0x7E |
-| Dependencies | Pillow | None |
-| Complexity | Moderate | Simple |
+| Feature          | ttf_to_rm690b0.py | convert_font_16x16.py    |
+| ---------------- | ----------------- | ------------------------ |
+| Input format     | Any TTF file      | MikroElektronika C files |
+| Size flexibility | Any WxH           | Fixed 16×16 only         |
+| Font sources     | Unlimited         | Liberation Sans only     |
+| Preview mode     | Yes (ASCII art)   | No                       |
+| Baseline adjust  | Yes               | No                       |
+| Size tuning      | Yes (--size)      | No                       |
+| Character range  | Customizable      | Fixed 0x20-0x7E          |
+| Dependencies     | Pillow            | None                     |
+| Complexity       | Moderate          | Simple                   |
 
 Both tools are valid:
+
 - Use `ttf_to_rm690b0.py` for flexibility and any font
 - Use `convert_font_16x16.py` for the specific Liberation Sans 16×16 conversion
 
@@ -769,7 +799,7 @@ python ttf_to_rm690b0.py font.ttf -w 16 -t 16 --size 18 --baseline 1 -o tuned.h
 
 ## Project Files
 
-```
+```text
 ttf_to_rm690b0.py           # Main converter script (457 lines)
 test_converted_font.py      # Font validation tool (377 lines)
 example_ttf_conversion.sh   # Example usage script (167 lines)
@@ -783,6 +813,7 @@ README.md                   # This documentation
 The TTF to RM690B0 converter provides a flexible, powerful tool for creating custom bitmap fonts from any TrueType font.
 
 **Key Benefits:**
+
 - ✅ Convert any TTF font to rm690b0 format
 - ✅ Any size from 4×6 to 64×64 (or larger)
 - ✅ Preview before committing

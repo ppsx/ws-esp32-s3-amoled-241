@@ -69,7 +69,6 @@ Complete CircuitPython support for the Waveshare ESP32-S3 Touch AMOLED 2.41 boar
 
 - `test_board_hardware.py` - Complete validation
 - `test_hw_nav_switch.py` - I2C joystick
-- `test_espsdcard.py` - SD card throughput
 - `test_espnow.py` - ESP-NOW validation
 
 **Benchmarks:**
@@ -293,13 +292,15 @@ while True:
 
 ### Main Branch (Stable) ✅
 
-**Repository:** https://github.com/ppsx/circuitpython/tree/rm690b0-driver-clean  
+**Repository:** <https://github.com/ppsx/circuitpython/tree/rm690b0-driver-clean>
+
 **Status:** Production Ready  
 **Use for:** Production applications, games, embedded displays
 
 ### LVGL Branch (Beta) ⚠️
 
-**Repository:** https://github.com/ppsx/circuitpython/tree/lvgl  
+**Repository:** <https://github.com/ppsx/circuitpython/tree/lvgl>
+
 **Status:** Functional with known GC/touch issue  
 **Use for:** Prototyping, rich UIs, widget-based interfaces
 
@@ -382,13 +383,13 @@ See full license in source code.
 
 **Repositories:**
 
-- Main: https://github.com/ppsx/circuitpython/tree/rm690b0-driver-clean
-- LVGL: https://github.com/ppsx/circuitpython/tree/lvgl
+- Main: <https://github.com/ppsx/circuitpython/tree/rm690b0-driver-clean>
+- LVGL: <https://github.com/ppsx/circuitpython/tree/lvgl>
 
 **Hardware:**
 
-- Waveshare: https://www.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-2.41
-- ESP32-S3: https://www.espressif.com/
+- Waveshare: <https://www.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-2.41>
+- ESP32-S3: <https://www.espressif.com/>
 
 **Documentation:**
 
@@ -400,13 +401,11 @@ See full license in source code.
 
 ## Credits
 
-**Developed by:** Przemyslaw Patrick Socha  
+**Developed by:** Przemyslaw Patrick Socha and AI agents
 **Based on:** CircuitPython 10.0.3, LVGL 8.x, ESP-IDF  
 **Hardware:** Waveshare ESP32-S3 Touch AMOLED 2.41
 
 ---
-
-**Last Updated:** 2026-01-20
 
 **Enjoy building with RM690B0 on ESP32-S3!** 🎉
 
@@ -420,4 +419,4 @@ A highly optimized port of Doom running natively on this board using ESP-IDF.
 
 - **Performance:** **65 FPS** (stable) at full **600x450** resolution.
 - **Optimizations:** QSPI 80MHz, Double Buffered DMA, Internal RAM.
-- **Repo:** [esp32-doom](https://github.com/ppsx/esp32-doom)
+- **Repo:** <https://github.com/ppsx/esp32-doom>

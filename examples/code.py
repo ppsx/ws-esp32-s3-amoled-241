@@ -184,24 +184,26 @@ def main():
     display.init_display()
     display.brightness = 1.0
 
-    # Enable double buffering (allocates second buffer)
-    # This prevents visible drawing of individual elements
+    # Enable double buffering
     display.swap_buffers()
 
     # Initialize touch
     touch = TouchInput()
 
     # Create buttons (2-column layout)
-    # Screen 600 wide. 2 cols of 260 width. Gaps.
+    # Screen 600 wide, 450 high.
     col1_x = 25
     col2_x = 315
     btn_w = 260
     btn_h = 70
+    gap_y = 20
 
-    y1 = 100
-    y2 = 190
-    y3 = 280
-    y_exit = 370
+    # 3 Rows + Exit
+    start_y = 80
+    y1 = start_y
+    y2 = start_y + btn_h + gap_y
+    y3 = start_y + (btn_h + gap_y) * 2
+    y_exit = 350
 
     # Column 1
     flappy_button = Button(col1_x, y1, btn_w, btn_h, "FLAPPY BIRD")
@@ -254,8 +256,12 @@ def main():
                             selected = "sokoban"
                         elif btn == minesweeper_button:
                             selected = "minesweeper"
+                        elif btn == robbo_button:
+                            selected = "robbo"
                         elif btn == exit_button:
                             selected = "exit"
+                        elif btn == flight_button:
+                            selected = "flight"
                         break
 
             time.sleep(0.05)  # Small delay to reduce CPU usage
@@ -278,52 +284,39 @@ def main():
         print("\nStarting Flappy Bird...\n")
         try:
             import game_flappy_bird
-
             game_flappy_bird.main()
-        except ImportError:
-            print("Error: game_flappy_bird.py not found!")
         except Exception as e:
-            print(f"Error running Flappy Bird: {e}")
+            print(f"Error: {e}")
     elif selected == "snake":
         print("\nStarting Snake Game...\n")
         try:
             import game_snake
-
             game_snake.main()
-        except ImportError:
-            print("Error: game_snake.py not found!")
         except Exception as e:
-            print(f"Error running Snake Game: {e}")
+            print(f"Error: {e}")
     elif selected == "pacman":
         print("\nStarting Pac-Man...\n")
         try:
             import game_pacman
-
             game_pacman.main()
-        except ImportError:
             print("Error: game_pacman.py not found!")
         except Exception as e:
-            print(f"Error running Pac-Man: {e}")
+            print(f"Error: {e}")
     elif selected == "sokoban":
         print("\nStarting Sokoban...\n")
         try:
             import game_sokoban
-
             game_sokoban.main()
-        except ImportError:
-            print("Error: game_sokoban.py not found!")
         except Exception as e:
-            print(f"Error running Sokoban: {e}")
+            print(f"Error: {e}")
     elif selected == "minesweeper":
         print("\nStarting Minesweeper...\n")
         try:
             import game_minesweeper
-
             game_minesweeper.main()
-        except ImportError:
             print("Error: game_minesweeper.py not found!")
         except Exception as e:
-            print(f"Error running Minesweeper: {e}")
+            print(f"Error: {e}")
     else:
         print("\nExiting to REPL.")
 

@@ -9,6 +9,7 @@ Pre-built CircuitPython 10.0.3 firmware with RM690B0 display driver support.
 **Status:** ✅ Production Ready
 
 **Features:**
+
 - Complete RM690B0 display driver
 - Native text rendering (7 built-in fonts)
 - Graphics primitives (lines, circles, rectangles, fills)
@@ -18,6 +19,7 @@ Pre-built CircuitPython 10.0.3 firmware with RM690B0 display driver support.
 - Stable and optimized
 
 **Use for:**
+
 - Production applications
 - Embedded displays
 - Games and animations
@@ -33,6 +35,7 @@ Pre-built CircuitPython 10.0.3 firmware with RM690B0 display driver support.
 **Status:** ⚠️ Functional with Known Issues
 
 **Features:**
+
 - All features from `firmware-rm690b0.bin`
 - Full LVGL 8.x integration
 - Python widget API (20+ widget types)
@@ -42,6 +45,7 @@ Pre-built CircuitPython 10.0.3 firmware with RM690B0 display driver support.
 - Rich UI capabilities
 
 **Use for:**
+
 - Prototyping rich UIs
 - Widget-based interfaces
 - Complex interactive applications
@@ -50,6 +54,7 @@ Pre-built CircuitPython 10.0.3 firmware with RM690B0 display driver support.
 **Known Issue:** LVGL+touch can lose responsiveness under heavy GC pressure or repeated `gc.collect()` calls.
 
 **Workarounds:**
+
 - Avoid explicit `gc.collect()` in UI loop
 - Load TTF fonts once at startup
 - Minimize large heap allocations during interaction
@@ -71,6 +76,7 @@ Pre-built CircuitPython 10.0.3 firmware with RM690B0 display driver support.
    - `esptool.py` installed: `pip install esptool`
 
 3. **Check Installation:**
+
    ```bash
    esptool.py --version
    # Should show: esptool.py v4.x or newer
@@ -81,6 +87,7 @@ Pre-built CircuitPython 10.0.3 firmware with RM690B0 display driver support.
 ### Method 1: Quick Flash (Recommended)
 
 **Linux/macOS:**
+
 ```bash
 # For stable version (rm690b0 only)
 esptool.py --chip esp32s3 -p /dev/ttyACM0 \
@@ -96,6 +103,7 @@ esptool.py --chip esp32s3 -p /dev/ttyACM0 \
 ```
 
 **Windows:**
+
 ```bash
 # For stable version (rm690b0 only)
 esptool.py --chip esp32s3 -p COM3 ^
@@ -120,6 +128,7 @@ esptool.py --chip esp32s3 -p COM3 ^
 2. Board should appear as a serial device
 
 **Find the port:**
+
 ```bash
 # Linux
 ls /dev/ttyACM* /dev/ttyUSB*
@@ -150,6 +159,7 @@ esptool.py --chip esp32s3 -p COM3 erase_flash
 Choose your firmware version:
 
 **Option A: Stable (rm690b0 only):**
+
 ```bash
 # Linux/macOS
 esptool.py --chip esp32s3 -p /dev/ttyACM0 \
@@ -165,6 +175,7 @@ esptool.py --chip esp32s3 -p COM3 ^
 ```
 
 **Option B: Beta (rm690b0 + LVGL):**
+
 ```bash
 # Linux/macOS
 esptool.py --chip esp32s3 -p /dev/ttyACM0 \
@@ -182,6 +193,7 @@ esptool.py --chip esp32s3 -p COM3 ^
 #### Step 4: Reset Board
 
 After flashing completes:
+
 1. Press the RESET button on the board, OR
 2. Disconnect and reconnect USB cable
 
@@ -191,17 +203,17 @@ The board should now appear as `CIRCUITPY` drive.
 
 ## Command Parameters Explained
 
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `--chip` | `esp32s3` | Target chip type |
-| `-p` | `/dev/ttyACM0` or `COM3` | Serial port |
-| `--before` | `default_reset` | Reset before operation |
-| `--after` | `no_reset` | Don't reset after (allows inspection) |
-| `--baud` | `921600` | Baud rate (faster = quicker flash) |
-| `--flash_mode` | `dio` | Dual I/O mode for flash |
-| `--flash_freq` | `80m` | Flash frequency 80 MHz |
-| `--flash_size` | `16MB` | Total flash size |
-| `0x0` | - | Start address (bootloader) |
+| Parameter      | Value                    | Description                           |
+| -------------- | ------------------------ | ------------------------------------- |
+| `--chip`       | `esp32s3`                | Target chip type                      |
+| `-p`           | `/dev/ttyACM0` or `COM3` | Serial port                           |
+| `--before`     | `default_reset`          | Reset before operation                |
+| `--after`      | `no_reset`               | Don't reset after (allows inspection) |
+| `--baud`       | `921600`                 | Baud rate (faster = quicker flash)    |
+| `--flash_mode` | `dio`                    | Dual I/O mode for flash               |
+| `--flash_freq` | `80m`                    | Flash frequency 80 MHz                |
+| `--flash_size` | `16MB`                   | Total flash size                      |
+| `0x0`          | -                        | Start address (bootloader)            |
 
 ---
 
@@ -210,6 +222,7 @@ The board should now appear as `CIRCUITPY` drive.
 ### Issue: "Serial port not found"
 
 **Solutions:**
+
 1. Check USB cable supports data (not just charging)
 2. Install USB-to-Serial drivers if needed
 3. Check Device Manager (Windows) or `dmesg` (Linux)
@@ -219,6 +232,7 @@ The board should now appear as `CIRCUITPY` drive.
 ### Issue: "Failed to connect"
 
 **Solutions:**
+
 1. Hold BOOT button while connecting USB
 2. Press BOOT + RESET, release RESET, then release BOOT
 3. Lower baud rate: use `--baud 115200` instead
@@ -228,6 +242,7 @@ The board should now appear as `CIRCUITPY` drive.
 ### Issue: "Wrong boot mode detected"
 
 **Solutions:**
+
 1. The board is already in a running state
 2. Hold BOOT button and press RESET
 3. Try: `esptool.py --chip esp32s3 -p PORT --before=default_reset chip_id`
@@ -236,6 +251,7 @@ The board should now appear as `CIRCUITPY` drive.
 ### Issue: "Timed out waiting for packet header"
 
 **Solutions:**
+
 1. Lower baud rate: `--baud 460800` or `--baud 115200`
 2. Use better USB cable
 3. Try different USB port (preferably USB 2.0)
@@ -244,6 +260,7 @@ The board should now appear as `CIRCUITPY` drive.
 ### Issue: Flash successful but board doesn't boot
 
 **Solutions:**
+
 1. Press RESET button on board
 2. Check if CIRCUITPY drive appears (wait 5-10 seconds)
 3. Re-flash with `erase_flash` first
@@ -253,6 +270,7 @@ The board should now appear as `CIRCUITPY` drive.
 ### Issue: Permission denied (Linux)
 
 **Solutions:**
+
 ```bash
 # Add user to dialout group
 sudo usermod -a -G dialout $USER
@@ -270,12 +288,14 @@ sudo chmod 666 /dev/ttyACM0
 ### Issue: CIRCUITPY drive doesn't appear
 
 **Possible causes:**
+
 1. Board needs reset - press RESET button
 2. USB cable is charge-only (no data)
 3. Filesystem not initialized - re-flash firmware
 4. Check dmesg/Device Manager for USB enumeration
 
 **Fix:**
+
 ```bash
 # Linux - check USB messages
 dmesg | tail -20
@@ -297,7 +317,8 @@ After successful flash:
 
 ### Test Basic Functionality
 
-**Option 1: Serial REPL**
+#### Option 1: Serial REPL
+
 ```bash
 # Connect to serial console
 screen /dev/ttyACM0 115200
@@ -308,11 +329,13 @@ putty (Windows)
 ```
 
 Press Enter, you should see:
-```
+
+```text
 >>>
 ```
 
 Test display:
+
 ```python
 import rm690b0
 display = rm690b0.RM690B0()
@@ -321,9 +344,10 @@ display.fill_color(0xF800)  # Red screen
 display.swap_buffers()
 ```
 
-**Option 2: File Execution**
+#### Option 2: File Execution
 
 Create `code.py` on CIRCUITPY drive:
+
 ```python
 import rm690b0
 
@@ -359,10 +383,10 @@ You can switch between firmware versions at any time:
 ## Flash Time Estimates
 
 | Baud Rate | firmware-rm690b0.bin | firmware-rm690b0-lvgl.bin |
-|-----------|---------------------|---------------------------|
-| 115200 | ~60 seconds | ~80 seconds |
-| 460800 | ~20 seconds | ~25 seconds |
-| 921600 | ~10 seconds | ~15 seconds |
+| --------- | -------------------- | ------------------------- |
+| 115200    | ~60 seconds          | ~80 seconds               |
+| 460800    | ~20 seconds          | ~25 seconds               |
+| 921600    | ~10 seconds          | ~15 seconds               |
 
 **Recommended:** Use 921600 for fastest flashing.
 
@@ -373,11 +397,13 @@ You can switch between firmware versions at any time:
 After flashing:
 
 1. **Copy Examples:**
+
    ```bash
    cp ../examples/test_all_fonts.py /media/$USER/CIRCUITPY/code.py
    ```
 
 2. **For LVGL firmware:**
+
    ```bash
    # Copy TTF fonts
    cp -r ../examples/fonts /media/$USER/CIRCUITPY/
@@ -439,23 +465,22 @@ esptool.py --chip esp32s3 -p /dev/ttyACM0 \
 **Chip:** ESP32-S3 (Dual-core Xtensa LX7)  
 **Flash:** 16 MB  
 **PSRAM:** 8 MB  
-
-**Build Date:** 2025-12-29
 **Toolchain:** ESP-IDF v5.x  
 
 ### Memory Layout
 
-| Address | Size | Content |
-|---------|------|---------|
-| 0x0000 | Variable | Bootloader + firmware |
-| 0x8000 | Variable | Partition table |
-| 0x10000 | Variable | CircuitPython application |
-| 0xE000 | 8 KB | OTA data |
-| 0x2000 | 24 KB | NVS (Non-Volatile Storage) |
+| Address | Size     | Content                    |
+| ------- | -------- | -------------------------- |
+| 0x0000  | Variable | Bootloader + firmware      |
+| 0x8000  | Variable | Partition table            |
+| 0x10000 | Variable | CircuitPython application  |
+| 0xE000  | 8 KB     | OTA data                   |
+| 0x2000  | 24 KB    | NVS (Non-Volatile Storage) |
 
 ### Modules Included
 
 **firmware-rm690b0.bin:**
+
 - `rm690b0` - Display driver
 - `board` - Pin definitions
 - `busio` - I2C, SPI, UART
@@ -467,10 +492,11 @@ esptool.py --chip esp32s3 -p /dev/ttyACM0 \
 - `storage` - Filesystem
 - `wifi` - WiFi support
 - `espnow` - ESP-NOW protocol
-- `espsdcard` - SD card support
+- `sdcardio` - SD card support
 - Standard CircuitPython libraries
 
 **firmware-rm690b0-lvgl.bin:**
+
 - All modules from `firmware-rm690b0.bin`
 - `rm690b0_lvgl` - LVGL integration
 - LVGL 8.x library compiled in

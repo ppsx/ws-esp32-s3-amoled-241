@@ -331,19 +331,13 @@ Complete game implementations using the display and touch input.
 **Features:**
 
 - Touch-based menu interface
-- Game selection (Flappy Bird, Snake)
+- Game selection
 - Clean UI with visual feedback
 
 **Usage:**
 
 - Automatically runs on device boot
 - Touch buttons to select game
-
-**Menu Options:**
-
-1. **Flappy Bird** - Tap-to-flap game
-2. **Snake** - Joystick-controlled snake
-3. **Exit** - Return to REPL
 
 ---
 
@@ -607,7 +601,7 @@ import benchmark_gfx_conversion
 
 **Sample Output:**
 
-```
+```text
 Full screen fill: 25.3 ms
 Circle (r=50): 2.1 ms
 Text "Hello" (16×16): 1.2 ms
@@ -706,14 +700,14 @@ esptool.py --chip esp32s3 --port /dev/ttyACM0 write_flash 0x0 circuitpython.bin
 
 ### 2. Upload Examples
 
-**Method 1: USB Drive (CIRCUITPY)**
+#### Method 1: USB Drive (CIRCUITPY)
 
 ```bash
 # Mount device as USB drive
 cp game_flappy_bird.py /media/CIRCUITPY/code.py
 ```
 
-**Method 2: mpremote**
+#### Method 2: mpremote
 
 ```bash
 pip install mpremote
@@ -721,7 +715,7 @@ mpremote cp game_flappy_bird.py :code.py
 mpremote reset
 ```
 
-**Method 3: ampy**
+#### Method 3: ampy
 
 ```bash
 pip install adafruit-ampy

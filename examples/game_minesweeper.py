@@ -93,14 +93,18 @@ FONT_SMALL = rm690b0.FONT_16x16
 # ---------------------------------------------------------------------------
 # Input Handling
 # ---------------------------------------------------------------------------
-class JoystickInput:
-    def __init__(self, i2c):
+# ---------------------------------------------------------------------------
+# Input Handling
+# ---------------------------------------------------------------------------
+class PCA9554:
+    def __init__(self, i2c, address=PCA9554_ADDR):
         self.i2c = i2c
-        self.address = PCA9554_ADDR
-        # Config inputs
-        self._write_reg(3, 0x1F) # Config: 0-4 are inputs
-        self._write_reg(1, 0xE0) # Output (LEDs off)
-        
+        self.address = address
+        try:
+            self._read_reg(0)
+        except:
+            pass
+
     def _read_reg(self, reg):
         if not self.i2c.try_lock(): return 0
         buf = bytearray(1)
@@ -117,8 +121,25 @@ class JoystickInput:
         except: pass
         finally: self.i2c.unlock()
 
+    def configure_pins(self, config_mask):
+        self._write_reg(3, config_mask) # Register 3 is Configuration
+
+    def write_outputs(self, value):
+        self._write_reg(1, value) # Register 1 is Output Port
+
+    def read_inputs(self):
+        return self._read_reg(0) # Register 0 is Input Port
+
+class JoystickInput:
+    def __init__(self, i2c):
+        self.pca = PCA9554(i2c)
+        # Config 0-4 as inputs (1), others outputs (0). 0x1F = 0001 1111
+        self.pca.configure_pins(0x1F)
+        # Set outputs (LEDs) off (High) -> 1110 0000 = 0xE0
+        self.pca.write_outputs(0xE0)
+
     def get_state(self):
-        val = self._read_reg(0)
+        val = self.pca.read_inputs()
         return {
             'up': not (val & 0x01),
             'down': not (val & 0x02),
