@@ -67,32 +67,32 @@ The **RM690B0 driver** is a high-performance, standalone display driver for the 
 
 ### System Overview
 
-```
+```text
 ┌────────────────────────────────────────────────────┐
-│                   Python Application                    │
+│             Python Application                     │
 ├────────────────────────────────────────────────────┤
-│              rm690b0 Module (CircuitPython)             │
-│  • init_display()     • fill_rect()                     │
-│  • set_font()         • line()                          │
-│  • text()             • circle()                        │
-│  • swap_buffers()     • rect()                          │
+│              rm690b0 Module (CircuitPython)        │
+│  • init_display()     • fill_rect()                │
+│  • set_font()         • line()                     │
+│  • text()             • circle()                   │
+│  • swap_buffers()     • rect()                     │
 ├────────────────────────────────────────────────────┤
-│           C Driver (common-hal/rm690b0/)                │
-│  • Framebuffer Management                               │
-│  • DMA Transfer Engine                                  │
-│  • Text Rendering Engine                                │
-│  • Image Decoders (BMP/JPEG)                            │
+│           C Driver (common-hal/rm690b0/)           │
+│  • Framebuffer Management                          │
+│  • DMA Transfer Engine                             │
+│  • Text Rendering Engine                           │
+│  • Image Decoders (BMP/JPEG)                       │
 ├────────────────────────────────────────────────────┤
-│              ESP-IDF LCD Component                      │
-│  • esp_lcd_rm690b0.c (panel driver)                     │
-│  • QSPI Communication                                   │
-│  • Hardware Acceleration                                │
+│              ESP-IDF LCD Component                 │
+│  • esp_lcd_rm690b0.c (panel driver)                │
+│  • QSPI Communication                              │
+│  • Hardware Acceleration                           │
 ├────────────────────────────────────────────────────┤
-│                  ESP32-S3 Hardware                      │
-│  • PSRAM (framebuffer storage)                          │
-│  • DMA (transfer engine)                                │
-│  • JPEG Decoder (hardware accelerated)                  │
-│  • QSPI Peripheral                                      │
+│                  ESP32-S3 Hardware                 │
+│  • PSRAM (framebuffer storage)                     │
+│  • DMA (transfer engine)                           │
+│  • JPEG Decoder (hardware accelerated)             │
+│  • QSPI Peripheral                                 │
 └────────────────────────────────────────────────────┘
 ```
 
@@ -124,7 +124,7 @@ The **RM690B0 driver** is a high-performance, standalone display driver for the 
 
 ### Software Requirements
 
-- **CircuitPython**: 9.0.0 or later
+- **CircuitPython**: 10.0.0 or later
 - **Build**: Custom build with RM690B0 support
 - **Module**: `rm690b0` (built-in)
 
@@ -353,16 +353,13 @@ height = display.height  # 450
 
 ---
 
-##### `rotation` (read-only)
+##### `rotation`
 
-Get current display rotation.
+Get or set display rotation.
 
 ```python
 rotation = display.rotation  # 0
 ```
-
-**Type:** `int`  
-**Value:** `0` (landscape orientation, fixed)
 
 **Type:** `int`  
 **Value:** `0`, `90`, `180`, `270`
@@ -718,13 +715,13 @@ The RM690B0 driver includes native text rendering with 7 built-in bitmap fonts. 
 
 | ID  | Size  | Style                | Memory | Best For                 |
 | --- | ----- | -------------------- | ------ | ------------------------ |
-| 0   | 8×8   | Monospace            | 760 B  | Tiny text, debug, status |
-| 1   | 16×16 | Liberation Sans      | 30 KB  | Body text, labels        |
+| 0   | 8×8   | Liberation Mono Bold | 760 B  | Tiny text, debug, status |
+| 1   | 16×16 | Liberation Mono Bold | 30 KB  | Body text, labels        |
 | 2   | 16×24 | Liberation Mono Bold | 45 KB  | Code, monospace text     |
-| 3   | 24×24 | Monospace            | 68 KB  | Headings, emphasis       |
-| 4   | 24×32 | Monospace            | 91 KB  | Large headings           |
-| 5   | 32×32 | Monospace            | 121 KB | Display text             |
-| 6   | 32×48 | Monospace            | 182 KB | Very large text          |
+| 3   | 24×24 | Liberation Mono Bold | 68 KB  | Headings, emphasis       |
+| 4   | 24×32 | Liberation Mono Bold | 91 KB  | Large headings           |
+| 5   | 32×32 | Liberation Mono Bold | 121 KB | Display text             |
+| 6   | 32×48 | Liberation Mono Bold | 182 KB | Very large text          |
 
 **Total:** ~538 KB in flash
 
@@ -1068,15 +1065,15 @@ def lighten(color):
 
 **Benchmark Results:**
 
-| Operation | Time | Notes |
-|-----------|------|-------|
-| Full screen fill | ~25–34 ms | Hardware limited by DMA, both single/double buffer tracked |
-| Full-width fill (64 rows) | ~5 ms | Exercises partial-height DMA path |
-| 64 px column fill | ~6 ms | Stresses narrow-span cache/fill loop |
-| Circle (r=50) | ~2 ms | Optimized Bresenham (with span cache) |
-| Text "Hello World" (16×16) | ~1.2 ms | Native font rendering |
-| 100×100 rectangle | ~0.5 ms | DMA accelerated |
-| Single pixel | ~0.001 ms | Direct framebuffer write |
+| Operation          | Time      | Notes                                                      |
+| ------------------ | --------- | ---------------------------------------------------------- |
+| Full screen fill   | ~25–34 ms | Hardware limited by DMA, both single/double buffer tracked |
+| Full-width fill    | ~5 ms     | Exercises partial-height DMA path                          |
+| 64 px column fill  | ~6 ms     | Stresses narrow-span cache/fill loop                       |
+| Circle (r=50)      | ~2 ms     | Optimized Bresenham (with span cache)                      |
+| Text "Hello World" | ~1.2 ms   | Native font rendering                                      |
+| 100×100 rectangle  | ~0.5 ms   | DMA accelerated                                            |
+| Single pixel       | ~0.001 ms | Direct framebuffer write                                   |
 
 **Targeted benchmarks (`examples/benchmark_simple_flush.py`):**
 
@@ -1165,7 +1162,7 @@ while True:
     display.swap_buffers(copy=True)  # Preserves static content
 ```
 
-### 3. DMA Memory Management
+## DMA Memory Management
 
 To prevent heap fragmentation and ensure stability:
 
@@ -1437,12 +1434,12 @@ if images:
 
 **Double Buffering:**
 
-```
+```text
 PSRAM Layout:
 ┌──────────────────────────────┐
-│  Front Buffer (540 KB)          │  ← Currently displayed
+│  Front Buffer (540 KB)       │  ← Currently displayed
 ├──────────────────────────────┤
-│  Back Buffer (540 KB)           │  ← Being drawn to
+│  Back Buffer (540 KB)        │  ← Being drawn to
 └──────────────────────────────┘
 ```
 
@@ -1761,37 +1758,3 @@ See `TECHNICAL_NOTES.md` for detailed memory architecture analysis and DMA alloc
 - Reference `flappy_bird_clone.py` and `snake_game.py` for real-world usage
 
 ---
-
-## Summary
-
-The **RM690B0 driver** provides:
-
-✅ **Production-ready** standalone display driver  
-✅ **High performance** with DMA acceleration  
-✅ **Simple API** (~15 core methods)  
-✅ **Native text** with 7 built-in fonts  
-✅ **Image support** (BMP + hardware JPEG)  
-✅ **Complete graphics** primitives  
-✅ **Zero dependencies** (works without LVGL)
-
-**Perfect for:**
-
-- Games (see `flappy_bird_clone.py`, `snake_game.py`)
-- Dashboards and status displays
-- Data visualization
-- Simple UIs without heavy frameworks
-- Performance-critical applications
-
-**Choose RM690B0 driver when you need:**
-
-- Fast, lightweight rendering
-- Direct framebuffer control
-- Simple graphics and text
-- No LVGL complexity
-
-**Choose RM690B0_LVGL when you need:**
-
-- Rich UI widgets
-- TTF font support
-- Complex layouts
-- Interactive elements

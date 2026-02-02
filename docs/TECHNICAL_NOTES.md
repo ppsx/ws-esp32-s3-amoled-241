@@ -1,10 +1,22 @@
 # RM690B0 Driver - Technical Notes
 
-> **Consolidated:** December 2025  
-> **Purpose:** Technical findings, optimizations, and development notes  
-> **Audience:** Developers and maintainers
-
 ---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Performance Benchmarking Insights](#performance-benchmarking-insights)
+- [Rendering Optimizations](#rendering-optimizations)
+- [Documentation Tooling](#documentation-tooling)
+- [Storage & I/O Considerations](#storage--io-considerations)
+- [Hardware-Specific Notes](#hardware-specific-notes)
+- [Common Issues & Solutions](#common-issues--solutions)
+- [DMA Memory Management and ESP_ERR_NO_MEM (0x101)](#dma-memory-management-and-esp_err_no_mem-0x101)
+- [Future Optimization Opportunities](#future-optimization-opportunities)
+- [Testing & Validation](#testing--validation)
+- [Development Tips](#development-tips)
+- [Touch-Display Integration](#touch-display-integration)
+- [Text Rendering System](#text-rendering-system)
 
 ## Overview
 
@@ -12,7 +24,7 @@ This document consolidates technical notes and findings from the RM690B0 driver 
 
 ---
 
-## 1. Performance Benchmarking Insights
+## Performance Benchmarking Insights
 
 ### DMA Synchronization Strategy (Semaphore)
 
@@ -28,10 +40,10 @@ The driver implements robust synchronization using a FreeRTOS semaphore to manag
 
 ### Performance Characteristics
 
-| Synchronization | Safety | CPU Usage | Latency |
-|----------------|--------|-----------|---------|
-| Adaptive Delay | Low (Race Risk) | High (Busy Wait) | Variable |
-| **Semaphore** | **High (Guaranteed)** | **Low (Blocked)** | **Optimal** |
+| Synchronization | Safety                | CPU Usage             | Latency               |
+| --------------- | --------------------- | --------------------- | --------------------- |
+| Adaptive Delay  | Low (Race Risk)       | High (Busy Wait)      | Variable              |
+| **Semaphore**   | **High (Guaranteed)** | **Low (Blocked)**     | **Optimal**           |
 
 ### Key Findings
 
@@ -48,7 +60,7 @@ The driver implements robust synchronization using a FreeRTOS semaphore to manag
 
 ---
 
-## 2. Rendering Optimizations
+## Rendering Optimizations
 
 ### Circle Rendering Performance
 
@@ -156,7 +168,7 @@ Original implementation was 39× slower due to:
 
 ---
 
-## 3. Documentation Tooling
+## Documentation Tooling
 
 ### Automated Documentation Generation
 
@@ -187,7 +199,7 @@ The project uses AI-assisted documentation.
 
 ---
 
-## 4. Storage & I/O Considerations
+## Storage & I/O Considerations
 
 ### SD Card - Optimized sdcardio Module
 
@@ -279,11 +291,11 @@ def mount_sd():
 
 ### Flash vs PSRAM vs SD Card Storage
 
-| Storage | Read Speed | Write Speed | Size | Best Use |
-|---------|-----------|-------------|------|----------|
-| Internal Flash | Fast, reliable | Slow (wear) | ~3-4 MB usable | Small images, fonts, critical assets |
-| PSRAM | Very fast | Very fast | ~6-8 MB usable | Runtime buffers, image cache, framebuffer |
-| SD Card (sdcardio) | 645 KB/s (readinto)<br>610 KB/s (read) | ~134-199 KB/s | Limited by card | Large assets, user files, logs |
+| Storage            | Read Speed     | Write Speed   | Size            | Best Use                                  |
+| ------------------ | ---------------| ------------- | --------------- | ----------------------------------------- |
+| Internal Flash     | Fast, reliable | Slow (wear)   | ~3-4 MB         | Small images, fonts, critical assets      |
+| PSRAM              | Very fast      | Very fast     | ~6-8 MB         | Runtime buffers, image cache, framebuffer |
+| SD Card (sdcardio) | 610-645 KB/s   | ~134-199 KB/s | Limited by card | Large assets, user files, logs            |
 
 ### Image Loading Pipeline
 
@@ -337,7 +349,7 @@ with open("/sd/image.bmp", "rb") as f:
 
 ---
 
-## 5. Hardware-Specific Notes
+## Hardware-Specific Notes
 
 ### ESP32-S3 Considerations
 
@@ -388,7 +400,7 @@ with open("/sd/image.bmp", "rb") as f:
 
 ---
 
-## 6. Common Issues & Solutions
+## Common Issues & Solutions
 
 ### Issue: Color Mixing/Artifacts
 
@@ -439,7 +451,7 @@ with open("/sd/image.bmp", "rb") as f:
 
 ---
 
-## 7. DMA Memory Management and ESP_ERR_NO_MEM (0x101)
+## DMA Memory Management and ESP_ERR_NO_MEM (0x101)
 
 ### Problem Overview
 
@@ -463,20 +475,20 @@ ESP32-S3 has two separate memory pools:
 
 ### DMA RAM Usage Breakdown
 
-```
+```text
 DMA RAM Usage (~400 KB total):
-├─ System/ESP-IDF:           ~100 KB (OS, network stack, etc.)
-├─ CircuitPython heap:        ~150 KB (variable)
-├─ Display driver chunk:       23.4 KB (temporary, per-flush)
-├─ Touch/I2C/other drivers:    ~50 KB
-└─ Available:                  ~75 KB (fragmented)
+├─ System/ESP-IDF:            ~100.0 KB (OS, network stack, etc.)
+├─ CircuitPython heap:        ~150.0 KB (variable)
+├─ Display driver chunk:       ~23.4 KB (temporary, per-flush)
+├─ Touch/I2C/other drivers:    ~50.0 KB
+└─ Available:                  ~75.0 KB (fragmented)
 ```
 
 ### Why Allocation Fails
 
 Even with free DMA memory, **fragmentation** prevents large contiguous allocations:
 
-```
+```text
 Example fragmented state:
 [20KB free][used][15KB free][used][30KB free][used][10KB free]
 Total free: 75 KB, but largest block: 30 KB
@@ -523,7 +535,7 @@ Trying to allocate 58.6 KB chunk → FAILS (no single block large enough)
 
 Before (50 lines/chunk):
 
-```
+```text
 Chunks needed: 450 / 50 = 9 chunks
 Setup overhead: 9 × 50µs = 0.45ms
 Transfer time: ~8ms
@@ -532,7 +544,7 @@ TOTAL: ~8.5ms
 
 After (20 lines/chunk):
 
-```
+```text
 Chunks needed: 450 / 20 = 23 chunks  
 Setup overhead: 23 × 50µs = 1.15ms
 Transfer time: ~8ms
@@ -543,7 +555,7 @@ TOTAL: ~9.2ms
 
 **Typical Game Frame (dirty regions):**
 
-```
+```text
 Most frames don't flush full screen.
 Small regions (e.g., 100×100) still fit in one chunk.
 IMPACT: NONE for typical usage
@@ -584,7 +596,7 @@ IMPACT: NONE for typical usage
 
    ```python
    # Inefficient - many Python→C calls
-   for tile in 868_tiles:
+   for tile in t_868_tiles:
        display.fill_rect(tile.x, tile.y, 16, 16, tile.color)
    
    # Better - fewer, larger operations
@@ -670,7 +682,6 @@ print(f"Success rate: {100*(500-errors)/500:.1f}%")
 ### Firmware Modification Details
 
 **File:** `ports/espressif/common-hal/rm690b0/RM690B0.c`  
-**Line:** 93  
 **Change:** `RM690B0_MAX_CHUNK_PIXELS` from `(LCD_H_RES * 50)` to `(LCD_H_RES * 20)`
 
 **Rebuild Required:** Yes (CircuitPython firmware recompilation)
@@ -717,7 +728,7 @@ make BOARD=waveshare_esp32s3_amoled_241
 
 ---
 
-## 8. Future Optimization Opportunities
+## Future Optimization Opportunities
 
 ### Short Term
 
@@ -740,7 +751,7 @@ make BOARD=waveshare_esp32s3_amoled_241
 
 ---
 
-## 9. Testing & Validation
+## Testing & Validation
 
 ### Performance Testing
 
@@ -785,7 +796,7 @@ make BOARD=waveshare_esp32s3_amoled_241
 
 ---
 
-## 10. Development Tips
+## Development Tips
 
 ### Debugging Display Issues
 
@@ -821,7 +832,7 @@ print(f"Memory used: {before - after} bytes")
 
 ---
 
-## 11. Touch-Display Integration
+## Touch-Display Integration
 
 ### Architecture Overview
 
@@ -861,10 +872,10 @@ Touch controller shares the board's main I2C bus:
 
 #### Bus Independence
 
-| Bus | Controller | Pins | Shared? | Conflicts? |
-|-----|------------|------|---------|------------|
-| QSPI | RM690B0 Display | GPIO9-14, 21, 16 | ❌ No | ❌ None |
-| I2C | FT6336U Touch | GPIO47-48 | ✅ Yes (4+ devices) | ❌ None |
+| Bus  | Controller      | Pins             | Shared?             | Conflicts? |
+| ---- | --------------- | ---------------- | ------------------- | ---------- |
+| QSPI | RM690B0 Display | GPIO9-14, 21, 16 | ❌ No               | ❌ None    |
+| I2C  | FT6336U Touch   | GPIO47-48        | ✅ Yes (4+ devices) | ❌ None    |
 
 **Key Point:** Display and touch use completely separate buses—no hardware conflicts exist.
 
@@ -874,21 +885,21 @@ Touch controller shares the board's main I2C bus:
 
 The touch controller and display have **different native orientations**:
 
-| Component | Orientation | Resolution | Coordinate Space |
-|-----------|-------------|------------|------------------|
-| **FT6336U Touch** | Portrait | 450×600 | X: 0-450, Y: 0-600 |
-| **RM690B0 Display** | Landscape | 600×450 | X: 0-600, Y: 0-450 |
+| Component           | Orientation | Resolution | Coordinate Space   |
+| ------------------- | ----------- | ---------- | ------------------ |
+| **FT6336U Touch**   | Portrait    | 450×600    | X: 0-450, Y: 0-600 |
+| **RM690B0 Display** | Landscape   | 600×450    | X: 0-600, Y: 0-450 |
 
-```
+```text
 Touch Controller (Portrait):      Display (Landscape - Default):
 ┌──────────────┐                 ┌────────────────────────┐
-│ (0,0)         │                 │ (0,0)                    │
-│               │                 │                          │
-│               │                 │                          │
-│     450       │                 │                          │
-│      ×        │                 │           600×450        │
-│     600       │                 │                          │
-│   (450,600)   │                 │                 (600,450)│
+│ (0,0)        │                 │ (0,0)                  │
+│              │                 │                        │
+│              │                 │                        │
+│     450      │                 │                        │
+│      ×       │                 │         600×450        │
+│     600      │                 │                        │
+│   (450,600)  │                 │               (600,450)│
 └──────────────┘                 └────────────────────────┘
 ```
 
@@ -921,7 +932,7 @@ def map_touch_to_display(touch_x, touch_y):
 
 For a 270° clockwise rotation of point (x, y) from portrait (450×600) to landscape (600×450):
 
-```
+```text
 Given: Portrait coordinate (x, y) where x ∈ [0, 450], y ∈ [0, 600]
 Want: Landscape coordinate (x', y') where x' ∈ [0, 600], y' ∈ [0, 450]
 
@@ -941,17 +952,17 @@ display_y = touch_x
 
 #### Corner Mapping
 
-```
-Touch Portrait               Display Landscape (after 270° CW)
-┌──────────────┐            ┌───────────────────────┐
-│ TL (0,0)      │──────────→│                R (600,0)│
-│               │            │                         │
-│   TR (450,0 ) │──────────→│ BR (600,450)            │
-├──────────────┤            ├───────────────────────┤
-│ BR (450,600)  │──────────→│ BL (0,450)              │
-│               │            │                         │
-│ BL (0,600)    │──────────→│ TL (0,0)                │
-└──────────────┘            └───────────────────────┘
+```text
+Touch Portrait             Display Landscape (after 270° CW)
+┌──────────────┐           ┌───────────────────────┐
+│ TL (0,0)     │──────────→│              R (600,0)│
+│              │           │                       │
+│   TR (450,0) │──────────→│ BR (600,450)          │
+├──────────────┤           ├───────────────────────┤
+│ BR (450,600) │──────────→│ BL (0,450)            │
+│              │           │                       │
+│ BL (0,600)   │──────────→│ TL (0,0)              │
+└──────────────┘           └───────────────────────┘
 ```
 
 ### Supporting Multiple Rotations
@@ -993,12 +1004,12 @@ def map_touch_to_display(touch_x, touch_y, display_rotation=0):
 
 #### Rotation Summary
 
-| Display Rotation | Display Size | Transformation | Touch Match |
-|-----------------|--------------|----------------|-------------|
-| **0° (Default)** | 600×450 (landscape) | `(600-ty, tx)` | ❌ Needs 270° rotation |
-| **90°** | 450×600 (portrait) | `(tx, ty)` | ✅ Perfect match! |
-| **180°** | 600×450 (landscape) | `(ty, 450-tx)` | ❌ Needs 90° rotation |
-| **270°** | 450×600 (portrait) | `(450-tx, 600-ty)` | ❌ Needs 180° rotation |
+| Display Rotation | Display Size        | Transformation     | Touch Match            |
+| ---------------- | ------------------- | ------------------ | ---------------------- |
+| **0° (Default)** | 600×450 (landscape) | `(600-ty, tx)`     | ❌ Needs 270° rotation |
+| **90°**          | 450×600 (portrait)  | `(tx, ty)`         | ✅ Perfect match!      |
+| **180°**         | 600×450 (landscape) | `(ty, 450-tx)`     | ❌ Needs 90° rotation  |
+| **270°**         | 450×600 (portrait)  | `(450-tx, 600-ty)` | ❌ Needs 180° rotation |
 
 ### Basic Integration Example
 
@@ -1049,7 +1060,7 @@ display.swap_buffers()
 
 #### Recommended Polling Strategy
 
-**Option 1: Continuous Polling (Best for Drawing)**
+##### Option 1: Continuous Polling (Best for Drawing)
 
 ```python
 while True:
@@ -1060,7 +1071,7 @@ while True:
     display.swap_buffers(copy=False)  # Flush changes
 ```
 
-**Option 2: Event-Based (Best for UI)**
+##### Option 2: Event-Based (Best for UI)
 
 ```python
 while True:
@@ -1177,7 +1188,7 @@ while True:
 
 ---
 
-## 12. Text Rendering System
+## Text Rendering System
 
 ### Status: ✅ IMPLEMENTED
 
@@ -1243,37 +1254,38 @@ display.text(10, 420, "Status: OK", color=rm690b0.GREEN)
 - `5` = 32×32 pixels (~121 KB)
 - `6` = 32×48 pixels (largest, ~182 KB)
 
-```
-
 ### Bitmap Font Format
 
 **Row-Based Format:**
+
 - Horizontal orientation (rows of pixels)
 - Each row: N bytes for width pixels (rounded up to nearest byte)
 - Bit order: MSB (bit 7) = leftmost pixel, LSB (bit 0) = rightmost pixel
 - Bit value: 1 = foreground, 0 = background
 - Character data stored as contiguous byte array
 
-**Example: 16×16 Character**
-```
+#### Example: 16×16 Character
 
 Width: 16 pixels → 2 bytes per row
 Height: 16 rows
 Total: 32 bytes per character
 
+```text
 Row storage:
 [byte0][byte1] = Row 0 (16 pixels)
 [byte2][byte3] = Row 1 (16 pixels)
 ...
 [byte30][byte31] = Row 15 (16 pixels)
+```
 
+```text
 Bit layout per row:
 byte0: [7][6][5][4][3][2][1][0] = pixels 0-7 (left)
 byte1: [7][6][5][4][3][2][1][0] = pixels 8-15 (right)
-
 ```
 
 **C Array Format:**
+
 ```c
 static const uint8_t rm690b0_font_16x16_data[95][32] = {
     // ASCII 0x20 (space)
@@ -1288,7 +1300,7 @@ static const uint8_t rm690b0_font_16x16_data[95][32] = {
 
 **Font Selection Flow:**
 
-```
+```text
 1. User: display.set_font(1)  # Select 16×16 font
    ↓
 2. Python: Validate font_id (0-6)
@@ -1445,49 +1457,49 @@ display.text(10, 130, "Custom", color=rm690b0.GREEN, background=rm690b0.BLUE)
 
 ### Built-in Fonts
 
-**Font 0: 8×8 Monospace (ID=0)**
+**Total Flash Usage**: ~538 KB for all 7 fonts
+
+#### Font 0: 8×8 Monospace (ID=0)
 
 - Size: 8×8 pixels, ~760 bytes
 - Source: Basic fixed-width bitmap font
 - Use: Debug output, status bars, dense information
 
-**Font 1: 16×16 Liberation Sans (ID=1)**
+#### Font 1: 16×16 Liberation Sans (ID=1)
 
 - Size: 16×16 pixels, ~30 KB
 - Source: Liberation Sans (converted from TTF)
 - Use: Standard UI text, readable content, menus
 
-**Font 2: 16×24 Liberation Mono Bold (ID=2)**
+#### Font 2: 16×24 Liberation Mono Bold (ID=2)
 
 - Size: 16×24 pixels, ~45 KB
 - Source: Liberation Mono Bold (converted from TTF)
 - Use: Code display, terminal text, monospace needs
 
-**Font 3: 24×24 Monospace (ID=3)**
+#### Font 3: 24×24 Monospace (ID=3)
 
 - Size: 24×24 pixels, ~68 KB
 - Source: Liberation Sans 24pt (converted from TTF)
 - Use: Headers, prominent labels
 
-**Font 4: 24×32 Monospace (ID=4)**
+#### Font 4: 24×32 Monospace (ID=4)
 
 - Size: 24×32 pixels, ~91 KB
 - Source: Custom tall font
 - Use: Tall text displays
 
-**Font 5: 32×32 Monospace (ID=5)**
+#### Font 5: 32×32 Monospace (ID=5)
 
 - Size: 32×32 pixels, ~121 KB
 - Source: Large display font
 - Use: Digital displays, large headers
 
-**Font 6: 32×48 Monospace (ID=6)**
+#### Font 6: 32×48 Monospace (ID=6)
 
 - Size: 32×48 pixels, ~182 KB
 - Source: Largest display font
 - Use: Maximum readability, clock displays
-
-**Total Flash Usage: ~538 KB for all 7 fonts**
 
 ### Features
 

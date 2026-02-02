@@ -60,40 +60,40 @@ The `rm690b0_lvgl` module provides **full LVGL (Light and Versatile Graphics Lib
 
 ## Architecture
 
-```
-┌────────────────────────────────────────────────────────┐
+```text
+┌─────────────────────────────────────────────────────────────┐
 │                     Python Application                      │
 │  (Your code: create widgets, set properties, handle events) │
-└────────────────────┬───────────────────────────────────┘
-                       │
-                       ▼
-┌────────────────────────────────────────────────────────┐
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
 │              rm690b0_lvgl Python Module                     │
 │  - RM690B0_LVGL class (manager)                             │
 │  - Widget, Label, Button classes                            │
 │  - Property wrappers (x, y, width, height, text, etc.)      │
-└────────────────────┬───────────────────────────────────┘
-                       │
-                       ▼
-┌────────────────────────────────────────────────────────┐
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
 │              LVGL C Library (v8.x)                          │
 │  - Core rendering engine                                    │
 │  - Widget system (lv_obj, lv_label, lv_btn)                 │
 │  - Event system                                             │
 │  - Memory management                                        │
-└─────────┬──────────────────────────┬───────────────────┘
-           │                            │
-           ▼                            ▼
-┌──────────────────────┐   ┌──────────────────────┐
-│  Display Driver        │   │  Touch Driver          │
-│  (flush callback)      │   │  (read callback)       │
-└──────────┬───────────┘   └──────────┬───────────┘
-           │                          │
-           ▼                          ▼
-┌──────────────────────┐   ┌──────────────────────┐
-│  RM690B0 Hardware      │   │  FT6336U Touch         │
-│  (QSPI, DMA)           │   │  (I2C)                 │
-└──────────────────────┘   └──────────────────────┘
+└────────────────┬──────────────────────────┬─────────────────┘
+                 │                          │
+                 ▼                          ▼
+      ┌──────────────────────┐   ┌──────────────────────┐
+      │  Display Driver      │   │  Touch Driver        │
+      │  (flush callback)    │   │  (read callback)     │
+      └──────────┬───────────┘   └──────────┬───────────┘
+                 │                          │
+                 ▼                          ▼
+      ┌──────────────────────┐   ┌──────────────────────┐
+      │  RM690B0 Hardware    │   │  FT6336U Touch       │
+      │  (QSPI, DMA)         │   │  (I2C)               │
+      └──────────────────────┘   └──────────────────────┘
 ```
 
 ### Integration Flow
@@ -2798,7 +2798,7 @@ btn_down.on_click = decrease_brightness
 
 ### Rendering Pipeline
 
-```
+```text
 1. Python app modifies widget properties (text, position, color)
    └─> Calls LVGL C functions via Python bindings
 
@@ -2829,7 +2829,7 @@ This happens inside `lvgl_touch_read_cb()`, so widgets receive correct landscape
 
 ### Event Handling Flow
 
-```
+```text
 1. User touches button on screen
    └─> FT6336U detects touch at (x, y)
 
@@ -2883,7 +2883,7 @@ This happens inside `lvgl_touch_read_cb()`, so widgets receive correct landscape
 
 **Type Hierarchy:**
 
-```
+```text
 mp_obj_type_t
     └─> rm690b0_lvgl_widget_type (Widget)
             ├─> rm690b0_lvgl_label_type (Label)
@@ -3351,38 +3351,38 @@ print(f"Free after UI: {gc.mem_free()} bytes")
 
 The following widgets are planned for future implementation to expand the Python API:
 
-**Tier 1: Core & Selection Parity**
+#### Tier 1: Core & Selection Parity
 
 1. **Image** - Complete LVGL image wrapper (BMP/JPEG/source binding)
 2. **Calendar** - Date picker widget (headers + callbacks)
 
-**Tier 2: Advanced/Specialized**
+#### Tier 2: Advanced/Specialized
 
 1. **Animimg** - Animated image widget
 2. **QRCode** - QR code generator/display (requires extra library)
 
 ### Completed Widgets ✅
 
-**Core Widgets**
+#### Core Widgets
 
 - ✅ **Widget** - Base container class (lv_obj)
 - ✅ **Label** - Text display
 - ✅ **Button** - Clickable button with callback
 - 🚧 **Image** - Planned bitmap/JPEG widget (bindings pending)
 
-**Interactive Controls**
+#### Interactive Controls
 
 - ✅ **Slider** - Range value selector
 - ✅ **Checkbox** - Toggle with label
 - ✅ **Switch** - On/off toggle
 - ✅ **Arc** - Circular knob/dial
 
-**Display/Feedback Widgets**
+#### Display/Feedback Widgets
 
 - ✅ **Bar** - Progress/level indicator
 - ✅ **Spinner** - Loading/progress indicator
 
-**Selection Widgets**
+#### Selection Widgets
 
 - ✅ **Dropdown** - Selection menu
 - ✅ **Roller** - Scrollable selection widget
@@ -3392,21 +3392,21 @@ The following widgets are planned for future implementation to expand the Python
 - ✅ **Buttonmatrix** - Grid of buttons
 - 🚧 **Calendar** - Date picker (planned)
 
-**Dialogs**
+#### Dialogs
 
 - ✅ **Msgbox** - Modal message box dialog
 
-**Layout Containers**
+#### Layout Containers
 
 - ✅ **Container** - Layout and scrolling container
 - ✅ **Tabview** - Multi-page navigation
 
-**Text Input**
+#### Text Input
 
 - ✅ **Textarea** - Multi-line text input with focus/submit callbacks
 - ✅ **Keyboard** - On-screen keyboard with popover support
 
-**Data Visualization**
+#### Data Visualization
 
 - ✅ **Chart** - Multi-series line/bar/scatter plotting
 - ✅ **Scale** - Meter-based gauge with ticks/labels
