@@ -1,10 +1,15 @@
 # RM690B0 Driver - Technical Notes
 
+> **⚠️ MIGRATION NOTE (v2.0):**
+> Custom `sdcardio` module has been removed. Use standard `sdioio` instead.
+> See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for details.
+
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Phase 2: QSPIBus Validation (2026-02-06)](#phase-2-qspibus-validation-2026-02-06)
 - [Performance Benchmarking Insights](#performance-benchmarking-insights)
 - [Rendering Optimizations](#rendering-optimizations)
 - [Documentation Tooling](#documentation-tooling)
@@ -21,6 +26,41 @@
 ## Overview
 
 This document consolidates technical notes and findings from the RM690B0 driver development. Topics include performance benchmarking, rendering optimizations, documentation tooling, storage I/O considerations, and touch-display integration.
+
+---
+
+## Phase 2: QSPIBus Validation (2026-02-06)
+
+### Scope
+
+- New CircuitPython module `qspibus` integrated into firmware and build system.
+- Hardware validation executed on Waveshare ESP32-S3 AMOLED 2.41 board.
+- Validation covered:
+  - `qspibus.QSPIBus(...)` object construction
+  - `deinit()`
+  - context manager (`with qspibus.QSPIBus(...) as bus:`)
+
+### Hardware Test Result
+
+Status: **PASS**
+
+Observed output summary:
+
+- `Creating QSPIBus... [OK]`
+- `Testing deinitialization... [OK]`
+- `Testing context manager... [OK]`
+- Final: `[OK] ALL TESTS PASSED`
+
+### Important Board Alias Note
+
+The test script originally assumed `board.LCD_*` aliases.  
+On this board the exported aliases are `board.QSPI_*` / `board.DISPLAY_*` (and `board.AMOLED_RESET`), so the test now resolves aliases dynamically.
+
+Reference test script:
+
+- `examples/tests/test_phase2_qspibus.py`
+
+Phase 2 intentionally does **not** verify raw `send()` transactions from Python, because `send()` is C-only and reserved for display driver integration (Phase 3).
 
 ---
 
@@ -201,25 +241,26 @@ The project uses AI-assisted documentation.
 
 ## Storage & I/O Considerations
 
-### SD Card - Optimized sdcardio Module
+### SD Card - Standard sdioio Module (1-bit)
 
-**Status:** ✅ **FULLY WORKING** - The standard `sdcardio` module, when properly configured with 20 MHz clock and VFS optimization, provides reliable and fast SD card access (~645 KB/s).
+**Status:** ✅ **FULLY WORKING** - Standard `sdioio` in 1-bit mode provides reliable SD card access with board-native SD pins.
 
-**Solution:** Use `sdcardio` with `busio.SPI` and sets `baudrate=20000000`.
+**Solution:** Use `sdioio.SDCard(...)` with `clock`, `command`, `data=[DATA0]` and `frequency=20_000_000`.
 
 #### Quick Start
 
 ```python
 import board
-import busio
-import sdcardio
+import sdioio
 import storage
 
-# Initialize SPI bus
-spi = busio.SPI(board.SD_SCK, board.SD_MOSI, board.SD_MISO)
-
-# Initialize SD card (20 MHz is critical for stability/speed optimal point)
-sd = sdcardio.SDCard(spi, board.SD_CS, baudrate=20000000)
+# Initialize SD card (1-bit SDIO mode, 20 MHz)
+sd = sdioio.SDCard(
+    clock=board.SD_CLK,
+    command=board.SD_MOSI,
+    data=[board.SD_MISO],
+    frequency=20_000_000,
+)
 
 # Mount filesystem
 vfs = storage.VfsFat(sd)
@@ -237,11 +278,11 @@ with open("/sd/image.bmp", "rb") as f:
 **Reading Files:**
 
 - **Optimal chunk size:** 64KB for `read()`, 256KB-1MB for `readinto()` with pre-allocated buffers
-- **Performance:** ~645 KB/s with pre-allocated buffers, ~610 KB/s with standard reads
+- **Performance:** `readinto()` gives the best throughput; measured up to ~1.13 MB/s at 40 MHz
 - **For images:** Pre-allocate buffer of exact file size, use `readinto()` for best performance
 
 ```python
-# Fast method: Pre-allocated buffer (645 KB/s)
+# Fast method: Pre-allocated buffer (readinto)
 size = os.stat("/sd/image.bmp")[6]
 buffer = bytearray(size)
 with open("/sd/image.bmp", "rb") as f:
@@ -265,7 +306,8 @@ data = b"".join(chunks)
 
 **Writes:**
 
-- Always ensure `baudrate=20000000` is used during initialization.
+- Start with `frequency=40_000_000` for maximum read throughput.
+- If karta SD lub okablowanie jest niestabilne, fallback do `25_000_000` lub `20_000_000`.
 
 **Common Pattern:**
 
@@ -273,8 +315,12 @@ data = b"".join(chunks)
 # Setup helper
 def mount_sd():
     try:
-        spi = busio.SPI(board.SD_SCK, board.SD_MOSI, board.SD_MISO)
-        sd = sdcardio.SDCard(spi, board.SD_CS, baudrate=20000000)
+        sd = sdioio.SDCard(
+            clock=board.SD_CLK,
+            command=board.SD_MOSI,
+            data=[board.SD_MISO],
+            frequency=20_000_000,
+        )
         vfs = storage.VfsFat(sd)
         storage.mount(vfs, "/sd")
         return True
@@ -286,8 +332,34 @@ def mount_sd():
 
 - ✅ Reliable reads/writes with standard CircuitPython API
 - ✅ No custom modules required
-- ✅ ~645 KB/s read speed (parity with native drivers)
+- ✅ Verified read throughput up to ~1.13 MB/s (`readinto`, 40 MHz)
 - ✅ Compatible with standard libraries
+
+#### Benchmark Results (2026-02-06)
+
+Hardware: Waveshare ESP32-S3 AMOLED 2.41, `sdioio` 1-bit mode, chunk 64KB.
+Skrypty benchmarkowe:
+- `examples/tests/benchmark_phase1_sdioio_io.py`
+- `examples/tests/benchmark_phase1_sdioio_freq_sweep.py`
+
+**A) Frequency sweep (2 MB file)**
+
+| Requested | Actual | Write | Read (alloc) | Read (readinto) |
+| --------- | ------ | ----- | ------------ | --------------- |
+| 10 MHz | 10.00 MHz | 183.48 KB/s | 594.30 KB/s | 642.02 KB/s |
+| 20 MHz | 20.00 MHz | 178.66 KB/s | 833.20 KB/s | 930.10 KB/s |
+| 25 MHz | 22.86 MHz | 180.73 KB/s | 872.63 KB/s | 978.95 KB/s |
+| 40 MHz | 40.00 MHz | 186.01 KB/s | 1010.31 KB/s | 1158.33 KB/s (~1.13 MB/s) |
+
+**B) Single-point benchmark (20 MHz, 4 MB file)**
+
+- Write: 222.09 KB/s
+- Read (alloc): 838.65 KB/s
+- Read (readinto): 930.70 KB/s
+
+**Wniosek praktyczny:**
+- Dla odczytu duzych assetow najlepszy jest `40 MHz` + `readinto()`.
+- Zapis jest relatywnie plaski (~179-222 KB/s), wiec bottleneck to glownie karta/FAT, nie zegar SDIO.
 
 ### Flash vs PSRAM vs SD Card Storage
 
@@ -295,7 +367,7 @@ def mount_sd():
 | ------------------ | ---------------| ------------- | --------------- | ----------------------------------------- |
 | Internal Flash     | Fast, reliable | Slow (wear)   | ~3-4 MB         | Small images, fonts, critical assets      |
 | PSRAM              | Very fast      | Very fast     | ~6-8 MB         | Runtime buffers, image cache, framebuffer |
-| SD Card (sdcardio) | 610-645 KB/s   | ~134-199 KB/s | Limited by card | Large assets, user files, logs            |
+| SD Card (sdioio)   | ~642 KB/s to ~1.13 MB/s | ~179-222 KB/s | Limited by card | Large assets, user files, logs            |
 
 ### Image Loading Pipeline
 
@@ -305,7 +377,7 @@ def mount_sd():
 2. **Medium images (<1MB):** Load from SD card to PSRAM cache using pre-allocated buffer
 3. **Large images (>1MB):** Stream from SD card in chunks or pre-load to PSRAM
 
-**SD Card Loading (sdcardio):**
+**SD Card Loading (sdioio):**
 
 ```python
 # For display: load entire image to buffer
@@ -318,7 +390,7 @@ with open("/sd/image.bmp", "rb") as f:
         if not bytes_read:
             break
         offset += bytes_read
-# buffer now contains entire image at ~645 KB/s
+# buffer now contains entire image (up to ~1.13 MB/s at 40 MHz with readinto)
 ```
 
 ### File Format Recommendations
@@ -424,12 +496,12 @@ with open("/sd/image.bmp", "rb") as f:
 
 ### Issue: SD Card Access
 
-**Solution:** Use standard `sdcardio` with `baudrate=20000000` (20 MHz).
+**Solution:** Use standard `sdioio` in 1-bit mode. Start from `frequency=40_000_000`, fallback to `25_000_000` or `20_000_000` for stability.
 
 **Common Issues:**
 
 - **File not found:** Check filepath includes `/sd/` prefix
-- **Slow performance:** Use pre-allocated buffers with `readinto()` (645 KB/s vs 610 KB/s)
+- **Slow performance:** Use pre-allocated buffers with `readinto()` (up to ~1.13 MB/s at 40 MHz)
 - **Memory errors:** Use chunked reading for files >1MB
 - **Reinitialization fails:** Always call `sd.deinit()` before creating new SD card object
 
@@ -437,6 +509,7 @@ with open("/sd/image.bmp", "rb") as f:
 
 - Use 64KB chunks for `read()`, 256KB-1MB for `readinto()`
 - Pre-allocate buffers for best performance
+- Prefer 40 MHz for read-heavy workloads; lower frequency only if needed for stability
 - Always cleanup with `deinit()` or use context manager
 
 ### Issue: DMA Alignment Errors

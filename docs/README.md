@@ -16,6 +16,10 @@ Integration guide for `rm690b0_lvgl` with LVGL 8.x: initialization sequence, tou
 
 Detailed technical notes about the `rm690b0` driver: rendering architecture (30-line DMA limit, framebuffer management), performance benchmarks, storage options (flash/PSRAM/SD card), touch-display integration (FT6336U coordinate mapping), native text rendering system (Section 11), TTF font conversion toolchain, DMA memory management, and comprehensive troubleshooting guide.
 
+### [`FOURWIRE_ANALYSIS.md`](FOURWIRE_ANALYSIS.md)
+
+Implementation analysis of `fourwire` used as the reference architecture for the new `qspibus` module (constructor/send/deinit patterns, pin lifecycle, error handling, and ESP32-S3 integration notes).
+
 ### [`project_status_summary.md`](project_status_summary.md)
 
 Project status summary: Phase 5 complete (LVGL integration + native text), readiness assessment (`rm690b0` production-ready, `rm690b0_lvgl` beta due to GC/touch bug), key achievements, current limitations, and Phase 6 roadmap (documentation + 9-13 additional widgets).
@@ -47,6 +51,8 @@ Compact technical summary in key=value format: board configuration, module APIs,
 - **Graphics Examples**: [`RM690B0_DRIVER.md#examples`](RM690B0_DRIVER.md#examples)
 - **LVGL Examples**: [`RM690B0_LVGL.md#examples`](RM690B0_LVGL.md#examples)
 - **Complete Scripts**: See [`../examples/`](../examples/) directory
+- **Hardware SDIO Tests/Benchmarks**: [`../examples/tests/`](../examples/tests/)
+- **Hardware QSPIBus Test**: [`../examples/tests/test_phase2_qspibus.py`](../examples/tests/test_phase2_qspibus.py)
 
 ### Troubleshooting
 
@@ -63,4 +69,4 @@ Compact technical summary in key=value format: board configuration, module APIs,
 
 ---
 
-Last Updated: 2025-01-04
+Last Updated: 2026-02-06

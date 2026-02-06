@@ -1,7 +1,12 @@
 # RM690B0 Driver — Project Status
 
+> **⚠️ MIGRATION NOTE (v2.0):**
+> Custom `sdcardio` module has been removed. Use standard `sdioio` instead.
+> See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for details.
+
 ## Overall Readiness
 
+- **Phase 2 (QSPIBus) Complete and Hardware-Validated**: `qspibus` module is integrated in firmware and passed standalone hardware tests (construct/deinit/context-manager) on 2026-02-06
 - **Feature Complete, Not Yet Production Ready**: `rm690b0` standalone driver is production-grade for rendering (including native text), but `rm690b0_lvgl` has a known critical issue with touch interaction under garbage collection (GC) and heavy allocation scenarios (e.g. TTF fonts)
 - **Phase 5 Functionality Complete**: LVGL integration achieved with Python widget API (Widget, Label, Button, Slider, etc.) enabling rich interactive UIs; native text rendering API with 7 built-in bitmap fonts completed; stability under GC pressure is still under investigation
 - Driver meets performance expectations: circle rendering is 39× faster, rectangle edges avoid double draws, fill operations remain hardware-limited to 30-line DMA chunks, and native text rendering is 10-500× faster than DisplayIO
@@ -16,6 +21,8 @@
 
 ### Phase 1-4: Standalone Driver (COMPLETE)
 
+- Phase 2 bus layer delivered: new `qspibus` module (analog to `fourwire`) for QSPI display communication on ESP32-S3
+- Phase 2 hardware test status: PASS via `examples/tests/test_phase2_qspibus.py` (create/deinit/context manager)
 - Rendering core refactored around framebuffer batching, lazy allocations, and clip helpers verified in `CODE_VERIFICATION_COMPLETE.md`
 - Image support refactored: Dedicated `image_converter` module removed in favor of `jpegio` with hardware acceleration and optimized C-level `convert_bmp` for 24-bit bitmap loading. Both paths now support direct RGB565 byte-swapped output for zero-copy DMA.
 - Redundant RAW conversion function was removed to cut a 56 ms overhead.
@@ -62,7 +69,7 @@
 ## Confirmed Constraints & Decisions
 
 - 30-line DMA ceiling on the RM690B0/ESP32-S3 path is hard hardware limit; attempts at 60+ line chunks fail and are intentionally avoided.
-- SD card pipelines optimized: `sdcardio` now achieves parity with native drivers (~645 KB/s) via VFS block device optimization and 20 MHz clocking.
+- SD card pipelines use standard `sdioio` (1-bit mode) with 20 MHz clocking and VFS block-device mounting.
 - Image format support limited to BMP and JPEG only; PNG was intentionally not implemented due to high PSRAM memory requirements. BMP acceleration and JPEG performance optimization remain potential enhancement targets.
 - Board-specific configuration (pins, timing, offsets) fully externalized to `mpconfigboard.h` files for easy porting to new hardware.
 
