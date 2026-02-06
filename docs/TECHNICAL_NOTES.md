@@ -13,6 +13,7 @@
 - [Phase 2: QSPIBus Validation (2026-02-06)](#phase-2-qspibus-validation-2026-02-06)
 - [Phase 3: DisplayIO Integration (2026-02-06)](#phase-3-displayio-integration-2026-02-06)
 - [Phase 4: Standalone Module Removal (2026-02-06)](#phase-4-standalone-module-removal-2026-02-06)
+- [Phase 5: DisplayIO Performance Optimization (2026-02-06)](#phase-5-displayio-performance-optimization-2026-02-06)
 - [Performance Benchmarking Insights](#performance-benchmarking-insights)
 - [Rendering Optimizations](#rendering-optimizations)
 - [Documentation Tooling](#documentation-tooling)
@@ -147,6 +148,46 @@ Po fazie 4 jedyną wspieraną ścieżką renderowania w firmware jest:
 - RM690B0 init/command sequence realizowane przez panel helper (`BusDisplay` wrapper)
 
 Standalone API `import rm690b0` jest celowo usunięte (breaking change).
+
+---
+
+## Phase 5: DisplayIO Performance Optimization (2026-02-06)
+
+### Scope
+
+- Added benchmark script for display stack performance:
+  - `examples/tests/benchmark_phase5_displayio.py`
+- Implemented QSPI transport optimizations in firmware:
+  - DMA double-buffering with queue depth 2 in `qspibus`
+  - chunked color transfer path with DMA-safe staging buffers
+  - stricter transfer completion handling before command/deinit paths
+- Added qspibus-specific refresh chunk tuning in `BusDisplay`.
+
+### Baseline and Post-Optimization Results
+
+Board: Waveshare ESP32-S3 AMOLED 2.41  
+Stack: `qspibus + displayio (BusDisplay helper)`  
+Date: 2026-02-06
+
+| Metric | Baseline | Post-Optimization | Delta |
+| --- | ---: | ---: | ---: |
+| Full screen fill (600x450) | 360.499 ms | 341.250 ms | -5.3% |
+| Partial update (100x100) | 62.584 ms | 52.916 ms | -15.5% |
+| Multi-element scene | 59.700 ms | 51.500 ms | -13.7% |
+
+### Stability Note
+
+- Attempting a larger `BusDisplay` local refresh buffer (16 KB) caused board reset after QSPI init.
+- Root cause: stack pressure during `display.refresh()` on this target.
+- Final Phase 5 state keeps the safe 8 KB refresh buffer for stability.
+
+### Conclusion
+
+- Phase 5 improved throughput for partial and mixed updates, and slightly improved full-screen refresh.
+- Target `<100 ms` full-screen refresh was **not** reached in current architecture.
+- Further major gains likely require:
+  - deeper core/displayio changes upstream, or
+  - alternate fast path outside standard displayio flow (planned separately).
 
 ---
 

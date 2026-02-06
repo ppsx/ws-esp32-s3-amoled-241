@@ -17,7 +17,8 @@ examples/tests/
 ├── test_phase3_displayio.py
 ├── test_phase4_integration.py
 ├── benchmark_phase1_sdioio_io.py
-└── benchmark_phase1_sdioio_freq_sweep.py
+├── benchmark_phase1_sdioio_freq_sweep.py
+└── benchmark_phase5_displayio.py
 ```
 
 ## Przygotowanie
@@ -133,3 +134,18 @@ Oczekiwany efekt:
 - Serial: `ALL INTEGRATION TESTS PASSED`
 - Testuje jednoczesnie: `sdioio` + `qspibus` + `displayio`
 - Ekran: red -> green -> blue, potem scena z trzema prostokatami
+
+### 6) Benchmark displayio (`benchmark_phase5_displayio.py`)
+
+```bash
+cd /home/pps/Downloads/__ai__/repos/ws-esp32-s3-amoled-241
+cp examples/tests/benchmark_phase5_displayio.py /media/CIRCUITPY/code.py
+cd /home/pps/Downloads/__ai__/repos/circuitpython-rm690b0
+./build_waveshare.sh monitor
+# reset RST na boardzie
+```
+
+Oczekiwany efekt:
+
+- Serial: tabela czasow dla `full screen`, `partial update`, `multi-element scene`
+- Benchmark sluzy jako baseline/porownanie przed i po optymalizacjach fazy 5
