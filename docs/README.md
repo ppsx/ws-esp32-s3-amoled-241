@@ -1,72 +1,80 @@
-# Project Documentation
+# Project Documentation Index
 
-This directory contains the core documentation for the RM690B0 display driver and its LVGL integration on the Waveshare ESP32-S3 Touch AMOLED 2.41 board.
+This directory contains project documentation for the RM690B0 refactor to the standard CircuitPython stack (`displayio + qspibus + sdioio`) on Waveshare ESP32-S3 AMOLED 2.41.
 
-## Documentation Files
+Status summary:
 
-### [`RM690B0_DRIVER.md`](RM690B0_DRIVER.md)
+- Phases 1-4: complete and hardware-validated
+- Phase 5: optional optimization implemented and benchmarked
+- Phase 6: documentation package complete
 
-Complete API reference for the standalone `rm690b0` display driver: initialization, graphics primitives (pixel, line, circle, rectangle, fill operations), native text rendering with 7 built-in fonts (8×8 to 32×48), image support (BMP/JPEG with hardware acceleration), RGB565 color system, double-buffering, performance optimization, and practical examples including analog clock, progress bars, and image gallery.
+## Core Release Documents
 
-### [`RM690B0_LVGL.md`](RM690B0_LVGL.md)
+- [`TESTING_GUIDE.md`](TESTING_GUIDE.md)
+  - Full hardware test procedure (Phase 1-4), optional benchmarks, troubleshooting, and reporting templates.
+- [`MIGRATION_GUIDE.md`](MIGRATION_GUIDE.md)
+  - API migration from legacy standalone `rm690b0` to `displayio + qspibus`.
+- [`../../circuitpython-rm690b0/CHANGES.md`](../../circuitpython-rm690b0/CHANGES.md)
+  - Release changelog for v2.0, including breaking changes and architecture notes.
 
-Integration guide for `rm690b0_lvgl` with LVGL 8.x: initialization sequence, touch input with automatic coordinate transformation, Python widget API (Widget, Label, Button), event system with callbacks, usage examples (counter app, multi-button controls, settings panels), complete widget reference for all implemented classes, and detailed troubleshooting including known GC/touch stability issue.
+## Technical References
 
-### [`TECHNICAL_NOTES.md`](TECHNICAL_NOTES.md)
+- [`TECHNICAL_NOTES.md`](TECHNICAL_NOTES.md)
+  - Consolidated technical notes, benchmark context, and troubleshooting.
+- [`CODE_REMOVAL_AUDIT.md`](CODE_REMOVAL_AUDIT.md)
+  - Audit of standalone module removal and retained components.
+- [`FOURWIRE_ANALYSIS.md`](FOURWIRE_ANALYSIS.md)
+  - Reference analysis used while implementing `qspibus`.
+- [`DISPLAYIO_PANEL_ANALYSIS.md`](DISPLAYIO_PANEL_ANALYSIS.md)
+  - RM690B0 panel integration notes for displayio.
 
-Detailed technical notes about the `rm690b0` driver: rendering architecture (30-line DMA limit, framebuffer management), performance benchmarks, storage options (flash/PSRAM/SD card), touch-display integration (FT6336U coordinate mapping), native text rendering system (Section 11), TTF font conversion toolchain, DMA memory management, and comprehensive troubleshooting guide.
+## Planning and Process Docs
 
-### [`FOURWIRE_ANALYSIS.md`](FOURWIRE_ANALYSIS.md)
+- [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
+  - Full multi-phase execution plan.
+- [`IMPLEMENTATION_PLAN_SUMMARY.md`](IMPLEMENTATION_PLAN_SUMMARY.md)
+  - Short plan summary for rapid onboarding.
+- [`project_status_summary.md`](project_status_summary.md)
+  - Current project status and readiness notes.
+- [`CIRCUITPYTHON_UPSTREAM_FEEDBACK.md`](CIRCUITPYTHON_UPSTREAM_FEEDBACK.md)
+  - Upstream feedback context and design constraints.
 
-Implementation analysis of `fourwire` used as the reference architecture for the new `qspibus` module (constructor/send/deinit patterns, pin lifecycle, error handling, and ESP32-S3 integration notes).
+## Legacy Documentation (Deprecated)
 
-### [`project_status_summary.md`](project_status_summary.md)
+- [`RM690B0_DRIVER.md`](RM690B0_DRIVER.md)
+  - Legacy standalone API documentation. Kept for reference.
+- [`RM690B0_LVGL.md`](RM690B0_LVGL.md)
+  - LVGL integration documentation from pre-v2 architecture workstream.
 
-Project status summary: Phase 5 complete (LVGL integration + native text), readiness assessment (`rm690b0` production-ready, `rm690b0_lvgl` beta due to GC/touch bug), key achievements, current limitations, and Phase 6 roadmap (documentation + 9-13 additional widgets).
+## Hardware Test Scripts
 
-### [`project_summary.yaml`](project_summary.yaml)
+Test script directory:
 
-Machine-readable description of Waveshare ESP32-S3 Touch AMOLED 2.41 board: hardware configuration (GPIO pins, I2C devices), software components (rm690b0, rm690b0_lvgl modules), implementation status, and structured roadmap – designed for automation tools and technical reviews.
+- [`../examples/tests/`](../examples/tests/)
 
-### [`snapshot.txt`](snapshot.txt)
+Required phase tests:
 
-Compact technical summary in key=value format: board configuration, module APIs, performance metrics, font system (7 built-in fonts + TTF converter), widget classes, known issues (especially GC/touch bug), practical usage rules, and current project status – optimized for quick reference and automated parsing.
+- [`../examples/tests/test_phase1_sdioio.py`](../examples/tests/test_phase1_sdioio.py)
+- [`../examples/tests/test_phase2_qspibus.py`](../examples/tests/test_phase2_qspibus.py)
+- [`../examples/tests/test_phase3_displayio.py`](../examples/tests/test_phase3_displayio.py)
+- [`../examples/tests/test_phase4_integration.py`](../examples/tests/test_phase4_integration.py)
 
-## Quick Links
+Optional benchmarks:
 
-### Getting Started
+- [`../examples/tests/benchmark_phase1_sdioio_io.py`](../examples/tests/benchmark_phase1_sdioio_io.py)
+- [`../examples/tests/benchmark_phase1_sdioio_freq_sweep.py`](../examples/tests/benchmark_phase1_sdioio_freq_sweep.py)
+- [`../examples/tests/benchmark_phase5_displayio.py`](../examples/tests/benchmark_phase5_displayio.py)
 
-- For display driver basics: See **Quick Start** section in [`RM690B0_DRIVER.md`](RM690B0_DRIVER.md#quick-start)
-- For LVGL integration: See **Quick Start** section in [`RM690B0_LVGL.md`](RM690B0_LVGL.md#quick-start)
-- For technical details: See [`TECHNICAL_NOTES.md`](TECHNICAL_NOTES.md)
+## Quick Start
 
-### API Reference
+1. Read migration notes: [`MIGRATION_GUIDE.md`](MIGRATION_GUIDE.md)
+2. Validate build and hardware: [`TESTING_GUIDE.md`](TESTING_GUIDE.md)
+3. Review release-level impact: [`../../circuitpython-rm690b0/CHANGES.md`](../../circuitpython-rm690b0/CHANGES.md)
+4. Use deep technical context when needed: [`TECHNICAL_NOTES.md`](TECHNICAL_NOTES.md)
 
-- **Display Driver API**: [`RM690B0_DRIVER.md#python-api-reference`](RM690B0_DRIVER.md#python-api-reference)
-- **LVGL Widget API**: [`RM690B0_LVGL.md#widget-classes`](RM690B0_LVGL.md#widget-classes)
-- **Native Text API**: [`TECHNICAL_NOTES.md#text-api-reference`](TECHNICAL_NOTES.md#text-api-reference)
+## Related Repositories
 
-### Examples
+- CircuitPython fork root: [`../../circuitpython-rm690b0/`](../../circuitpython-rm690b0/)
+- Board support root: [`../`](../)
 
-- **Graphics Examples**: [`RM690B0_DRIVER.md#examples`](RM690B0_DRIVER.md#examples)
-- **LVGL Examples**: [`RM690B0_LVGL.md#examples`](RM690B0_LVGL.md#examples)
-- **Complete Scripts**: See [`../examples/`](../examples/) directory
-- **Hardware SDIO Tests/Benchmarks**: [`../examples/tests/`](../examples/tests/)
-- **Hardware QSPIBus Test**: [`../examples/tests/test_phase2_qspibus.py`](../examples/tests/test_phase2_qspibus.py)
-
-### Troubleshooting
-
-- **Display Issues**: [`RM690B0_DRIVER.md#troubleshooting`](RM690B0_DRIVER.md#troubleshooting)
-- **LVGL Issues**: [`RM690B0_LVGL.md#troubleshooting`](RM690B0_LVGL.md#troubleshooting)
-- **Technical Issues**: [`TECHNICAL_NOTES.md#common-issues--solutions`](TECHNICAL_NOTES.md#common-issues--solutions)
-
-## Related Resources
-
-- **Main Repository**: [`../README.md`](../README.md)
-- **Example Scripts**: [`../examples/`](../examples/)
-- **Font Tools**: [`../fonts/`](../fonts/)
-- **Build Scripts**: [`../build/`](../build/)
-
----
-
-Last Updated: 2026-02-06
+Last updated: `2026-02-06`

@@ -282,6 +282,9 @@ while True:
 | [RM690B0_DRIVER.md](docs/RM690B0_DRIVER.md)   | Complete display driver API      |
 | [RM690B0_LVGL.md](docs/RM690B0_LVGL.md)       | LVGL widgets and integration     |
 | [TECHNICAL_NOTES.md](docs/TECHNICAL_NOTES.md) | Architecture and troubleshooting |
+| [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) | v1.x -> v2.0 migration guide     |
+| [TESTING_GUIDE.md](docs/TESTING_GUIDE.md)     | Hardware test procedure (P1-P4)  |
+| [CHANGES.md](../circuitpython-rm690b0/CHANGES.md) | v2.0 release changelog       |
 | [examples/README.md](examples/README.md)      | All examples documentation       |
 | [firmware/README.md](firmware/README.md)      | Flashing instructions            |
 | [fonts/README.md](fonts/README.md)            | Font converter guide             |
@@ -309,7 +312,7 @@ while True:
 ## Project Status
 
 **Phase 5:** ✅ Complete  
-**Phase 6:** 🚧 In Progress (Documentation + Widget Expansion)
+**Phase 6:** ✅ Complete (Final documentation package)
 
 ### Production Ready ✅
 
