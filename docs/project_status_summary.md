@@ -1,15 +1,17 @@
 # RM690B0 Driver — Project Status
 
-> **⚠️ MIGRATION NOTE (v2.0):**
-> Custom `sdcardio` module has been removed. Use standard `sdioio` instead.
-> See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for details.
+> **⚠️ ARCHITECTURE NOTE (v2.0):**
+> Standalone `rm690b0` module was removed in Phase 4.
+> Current path is `qspibus + displayio` with panel helper driver.
+> See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) and [CODE_REMOVAL_AUDIT.md](CODE_REMOVAL_AUDIT.md).
 
 ## Overall Readiness
 
-- **Phase 2 (QSPIBus) Complete and Hardware-Validated**: `qspibus` module is integrated in firmware and passed standalone hardware tests (construct/deinit/context-manager) on 2026-02-06
-- **Feature Complete, Not Yet Production Ready**: `rm690b0` standalone driver is production-grade for rendering (including native text), but `rm690b0_lvgl` has a known critical issue with touch interaction under garbage collection (GC) and heavy allocation scenarios (e.g. TTF fonts)
-- **Phase 5 Functionality Complete**: LVGL integration achieved with Python widget API (Widget, Label, Button, Slider, etc.) enabling rich interactive UIs; native text rendering API with 7 built-in bitmap fonts completed; stability under GC pressure is still under investigation
-- Driver meets performance expectations: circle rendering is 39× faster, rectangle edges avoid double draws, fill operations remain hardware-limited to 30-line DMA chunks, and native text rendering is 10-500× faster than DisplayIO
+- **Phase 2 (QSPIBus) Complete and Hardware-Validated**: `qspibus` module is integrated in firmware and passed hardware tests (construct/deinit/context-manager) on 2026-02-06.
+- **Phase 3 (DisplayIO Integration) Complete**: panel path renders correctly on hardware (color cycle + geometry tests) with stable cleanup/deinit sequence.
+- **Phase 4 (Standalone Removal) Complete**: legacy `rm690b0` module and built-in font payload were removed from firmware build; vendor panel/JPEG files retained for current and future integration.
+- **Phase 5 (LVGL) Status**: feature work progressed, but stability under GC pressure still requires validation.
+- Driver stack now targets maintainable upstream architecture first; performance tuning remains a follow-up track.
 - LVGL rendering clean at 100+ FPS with zero tearing in typical usage; touch input is functional with coordinate transformation, but frequent `gc.collect()` or large allocations can cause loss of responsiveness
 - **AMOLED Optimized**: LVGL Dark Theme background is now pure black (0x000000) for maximum power efficiency and contrast.
 - **Dynamic Themes**: Added `set_theme_color()` API for switching between Light and Dark modes in real-time.
@@ -19,10 +21,11 @@
 
 ## Delivered Outcomes
 
-### Phase 1-4: Standalone Driver (COMPLETE)
+### Phase 1-4: Migration to DisplayIO Stack (COMPLETE)
 
 - Phase 2 bus layer delivered: new `qspibus` module (analog to `fourwire`) for QSPI display communication on ESP32-S3
 - Phase 2 hardware test status: PASS via `examples/tests/test_phase2_qspibus.py` (create/deinit/context manager)
+- Phase 4 cleanup completed: standalone `rm690b0` module removed from build, with retained vendor files only (`esp_lcd_rm690b0.*`, `esp_jpeg/*`)
 - Rendering core refactored around framebuffer batching, lazy allocations, and clip helpers verified in `CODE_VERIFICATION_COMPLETE.md`
 - Image support refactored: Dedicated `image_converter` module removed in favor of `jpegio` with hardware acceleration and optimized C-level `convert_bmp` for 24-bit bitmap loading. Both paths now support direct RGB565 byte-swapped output for zero-copy DMA.
 - Redundant RAW conversion function was removed to cut a 56 ms overhead.

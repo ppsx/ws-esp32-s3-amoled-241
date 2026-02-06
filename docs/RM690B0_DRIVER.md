@@ -1,5 +1,9 @@
 # RM690B0 Display Driver - Complete Guide
 
+> **⚠️ DEPRECATED (v2.0):**
+> This document describes the legacy standalone `rm690b0` module removed in Phase 4.
+> For current architecture (`displayio + qspibus`), see [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) and [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md).
+
 ---
 
 ## Table of Contents
@@ -964,13 +968,16 @@ gc.collect()
 
 ```python
 import board
-import busio
-import sdcardio
+import sdioio
 import storage
 
 # Mount SD card
-spi = busio.SPI(board.SD_SCK, board.SD_MOSI, board.SD_MISO)
-sd = sdcardio.SDCard(spi, board.SD_CS, baudrate=20000000)
+sd = sdioio.SDCard(
+    clock=board.SD_CLK,
+    command=board.SD_MOSI,
+    data=[board.SD_MISO],
+    frequency=20_000_000
+)
 vfs = storage.VfsFat(sd)
 storage.mount(vfs, "/sd")
 
@@ -1343,16 +1350,19 @@ import os
 import time
 
 import board
-import busio
-import sdcardio
+import sdioio
 import storage
 
 display = rm690b0.RM690B0()
 display.init_display()
 
 # Mount SD card
-spi = busio.SPI(board.SD_SCK, board.SD_MOSI, board.SD_MISO)
-sd = sdcardio.SDCard(spi, board.SD_CS, baudrate=20000000)
+sd = sdioio.SDCard(
+    clock=board.SD_CLK,
+    command=board.SD_MOSI,
+    data=[board.SD_MISO],
+    frequency=20_000_000
+)
 vfs = storage.VfsFat(sd)
 storage.mount(vfs, "/sd")
 

@@ -1,8 +1,9 @@
 # RM690B0 Driver - Technical Notes
 
-> **⚠️ MIGRATION NOTE (v2.0):**
-> Custom `sdcardio` module has been removed. Use standard `sdioio` instead.
-> See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for details.
+> **⚠️ ARCHITECTURE UPDATE (v2.0):**
+> Legacy standalone `rm690b0` module was removed in Phase 4.
+> Current display stack: `qspibus + displayio` (panel via `BusDisplay` helper).
+> Migration details: [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md).
 
 ---
 
@@ -11,6 +12,7 @@
 - [Overview](#overview)
 - [Phase 2: QSPIBus Validation (2026-02-06)](#phase-2-qspibus-validation-2026-02-06)
 - [Phase 3: DisplayIO Integration (2026-02-06)](#phase-3-displayio-integration-2026-02-06)
+- [Phase 4: Standalone Module Removal (2026-02-06)](#phase-4-standalone-module-removal-2026-02-06)
 - [Performance Benchmarking Insights](#performance-benchmarking-insights)
 - [Rendering Optimizations](#rendering-optimizations)
 - [Documentation Tooling](#documentation-tooling)
@@ -110,6 +112,41 @@ Observed result (final):
 ### Validation Status
 
 Status: **COMPLETE**
+
+---
+
+## Phase 4: Standalone Module Removal (2026-02-06)
+
+### Scope
+
+- removed legacy standalone module sources:
+  - `shared-bindings/rm690b0/`
+  - `ports/espressif/common-hal/rm690b0/RM690B0.c`
+  - `ports/espressif/common-hal/rm690b0/RM690B0.h`
+  - `ports/espressif/common-hal/rm690b0/fonts/`
+- retained only vendor/pipeline files:
+  - `esp_lcd_rm690b0.c/.h`
+  - `esp_jpeg/`
+- updated board-facing aliases to generic LCD names (`LCD_*`)
+- disabled standalone build path in make configuration
+
+### Build Verification
+
+- clean build completed with exit code 0
+- firmware artifact generated:
+  - `ports/espressif/build-waveshare_esp32_s3_amoled_241/firmware.bin`
+- `strings firmware.bin | grep -i rm690b0` -> no standalone module entries
+- `strings firmware.bin | grep -i qspibus` -> `qspibus` and `QSPIBus` present
+
+### Architectural Result
+
+Po fazie 4 jedyną wspieraną ścieżką renderowania w firmware jest:
+
+- `qspibus` transport layer
+- `displayio` scene/composition layer
+- RM690B0 init/command sequence realizowane przez panel helper (`BusDisplay` wrapper)
+
+Standalone API `import rm690b0` jest celowo usunięte (breaking change).
 
 ---
 

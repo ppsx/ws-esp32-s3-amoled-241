@@ -15,6 +15,7 @@ examples/tests/
 ├── test_phase1_sdioio.py
 ├── test_phase2_qspibus.py
 ├── test_phase3_displayio.py
+├── test_phase4_integration.py
 ├── benchmark_phase1_sdioio_io.py
 └── benchmark_phase1_sdioio_freq_sweep.py
 ```
@@ -116,3 +117,19 @@ TEST_FILE="examples/tests/$1"
 - Dla benchmarkow SD card reset boarda przed kazdym przebiegiem daje bardziej powtarzalne wyniki.
 - Dla fazy 3 test sprawdza kolorowe plansze i prostokat, wiec trzeba obserwowac ekran.
 - W fazie 3 poprawny cleanup jest czescia testu (wymagany dla powtarzalnego rerun bez restartu).
+
+### 5) Test integracyjny stosu v2.0 (`test_phase4_integration.py`)
+
+```bash
+cd /home/pps/Downloads/__ai__/repos/ws-esp32-s3-amoled-241
+cp examples/tests/test_phase4_integration.py /media/CIRCUITPY/code.py
+cd /home/pps/Downloads/__ai__/repos/circuitpython-rm690b0
+./build_waveshare.sh monitor
+# reset RST na boardzie
+```
+
+Oczekiwany efekt:
+
+- Serial: `ALL INTEGRATION TESTS PASSED`
+- Testuje jednoczesnie: `sdioio` + `qspibus` + `displayio`
+- Ekran: red -> green -> blue, potem scena z trzema prostokatami
