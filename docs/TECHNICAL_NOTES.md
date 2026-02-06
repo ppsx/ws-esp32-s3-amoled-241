@@ -10,6 +10,7 @@
 
 - [Overview](#overview)
 - [Phase 2: QSPIBus Validation (2026-02-06)](#phase-2-qspibus-validation-2026-02-06)
+- [Phase 3: DisplayIO Integration (2026-02-06)](#phase-3-displayio-integration-2026-02-06)
 - [Performance Benchmarking Insights](#performance-benchmarking-insights)
 - [Rendering Optimizations](#rendering-optimizations)
 - [Documentation Tooling](#documentation-tooling)
@@ -61,6 +62,54 @@ Reference test script:
 - `examples/tests/test_phase2_qspibus.py`
 
 Phase 2 intentionally does **not** verify raw `send()` transactions from Python, because `send()` is C-only and reserved for display driver integration (Phase 3).
+
+---
+
+## Phase 3: DisplayIO Integration (2026-02-06)
+
+### Scope
+
+- Added `qspibus` transaction hooks needed by `displayio`/`busdisplay`:
+  - `reset()`
+  - `bus_free()`
+  - `begin_transaction()`
+  - `send(DISPLAY_COMMAND | DISPLAY_DATA, ...)`
+  - `end_transaction()`
+- Connected `qspibus.QSPIBus` as a supported display bus in `shared-module/displayio/bus_core.c`.
+- Added a temporary RM690B0 displayio helper driver and hardware test scripts in:
+  - `examples/tests/adafruit_rm690b0.py`
+  - `examples/tests/test_phase3_displayio.py`
+- Added architecture notes in:
+  - `docs/DISPLAYIO_PANEL_ANALYSIS.md`
+- Added RM690B0-specific transfer/deinit robustness fixes:
+  - color payload path uses QSPI color opcode (`RAMWR`/`RAMWRC`)
+  - minimum 2-row refresh chunks for `qspibus` to avoid unstable single-row bursts
+  - best-effort panel sleep sequence on deinit (`DISPOFF` -> `SLPIN`)
+  - explicit cleanup in phase-3 test (`release_displays()` + `qspi_bus.deinit()`)
+
+### Implementation Note
+
+`busdisplay` sends command and payload separately. QSPI RM690B0 path needs packed command transactions, so `qspibus` now keeps a pending command during transaction and emits payload on the following `DISPLAY_DATA` call.
+
+### Hardware Validation Result
+
+Status: **PASS**
+
+Observed result (final):
+
+- visible color cycle and geometry test on real panel:
+  - red -> green -> blue
+  - white rectangle on black background
+- no color corruption in phase-3 test sequence
+- cleanup now reliably:
+  - clears screen to black
+  - releases display resources
+  - deinitializes QSPI bus
+- the same test script can be started again without manual board reset
+
+### Validation Status
+
+Status: **COMPLETE**
 
 ---
 
