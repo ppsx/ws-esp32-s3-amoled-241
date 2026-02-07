@@ -264,7 +264,7 @@ def main():
                             selected = "flight"
                         break
 
-            time.sleep(0.05)  # Small delay to reduce CPU usage
+            time.sleep(0.05)
 
     except KeyboardInterrupt:
         print("\nInterrupted by user.")
@@ -299,7 +299,6 @@ def main():
         try:
             import game_pacman
             game_pacman.main()
-            print("Error: game_pacman.py not found!")
         except Exception as e:
             print(f"Error: {e}")
     elif selected == "sokoban":
@@ -314,7 +313,6 @@ def main():
         try:
             import game_minesweeper
             game_minesweeper.main()
-            print("Error: game_minesweeper.py not found!")
         except Exception as e:
             print(f"Error: {e}")
     else:

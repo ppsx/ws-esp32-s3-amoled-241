@@ -132,7 +132,7 @@ See [firmware/README.md](firmware/README.md) for flashing instructions.
 
    ```bash
    # Stable branch
-   git clone https://github.com/ppsx/circuitpython.git -b rm690b0-driver-clean
+   git clone https://github.com/ppsx/circuitpython.git -b rm690b0-standalone
 
    # Or LVGL branch
    git clone https://github.com/ppsx/circuitpython.git -b lvgl
@@ -295,7 +295,7 @@ while True:
 
 ### Main Branch (Stable) ✅
 
-**Repository:** <https://github.com/ppsx/circuitpython/tree/rm690b0-driver-clean>
+**Repository:** <https://github.com/ppsx/circuitpython/tree/rm690b0-standalone>
 
 **Status:** Production Ready  
 **Use for:** Production applications, games, embedded displays
@@ -386,7 +386,7 @@ See full license in source code.
 
 **Repositories:**
 
-- Main: <https://github.com/ppsx/circuitpython/tree/rm690b0-driver-clean>
+- Main: <https://github.com/ppsx/circuitpython/tree/rm690b0-standalone>
 - LVGL: <https://github.com/ppsx/circuitpython/tree/lvgl>
 
 **Hardware:**

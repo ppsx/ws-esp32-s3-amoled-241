@@ -492,7 +492,7 @@ esptool.py --chip esp32s3 -p /dev/ttyACM0 \
 - `storage` - Filesystem
 - `wifi` - WiFi support
 - `espnow` - ESP-NOW protocol
-- `sdcardio` - SD card support
+- `sdioio` - SD card support (1-bit mode)
 - Standard CircuitPython libraries
 
 **firmware-rm690b0-lvgl.bin:**

@@ -31,5 +31,5 @@ PRACTICAL_RULES=init rm690b0 before rm690b0_lvgl.init_display(); init_touch(i2c)
 IMPORT_ORDER=import rm690b0; import rm690b0_lvgl; import board; import busio;
 INIT_SEQUENCE=display=rm690b0.RM690B0(); display.init_display(); lvgl=rm690b0_lvgl.RM690B0_LVGL(); lvgl.init_display(); lvgl.init_rendering(); i2c=busio.I2C(board.TP_SCL,board.TP_SDA,frequency=400000); lvgl.init_touch(i2c);
 STATUS_SUMMARY=rm690b0 driver: stable+fast with native text rendering; rm690b0_lvgl: functional (widgets, touch, TTF) but critical GC/touch bug exists; Phase 5 complete (LVGL integration + native text); Phase 6 planned (documentation+stability+widget expansion);
-BUILD_BRANCHES=Main: https://github.com/ppsx/circuitpython/tree/rm690b0-driver-clean (stable); LVGL: https://github.com/ppsx/circuitpython/tree/lvgl (beta with GC issue);
+BUILD_BRANCHES=Main: https://github.com/ppsx/circuitpython/tree/rm690b0-standalone (stable); LVGL: https://github.com/ppsx/circuitpython/tree/lvgl (beta with GC issue);
 LAST_UPDATE=2025-01-04; MAINTAINER=Przemyslaw Patrick Socha; LICENSE=MIT;
