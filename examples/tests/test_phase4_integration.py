@@ -172,13 +172,6 @@ def _cleanup(display, qspi_bus, sd_mounted):
     except Exception as exc:
         print(f"  [WARN] release_displays failed: {exc}")
 
-    if qspi_bus is not None:
-        try:
-            qspi_bus.deinit()
-            print("  [OK] QSPI bus deinitialized")
-        except Exception as exc:
-            print(f"  [WARN] QSPI deinit failed: {exc}")
-
     if sd_mounted:
         try:
             storage.umount("/sd")
@@ -199,10 +192,10 @@ sd_mounted = False
 try:
     print("\n[1/4] Testing sdioio (SD card)...")
     sd = sdioio.SDCard(
-        clock=board.SD_CLK,
-        command=board.SD_MOSI,
-        data=[board.SD_MISO],
-        frequency=20_000_000,
+        clock=board.SDIO_CLK,
+        command=board.SDIO_CMD,
+        data=[board.SDIO_D0],
+        frequency=40_000_000,
     )
     vfs = storage.VfsFat(sd)
     storage.mount(vfs, "/sd")
@@ -240,6 +233,10 @@ except Exception as exc:
     import traceback
 
     traceback.print_exception(type(exc), exc, exc.__traceback__)
+except KeyboardInterrupt:
+    print("\n" + "=" * 50)
+    print("[INTERRUPTED] Integration test interrupted by user")
+    print("=" * 50)
 
 finally:
     _cleanup(display, qspi_bus, sd_mounted)

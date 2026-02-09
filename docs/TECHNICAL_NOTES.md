@@ -141,13 +141,13 @@ Status: **COMPLETE**
 
 ### Architectural Result
 
-Po fazie 4 jedyną wspieraną ścieżką renderowania w firmware jest:
+After Phase 4, the only supported rendering path in firmware is:
 
 - `qspibus` transport layer
 - `displayio` scene/composition layer
-- RM690B0 init/command sequence realizowane przez panel helper (`BusDisplay` wrapper)
+- RM690B0 init/command sequence implemented by panel helper (`BusDisplay` wrapper)
 
-Standalone API `import rm690b0` jest celowo usunięte (breaking change).
+Standalone API `import rm690b0` has been intentionally removed (breaking change).
 
 ---
 
@@ -372,7 +372,9 @@ The project uses AI-assisted documentation.
 
 **Status:** ✅ **FULLY WORKING** - Standard `sdioio` in 1-bit mode provides reliable SD card access with board-native SD pins.
 
-**Solution:** Use `sdioio.SDCard(...)` with `clock`, `command`, `data=[DATA0]` and `frequency=20_000_000`.
+**Migration Note (Feb 2026):** Custom `espsdcard` and `sdcardio` implementations were removed in favor of CircuitPython's standard `sdioio` module. This eliminates maintenance burden while providing identical performance (both use ESP-IDF's SDMMC drivers). Pin names changed from `SD_*` to `SDIO_*` (e.g., `board.SD_CLK` → `board.SDIO_CLK`).
+
+**Solution:** Use `sdioio.SDCard(...)` with `clock`, `command`, `data=[DATA0]` and `frequency=40_000_000`.
 
 #### Quick Start
 
@@ -383,10 +385,10 @@ import storage
 
 # Initialize SD card (1-bit SDIO mode, 20 MHz)
 sd = sdioio.SDCard(
-    clock=board.SD_CLK,
-    command=board.SD_MOSI,
-    data=[board.SD_MISO],
-    frequency=20_000_000,
+    clock=board.SDIO_CLK,
+    command=board.SDIO_CMD,
+    data=[board.SDIO_D0],
+    frequency=40_000_000,
 )
 
 # Mount filesystem
@@ -434,7 +436,7 @@ data = b"".join(chunks)
 **Writes:**
 
 - Start with `frequency=40_000_000` for maximum read throughput.
-- If karta SD lub okablowanie jest niestabilne, fallback do `25_000_000` lub `20_000_000`.
+- If SD card or wiring is unstable, fallback to `25_000_000` or `20_000_000`.
 
 **Common Pattern:**
 
@@ -443,10 +445,10 @@ data = b"".join(chunks)
 def mount_sd():
     try:
         sd = sdioio.SDCard(
-            clock=board.SD_CLK,
-            command=board.SD_MOSI,
-            data=[board.SD_MISO],
-            frequency=20_000_000,
+            clock=board.SDIO_CLK,
+            command=board.SDIO_CMD,
+            data=[board.SDIO_D0],
+            frequency=40_000_000,
         )
         vfs = storage.VfsFat(sd)
         storage.mount(vfs, "/sd")
@@ -484,9 +486,9 @@ Skrypty benchmarkowe:
 - Read (alloc): 838.65 KB/s
 - Read (readinto): 930.70 KB/s
 
-**Wniosek praktyczny:**
-- Dla odczytu duzych assetow najlepszy jest `40 MHz` + `readinto()`.
-- Zapis jest relatywnie plaski (~179-222 KB/s), wiec bottleneck to glownie karta/FAT, nie zegar SDIO.
+**Practical Conclusion:**
+- For reading large assets, best performance is `40 MHz` + `readinto()`.
+- Write speed is relatively flat (~179-222 KB/s), so the bottleneck is mainly the card/FAT, not SDIO clock.
 
 ### Flash vs PSRAM vs SD Card Storage
 
@@ -623,7 +625,7 @@ with open("/sd/image.bmp", "rb") as f:
 
 ### Issue: SD Card Access
 
-**Solution:** Use standard `sdioio` in 1-bit mode. Start from `frequency=40_000_000`, fallback to `25_000_000` or `20_000_000` for stability.
+**Solution:** Use standard `sdioio` in 1-bit mode. Start from `frequency=40_000_000`, fallback to `25_000_000` or `40_000_000` for stability.
 
 **Common Issues:**
 

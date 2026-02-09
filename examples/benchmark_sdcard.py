@@ -1,8 +1,8 @@
 """
-SD Card Benchmark: sdcardio
+SD Card Benchmark: sdioio
 ===========================
 
-This script benchmarks the performance of the native CircuitPython `sdcardio` module.
+This script benchmarks the performance of CircuitPython `sdioio` in 1-bit mode.
 
 Tests performed:
 1. Write Speed (64KB chunks)
@@ -10,21 +10,20 @@ Tests performed:
 3. Read Speed (Zero-copy into pre-allocated buffer)
 
 Configuration:
-- 20 MHz SPI Clock (Optimal for Performance)
+- 40 MHz SDIO Clock (Optimal for Performance)
 - 64 KB Transfer/Chunk Size (Optimal for ESP32-S3 DMA)
 """
 
 import board
-import busio
+import sdioio
 import storage
 import os
 import time
 import gc
-import sdcardio
 import microcontroller
 
 # Configuration
-BAUDRATE = 20_000_000  # 20 MHz
+BAUDRATE = 40_000_000  # 40 MHz
 TEST_FILE_SIZE = 4 * 1024 * 1024  # 4 MB file for robust testing
 CHUNK_SIZE = 64 * 1024  # 64 KB chunks
 FILENAME = "/sd/benchmark.bin"
@@ -125,35 +124,24 @@ def run_benchmark(name, mount_func):
 
 # Wrappers for initialization
 # Global holders to prevent GC init issues during function return
-spi_obj = None 
 sd_obj = None
 
-def mount_sdcardio():
-    global spi_obj, sd_obj
-    print(f"Initializing sdcardio with baudrate={BAUDRATE}...")
-    spi_obj = busio.SPI(board.SD_CLK, MOSI=board.SD_MOSI, MISO=board.SD_MISO)
-    sd_obj = sdcardio.SDCard(spi_obj, board.SD_CS, baudrate=BAUDRATE)
-    
-    # Check for debug info (if available in this custom build, otherwise skip)
-    if hasattr(sd_obj, 'debug_info'):
-        try:
-           print(f"Info: {sd_obj.debug_info()}")
-        except:
-           pass
-        
+def mount_sdioio():
+    global sd_obj
+    print(f"Initializing sdioio with frequency={BAUDRATE}...")
+    sd_obj = sdioio.SDCard(
+        clock=board.SDIO_CLK,
+        command=board.SDIO_CMD,
+        data=[board.SDIO_D0],
+        frequency=BAUDRATE,
+    )
     return storage.VfsFat(sd_obj)
 
-def cleanup_sdcardio():
-    global spi_obj, sd_obj
+def cleanup_sdioio():
+    global sd_obj
     if sd_obj:
         sd_obj.deinit()
-    if spi_obj:
-        try:
-            spi_obj.deinit()
-        except:
-            pass
     sd_obj = None
-    spi_obj = None
     gc.collect()
 
 # Main Execution
@@ -162,16 +150,16 @@ print("SD CARD PERFORMANCE BENCHMARK")
 print(f"Clock: {BAUDRATE/1000000:.1f} MHz | File Size: {format_bytes(TEST_FILE_SIZE)}")
 print("="*60)
 
-# Run sdcardio benchmark
-cleanup_sdcardio() # Pre-clean
-res_sd = run_benchmark("sdcardio", mount_sdcardio)
-cleanup_sdcardio()
+# Run sdioio benchmark
+cleanup_sdioio() # Pre-clean
+res_sd = run_benchmark("sdioio", mount_sdioio)
+cleanup_sdioio()
 
 # Results Summary
 print("\n" + "="*60)
 print("RESULTS SUMMARY")
 print("="*60)
-print(f"{'Operation':<20} | {'sdcardio':<15}")
+print(f"{'Operation':<20} | {'sdioio':<15}")
 print("-" * 40)
 
 ops = [('Write', 'write'), ('Read (Alloc)', 'read_alloc'), ('Read (ZeroCopy)', 'read_zerocopy')]

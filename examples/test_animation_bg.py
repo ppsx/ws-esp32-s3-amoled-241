@@ -31,6 +31,10 @@ class HighFPSBall:
     """High performance bouncing ball using dirty region optimization"""
 
     def __init__(self, x, y, vx, vy, radius, display_width, display_height, background):
+        # Float positions for precise motion (prevents cumulative rounding errors)
+        self.fx = float(x)
+        self.fy = float(y)
+        # Int positions for rendering
         self.x = x
         self.y = y
         self.vx = vx
@@ -46,27 +50,33 @@ class HighFPSBall:
 
     def update(self):
         """Update ball position and handle edge bouncing"""
-        # Store previous position before updating
+        # Store previous position BEFORE updating (original structure)
         self.prev_x = self.x
         self.prev_y = self.y
 
-        # Update position
-        self.x += self.vx
-        self.y += self.vy
+        # Update position using float for precision
+        self.fx += self.vx
+        self.fy += self.vy
+        self.x = int(self.fx)
+        self.y = int(self.fy)
 
-        # Bounce off edges
+        # Bounce off edges (keep float and int synchronized)
         if self.x - self.radius <= 0:
             self.x = self.radius
+            self.fx = float(self.radius)
             self.vx = abs(self.vx)
         elif self.x + self.radius >= self.display_width:
             self.x = self.display_width - self.radius
+            self.fx = float(self.display_width - self.radius)
             self.vx = -abs(self.vx)
 
         if self.y - self.radius <= 0:
             self.y = self.radius
+            self.fy = float(self.radius)
             self.vy = abs(self.vy)
         elif self.y + self.radius >= self.display_height:
             self.y = self.display_height - self.radius
+            self.fy = float(self.display_height - self.radius)
             self.vy = -abs(self.vy)
 
     def clear_previous(self, display):
@@ -233,10 +243,7 @@ def main():
             last_fps_time = current_time
             last_fps_frame = frame_count
 
-        # Frame rate limiting
-        frame_elapsed = time.monotonic() - frame_start
-        if frame_elapsed < target_frame_time:
-            time.sleep(target_frame_time - frame_elapsed)
+        # NO THROTTLING - let it run as fast as possible!
 
     # Animation complete
     total_time = time.monotonic() - start_time

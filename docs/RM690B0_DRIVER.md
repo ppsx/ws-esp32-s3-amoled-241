@@ -973,10 +973,10 @@ import storage
 
 # Mount SD card
 sd = sdioio.SDCard(
-    clock=board.SD_CLK,
-    command=board.SD_MOSI,
-    data=[board.SD_MISO],
-    frequency=20_000_000
+    clock=board.SDIO_CLK,
+    command=board.SDIO_CMD,
+    data=[board.SDIO_D0],
+    frequency=40_000_000
 )
 vfs = storage.VfsFat(sd)
 storage.mount(vfs, "/sd")
@@ -1358,10 +1358,10 @@ display.init_display()
 
 # Mount SD card
 sd = sdioio.SDCard(
-    clock=board.SD_CLK,
-    command=board.SD_MOSI,
-    data=[board.SD_MISO],
-    frequency=20_000_000
+    clock=board.SDIO_CLK,
+    command=board.SDIO_CMD,
+    data=[board.SDIO_D0],
+    frequency=40_000_000
 )
 vfs = storage.VfsFat(sd)
 storage.mount(vfs, "/sd")

@@ -139,14 +139,6 @@ def _cleanup(display, qspi_bus):
         cleanup_ok = False
         print(f"    [WARN] release_displays failed: {exc}")
 
-    if qspi_bus is not None:
-        try:
-            qspi_bus.deinit()
-            print("    [OK] QSPI bus deinitialized")
-        except Exception as exc:
-            cleanup_ok = False
-            print(f"    [WARN] qspi_bus.deinit failed: {exc}")
-
     if not cleanup_ok:
         raise RuntimeError("Cleanup incomplete")
 
@@ -226,3 +218,12 @@ except Exception as exc:
             _cleanup(display, qspi_bus)
         except Exception as cleanup_exc:
             print(f"\n[WARN] Cleanup after failure raised: {cleanup_exc}")
+except KeyboardInterrupt:
+    print("\n" + "=" * 58)
+    print("[INTERRUPTED] Test interrupted by user")
+    print("=" * 58)
+    if not cleaned_up:
+        try:
+            _cleanup(display, qspi_bus)
+        except Exception as cleanup_exc:
+            print(f"\n[WARN] Cleanup after interrupt raised: {cleanup_exc}")

@@ -10,8 +10,7 @@ import os
 import time
 
 import board
-import busio
-import sdcardio
+import sdioio
 import rm690b0
 import storage
 import struct
@@ -30,13 +29,15 @@ display.init_display()
 display.brightness = 1.0
 print("✓ Display initialized")
 
-# 2. Initialize SD Card (Optimized sdcardio)
-# Optimized sdcardio provides ~645 KB/s read speeds
+# 2. Initialize SD Card (sdioio 1-bit mode)
 print("\nInitializing SD card...")
 try:
-    spi = busio.SPI(board.SD_CLK, MOSI=board.SD_MOSI, MISO=board.SD_MISO)
-    # Explicitly set 20MHz baudrate to match ESP-IDF defaults
-    sd = sdcardio.SDCard(spi, board.SD_CS, baudrate=20000000)
+    sd = sdioio.SDCard(
+        clock=board.SDIO_CLK,
+        command=board.SDIO_CMD,
+        data=[board.SDIO_D0],
+        frequency=40_000_000,
+    )
     vfs = storage.VfsFat(sd)
     storage.mount(vfs, "/sd")
     print("✓ SD card mounted at /sd")

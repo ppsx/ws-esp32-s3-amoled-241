@@ -14,7 +14,7 @@ import busio
 import digitalio
 import microcontroller
 import pwmio
-import sdcardio
+import sdioio
 import storage
 import wifi
 
@@ -506,10 +506,14 @@ def test_battery_monitor():
 def test_sd_card():
     print_header("SD CARD SLOT")
     wait_for_enter()
-    spi = None
+    sdcard = None
     try:
-        spi = busio.SPI(board.SD_CLK, MOSI=board.SD_MOSI, MISO=board.SD_MISO)
-        sdcard = sdcardio.SDCard(spi, board.SD_CS)
+        sdcard = sdioio.SDCard(
+            clock=board.SDIO_CLK,
+            command=board.SDIO_CMD,
+            data=[board.SDIO_D0],
+            frequency=40_000_000,
+        )
         vfs = storage.VfsFat(sdcard)
         storage.mount(vfs, "/sd")
 
@@ -525,6 +529,7 @@ def test_sd_card():
             print("    - " + f)
 
         storage.umount("/sd")
+        sdcard.deinit()
         print_result(True, "SD card unmounted successfully.")
 
     except OSError as e:
@@ -535,8 +540,11 @@ def test_sd_card():
     except Exception as e:
         print_result(False, "SD card test failed: " + str(e))
     finally:
-        if spi:
-            spi.deinit()
+        if sdcard:
+            try:
+                sdcard.deinit()
+            except Exception:
+                pass
 
 
 def test_wifi():

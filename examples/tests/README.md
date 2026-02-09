@@ -1,12 +1,12 @@
 # Hardware Tests - Waveshare ESP32-S3 AMOLED 2.41
 
-## Przeglad
+## Overview
 
-Ten katalog zawiera testy hardware dla migracji SD card na `sdioio`.
+This directory contains hardware tests for SD card migration to `sdioio`.
 
-**Nowa lokalizacja testow:** `examples/tests/`
+**New test location:** `examples/tests/`
 
-## Dostepne skrypty
+## Available Scripts
 
 ```text
 examples/tests/
@@ -21,9 +21,9 @@ examples/tests/
 └── benchmark_phase5_displayio.py
 ```
 
-## Przygotowanie
+## Preparation
 
-1. Zbuduj firmware:
+1. Build firmware:
 ```bash
 cd /home/pps/Downloads/__ai__/repos/circuitpython-rm690b0
 ./build_waveshare.sh build
@@ -34,118 +34,118 @@ cd /home/pps/Downloads/__ai__/repos/circuitpython-rm690b0
 ./build_waveshare.sh flash
 ```
 
-3. Sprawdz montowanie CIRCUITPY:
+3. Check CIRCUITPY mounting:
 ```bash
 ls /media/CIRCUITPY
 ```
 
-## Uruchamianie
+## Running Tests
 
-### 1) Test funkcjonalny SD (`test_phase1_sdioio.py`)
+### 1) SD Functional Test (`test_phase1_sdioio.py`)
 
 ```bash
 cd /home/pps/Downloads/__ai__/repos/ws-esp32-s3-amoled-241
 cp examples/tests/test_phase1_sdioio.py /media/CIRCUITPY/code.py
 cd /home/pps/Downloads/__ai__/repos/circuitpython-rm690b0
 ./build_waveshare.sh monitor
-# reset RST na boardzie
+# Press RST button on board
 ```
 
-### 1b) Test QSPIBus (`test_phase2_qspibus.py`)
+### 1b) QSPIBus Test (`test_phase2_qspibus.py`)
 
 ```bash
 cd /home/pps/Downloads/__ai__/repos/ws-esp32-s3-amoled-241
 cp examples/tests/test_phase2_qspibus.py /media/CIRCUITPY/code.py
 cd /home/pps/Downloads/__ai__/repos/circuitpython-rm690b0
 ./build_waveshare.sh monitor
-# reset RST na boardzie
+# Press RST button on board
 ```
 
-### 2) Benchmark I/O dla jednej czestotliwosci (`benchmark_phase1_sdioio_io.py`)
+### 2) I/O Benchmark for Single Frequency (`benchmark_phase1_sdioio_io.py`)
 
 ```bash
 cd /home/pps/Downloads/__ai__/repos/ws-esp32-s3-amoled-241
 cp examples/tests/benchmark_phase1_sdioio_io.py /media/CIRCUITPY/code.py
 cd /home/pps/Downloads/__ai__/repos/circuitpython-rm690b0
 ./build_waveshare.sh monitor
-# reset RST na boardzie
+# Press RST button on board
 ```
 
-### 3) Benchmark sweep czestotliwosci (`benchmark_phase1_sdioio_freq_sweep.py`)
+### 3) Frequency Sweep Benchmark (`benchmark_phase1_sdioio_freq_sweep.py`)
 
 ```bash
 cd /home/pps/Downloads/__ai__/repos/ws-esp32-s3-amoled-241
 cp examples/tests/benchmark_phase1_sdioio_freq_sweep.py /media/CIRCUITPY/code.py
 cd /home/pps/Downloads/__ai__/repos/circuitpython-rm690b0
 ./build_waveshare.sh monitor
-# reset RST na boardzie
+# Press RST button on board
 ```
 
-### 4) Test displayio + RM690B0 (`test_phase3_displayio.py`)
+### 4) displayio + RM690B0 Test (`test_phase3_displayio.py`)
 
 ```bash
 cd /home/pps/Downloads/__ai__/repos/ws-esp32-s3-amoled-241
 cp examples/tests/test_phase3_displayio.py /media/CIRCUITPY/code.py
 cd /home/pps/Downloads/__ai__/repos/circuitpython-rm690b0
 ./build_waveshare.sh monitor
-# reset RST na boardzie
+# Press RST button on board
 ```
 
-Oczekiwany efekt:
+Expected result:
 
-- Ekran: czerwony -> zielony -> niebieski -> bialy prostokat na czarnym tle.
-- Cleanup: ekran wraca do czerni, `displayio.release_displays()` i `qspi_bus.deinit()` przechodza poprawnie.
-- Skrypt mozna uruchomic ponownie bez twardego restartu plytki.
+- Screen: red -> green -> blue -> white rectangle on black background.
+- Cleanup: screen returns to black, `displayio.release_displays()` and `qspi_bus.deinit()` pass successfully.
+- Script can be run again without hard reset of the board.
 
-## Optional helper script
+## Optional Helper Script
 
-Mozesz uzyc helpera z roota repo `circuitpython-rm690b0`:
+You can use the helper from the root of `circuitpython-rm690b0` repo:
 
 ```bash
 ./run_test.sh ../ws-esp32-s3-amoled-241/examples/tests/test_phase1_sdioio.py
 ```
 
-Jesli trzymasz lokalnego helpera, ustaw:
+If you keep a local helper, set:
 
 ```bash
 TEST_FILE="examples/tests/$1"
 ```
 
-## Uwagi
+## Notes
 
-- Testy wymagaja fizycznego hardware.
-- Preferowany odczyt do wydajnosci: `readinto()`.
-- Dla benchmarkow SD card reset boarda przed kazdym przebiegiem daje bardziej powtarzalne wyniki.
-- Dla fazy 3 test sprawdza kolorowe plansze i prostokat, wiec trzeba obserwowac ekran.
-- W fazie 3 poprawny cleanup jest czescia testu (wymagany dla powtarzalnego rerun bez restartu).
+- Tests require physical hardware.
+- Preferred method for read performance: `readinto()`.
+- For SD card benchmarks, board reset before each run gives more repeatable results.
+- For Phase 3 test, check colored screens and rectangle, so you need to watch the display.
+- In Phase 3, proper cleanup is part of the test (required for repeatable rerun without reset).
 
-### 5) Test integracyjny stosu v2.0 (`test_phase4_integration.py`)
+### 5) v2.0 Stack Integration Test (`test_phase4_integration.py`)
 
 ```bash
 cd /home/pps/Downloads/__ai__/repos/ws-esp32-s3-amoled-241
 cp examples/tests/test_phase4_integration.py /media/CIRCUITPY/code.py
 cd /home/pps/Downloads/__ai__/repos/circuitpython-rm690b0
 ./build_waveshare.sh monitor
-# reset RST na boardzie
+# Press RST button on board
 ```
 
-Oczekiwany efekt:
+Expected result:
 
 - Serial: `ALL INTEGRATION TESTS PASSED`
-- Testuje jednoczesnie: `sdioio` + `qspibus` + `displayio`
-- Ekran: red -> green -> blue, potem scena z trzema prostokatami
+- Tests simultaneously: `sdioio` + `qspibus` + `displayio`
+- Screen: red -> green -> blue, then scene with three rectangles
 
-### 6) Benchmark displayio (`benchmark_phase5_displayio.py`)
+### 6) displayio Benchmark (`benchmark_phase5_displayio.py`)
 
 ```bash
 cd /home/pps/Downloads/__ai__/repos/ws-esp32-s3-amoled-241
 cp examples/tests/benchmark_phase5_displayio.py /media/CIRCUITPY/code.py
 cd /home/pps/Downloads/__ai__/repos/circuitpython-rm690b0
 ./build_waveshare.sh monitor
-# reset RST na boardzie
+# Press RST button on board
 ```
 
-Oczekiwany efekt:
+Expected result:
 
-- Serial: tabela czasow dla `full screen`, `partial update`, `multi-element scene`
-- Benchmark sluzy jako baseline/porownanie przed i po optymalizacjach fazy 5
+- Serial: timing table for `full screen`, `partial update`, `multi-element scene`
+- Benchmark serves as baseline/comparison before and after Phase 5 optimizations

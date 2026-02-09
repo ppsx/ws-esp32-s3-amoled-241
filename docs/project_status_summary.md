@@ -73,7 +73,7 @@
 ## Confirmed Constraints & Decisions
 
 - 30-line DMA ceiling on the RM690B0/ESP32-S3 path is hard hardware limit; attempts at 60+ line chunks fail and are intentionally avoided.
-- SD card pipelines use standard `sdioio` (1-bit mode) with 20 MHz clocking and VFS block-device mounting.
+- SD card pipelines use standard `sdioio` (1-bit mode) with 40 MHz clocking and VFS block-device mounting. Custom `espsdcard`/`sdcardio` implementations removed in favor of CircuitPython standard (Feb 2026).
 - Image format support limited to BMP and JPEG only; PNG was intentionally not implemented due to high PSRAM memory requirements. BMP acceleration and JPEG performance optimization remain potential enhancement targets.
 - Board-specific configuration (pins, timing, offsets) fully externalized to `mpconfigboard.h` files for easy porting to new hardware.
 

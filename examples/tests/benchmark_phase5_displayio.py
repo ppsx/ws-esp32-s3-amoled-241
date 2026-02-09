@@ -228,13 +228,6 @@ def _cleanup(display, qspi_bus):
     except Exception as exc:
         print(f"[WARN] release_displays failed: {exc}")
 
-    if qspi_bus is not None:
-        try:
-            qspi_bus.deinit()
-            print("Cleanup: QSPI bus deinitialized")
-        except Exception as exc:
-            print(f"[WARN] qspi deinit failed: {exc}")
-
 
 print("=" * 60)
 print("DisplayIO Benchmark - Phase 5 (RM690B0 over qspibus)")
@@ -264,7 +257,6 @@ try:
     print(f"Partial update (100x100):   {partial_ms:.3f} ms")
     print(f"Multi-element scene:        {scene_ms:.3f} ms")
     print("=" * 60)
-    print("Target reference: <100 ms for full screen refresh")
 
 except Exception as exc:
     print("\n" + "=" * 60)

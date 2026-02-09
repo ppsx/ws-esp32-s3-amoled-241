@@ -38,6 +38,10 @@ class HighFPSBall:
     """High performance bouncing ball using dirty region optimization"""
 
     def __init__(self, x, y, vx, vy, radius, display_width, display_height):
+        # Float positions for precise motion (prevents cumulative rounding errors)
+        self.fx = float(x)
+        self.fy = float(y)
+        # Int positions for rendering
         self.x = x
         self.y = y
         self.vx = vx
@@ -52,38 +56,58 @@ class HighFPSBall:
 
     def update(self):
         """Update ball position and handle edge bouncing"""
-        # Store previous position before updating
+        # Store previous position BEFORE updating (original structure)
         self.prev_x = self.x
         self.prev_y = self.y
 
-        # Update position
-        self.x += self.vx
-        self.y += self.vy
+        # Update position using float for precision
+        self.fx += self.vx
+        self.fy += self.vy
+        self.x = int(self.fx)
+        self.y = int(self.fy)
 
-        # Bounce off edges
-        if self.x - self.radius <= 0:
-            self.x = self.radius
+        # Bounce off edges with border margin (keep float and int synchronized)
+        # Border is at x=0, x=width-1, y=0, y=height-1
+        # Keep ball at least 2px away to protect border + clear region
+        border_margin = 2
+
+        if self.x - self.radius <= border_margin:
+            self.x = self.radius + border_margin
+            self.fx = float(self.radius + border_margin)
             self.vx = abs(self.vx)
-        elif self.x + self.radius >= self.display_width:
-            self.x = self.display_width - self.radius
+        elif self.x + self.radius >= self.display_width - 1 - border_margin:
+            self.x = self.display_width - 1 - self.radius - border_margin
+            self.fx = float(self.display_width - 1 - self.radius - border_margin)
             self.vx = -abs(self.vx)
 
-        if self.y - self.radius <= 0:
-            self.y = self.radius
+        if self.y - self.radius <= border_margin:
+            self.y = self.radius + border_margin
+            self.fy = float(self.radius + border_margin)
             self.vy = abs(self.vy)
-        elif self.y + self.radius >= self.display_height:
-            self.y = self.display_height - self.radius
+        elif self.y + self.radius >= self.display_height - 1 - border_margin:
+            self.y = self.display_height - 1 - self.radius - border_margin
+            self.fy = float(self.display_height - 1 - self.radius - border_margin)
             self.vy = -abs(self.vy)
 
     def clear_previous(self, display):
-        """Clear only the previous ball position (dirty region optimization!)"""
+        """Clear previous ball position with black, protecting border"""
         x = int(self.prev_x)
         y = int(self.prev_y)
         r = self.radius + 2  # Slightly larger to ensure clean erase
 
-        # Only clear the small region where ball WAS
-        # This is 10× smaller than clearing full screen!
-        display.fill_rect(x - r, y - r, r * 2, r * 2, rm690b0.BLACK)
+        # Calculate clear region, clamped to avoid touching border (2px margin)
+        x1 = max(2, x - r)  # Leave 2px margin for border
+        y1 = max(2, y - r)
+        x2 = min(self.display_width - 3, x + r)  # Leave 2px margin from border
+        y2 = min(self.display_height - 3, y + r)
+
+        # Width/height must include x2/y2 pixel (+1 because fill_rect is inclusive)
+        w = x2 - x1 + 1
+        h = y2 - y1 + 1
+
+        if w > 0 and h > 0:
+            # Fast clear with fill_rect (native rm690b0, much faster!)
+            display.fill_rect(x1, y1, w, h, rm690b0.BLACK)
 
     def draw(self, display):
         """Draw the fancy ball at current position"""
@@ -137,6 +161,13 @@ def main():
     width = display.width
     height = display.height
 
+    # Draw static border once
+    print("Drawing static border...")
+    display.fill_color(rm690b0.BLACK)
+    display.rect(0, 0, width, height, 0x4208)  # Dark gray border
+    display.swap_buffers()
+    print("✓ Border ready\n")
+
     # Random starting position
     start_x = random.randint(BALL_RADIUS + 20, width - BALL_RADIUS - 20)
     start_y = random.randint(BALL_RADIUS + 20, height - BALL_RADIUS - 20)
@@ -165,11 +196,6 @@ def main():
     # Create ball
     ball = HighFPSBall(start_x, start_y, vx, vy, BALL_RADIUS, width, height)
 
-    # Initial clear and border
-    display.fill_color(rm690b0.BLACK)
-    display.rect(0, 0, width, height, 0x4208)  # Dark gray border
-    display.swap_buffers()
-
     # Animation loop
     start_time = time.monotonic()
     frame_count = 0
@@ -183,7 +209,7 @@ def main():
     while time.monotonic() - start_time < DURATION:
         frame_start = time.monotonic()
 
-        # HIGH FPS OPTIMIZATION: Only clear where ball WAS, not entire screen!
+        # Clear old ball position (protecting border with 1px margin)
         ball.clear_previous(display)
 
         # Update physics
@@ -191,9 +217,6 @@ def main():
 
         # Draw ball at NEW position
         ball.draw(display)
-
-        # Redraw border (it's tiny, doesn't hurt performance)
-        display.rect(0, 0, width, height, 0x4208)
 
         # CRITICAL: use copy=False since we're doing incremental updates
         # This avoids 27ms memcpy overhead
@@ -216,10 +239,7 @@ def main():
             last_fps_time = current_time
             last_fps_frame = frame_count
 
-        # Optional frame rate limiting (comment out for max FPS test)
-        frame_elapsed = time.monotonic() - frame_start
-        if frame_elapsed < target_frame_time:
-            time.sleep(target_frame_time - frame_elapsed)
+        # NO THROTTLING - let it run as fast as possible!
 
     # Animation complete
     total_time = time.monotonic() - start_time
