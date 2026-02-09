@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
 ESP-NOW Test Script
 ===================
@@ -8,11 +10,6 @@ This script demonstrates:
 1. Initializing ESP-NOW
 2. Getting your device's MAC address
 3. Sending and receiving messages
-
-Hardware: Waveshare ESP32-S3-Touch-AMOLED-2.41
-Module: espnow
-Author: CircuitPython Community
-License: MIT
 """
 
 import time
@@ -29,9 +26,9 @@ print()
 print("Step 1: Initializing ESP-NOW...")
 try:
     e = espnow.ESPNow()
-    print("✅ ESP-NOW initialized successfully!")
+    print("ESP-NOW initialized successfully!")
 except Exception as ex:
-    print(f"❌ Failed to initialize ESP-NOW: {ex}")
+    print(f"Failed to initialize ESP-NOW: {ex}")
     raise
 
 # Step 2: Get MAC address
@@ -39,10 +36,10 @@ print("\nStep 2: Getting MAC address...")
 try:
     mac = wifi.radio.mac_address
     mac_str = ":".join([f"{b:02X}" for b in mac])
-    print(f"✅ Your MAC address: {mac_str}")
+    print(f"Your MAC address: {mac_str}")
     print(f"   (Use this address on other devices to communicate with this one)")
 except Exception as ex:
-    print(f"❌ Failed to get MAC address: {ex}")
+    print(f"Failed to get MAC address: {ex}")
 
 # Step 3: Check for peers
 print("\nStep 3: Checking peers...")
@@ -50,7 +47,7 @@ peer_count = len(e.peers)
 print(f"   Current peers: {peer_count}")
 
 if peer_count == 0:
-    print("\n⚠️  No peers configured yet.")
+    print("\nNo peers configured yet.")
     print("   To add a peer, use:")
     print("   >>> peer = espnow.Peer(mac=b'\\xAA\\xBB\\xCC\\xDD\\xEE\\xFF')")
     print("   >>> e.peers.append(peer)")
@@ -66,7 +63,7 @@ for i in range(5):
         if packet:
             received_any = True
             sender_mac = ":".join([f"{b:02X}" for b in packet.mac])
-            print(f"   ✅ Received from {sender_mac}:")
+            print(f"    Received from {sender_mac}:")
             print(f"      Message: {packet.msg}")
             print(f"      RSSI: {packet.rssi} dBm")
 
@@ -83,9 +80,9 @@ if peer_count > 0:
     try:
         message = f"Hello from ESP32-S3 at {time.monotonic()}"
         e.send(message)
-        print(f"✅ Sent: '{message}'")
+        print(f"Sent: '{message}'")
     except Exception as ex:
-        print(f"❌ Failed to send: {ex}")
+        print(f"Failed to send: {ex}")
 else:
     print("   Skipped (no peers configured)")
 
@@ -93,10 +90,10 @@ else:
 print("\n" + "=" * 60)
 print("ESP-NOW Test Summary")
 print("=" * 60)
-print(f"✅ ESP-NOW module: Working")
-print(f"✅ MAC address: {mac_str}")
-print(f"📡 Peers: {peer_count}")
-print(f"📨 Messages received: {'Yes' if received_any else 'No'}")
+print(f"ESP-NOW module: Working")
+print(f"MAC address: {mac_str}")
+print(f"Peers: {peer_count}")
+print(f"Messages received: {'Yes' if received_any else 'No'}")
 
 # Example usage
 print("\n" + "=" * 60)
@@ -133,4 +130,4 @@ Use broadcast MAC: b'\\xFF\\xFF\\xFF\\xFF\\xFF\\xFF'
 All nearby ESP-NOW devices will receive (no need to add as peer)
 """)
 
-print("Test complete! ✅")
+print("Test complete!")

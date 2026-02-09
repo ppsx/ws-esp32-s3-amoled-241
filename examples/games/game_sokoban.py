@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
 Sokoban Game for Waveshare ESP32-S3 Touch AMOLED 2.41
 Based on Bansoko levels.

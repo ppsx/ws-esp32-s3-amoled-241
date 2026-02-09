@@ -1,10 +1,11 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
-Bouncing Ball with Background Image — displayio version
+Bouncing Ball with Background Image - displayio version
 ========================================================
 
-Loads a RAW RGB565 background into a Bitmap, then animates a bouncing ball
-over it using bitmaptools. Dirty regions are restored from a read-only
-copy of the background.
+Combines background image loading with high FPS bouncing ball animation.
+Background is loaded from /gfx/cerber.raw and the ball bounces over it.
 """
 
 import math
@@ -20,11 +21,11 @@ from rm690b0 import RM690B0, create_qspi_bus
 # CONFIGURATION
 # ============================================================================
 
-DURATION = 15
-SPEED = 8.0
-TARGET_FPS = 60
-BALL_RADIUS = 20
-BACKGROUND_PATH = "/gfx/cerber.raw"
+DURATION = 15  # Animation duration in seconds
+SPEED = 8.0  # Ball speed (pixels per frame)
+TARGET_FPS = 60  # Target frame rate
+BALL_RADIUS = 20  # Ball radius in pixels
+BACKGROUND_PATH = "/gfx/cerber.raw"  # Background image path
 WIDTH = 600
 HEIGHT = 450
 
@@ -106,7 +107,7 @@ class HighFPSBall:
     """Bouncing ball that restores background on clear."""
 
     def __init__(self, x, y, vx, vy, radius, bg_bitmap, canvas):
-        # Float positions for precise motion
+        # Float positions for precise motion (prevents cumulative rounding errors)
         self.fx = float(x)
         self.fy = float(y)
         # Int positions (aligned) for rendering
@@ -128,7 +129,7 @@ class HighFPSBall:
         print("Sprite ready!")
 
     def update(self):
-        # Update float positions
+        """Update ball position and handle edge bouncing"""
         self.fx += self.vx
         self.fy += self.vy
 
@@ -221,20 +222,21 @@ def _mark_ball_dirty(bitmap, prev_x, prev_y, x, y, radius):
 
 
 def load_background(path, bitmap):
-    """Load RAW RGB565 file into bitmap using arrayblit."""
+    """Load background image from RAW RGB565 file"""
     import array
     print(f"Loading background from {path}...")
-    buf = array.array("H", bytearray(WIDTH * HEIGHT * 2))
+    fb = array.array("H", bytearray(WIDTH * HEIGHT * 2))
     with open(path, "rb") as f:
-        read = f.readinto(buf)
+        read = f.readinto(fb)
         if read != WIDTH * HEIGHT * 2:
             raise RuntimeError("Background file is the wrong size")
-    bitmaptools.arrayblit(bitmap, buf, x1=0, y1=0, x2=WIDTH, y2=HEIGHT)
+    bitmaptools.arrayblit(bitmap, fb, x1=0, y1=0, x2=WIDTH, y2=HEIGHT)
     print("Background loaded")
-    return buf
+    return fb
 
 
 def main():
+    """Main animation loop with background"""
     print("\n" + "=" * 70)
     print("  BOUNCING BALL WITH BACKGROUND IMAGE (displayio)")
     print("=" * 70)
@@ -272,8 +274,12 @@ def main():
     # Random starting position and velocity
     start_x = random.randint(BALL_RADIUS + 20, WIDTH - BALL_RADIUS - 20)
     start_y = random.randint(BALL_RADIUS + 20, HEIGHT - BALL_RADIUS - 20)
+
+    # Random velocity
     vx = SPEED * (random.random() * 2 - 1)
     vy = SPEED * (random.random() * 2 - 1)
+
+    # Ensure minimum velocity
     if abs(vx) < 3:
         vx = 3 if vx >= 0 else -3
     if abs(vy) < 3:
@@ -286,6 +292,7 @@ def main():
     print(f"  Target FPS: {TARGET_FPS}")
     print(f"  Duration: {DURATION} seconds\n")
 
+    # Create ball
     ball = HighFPSBall(start_x, start_y, vx, vy, BALL_RADIUS, bg_bitmap, canvas)
 
     # Animation loop
@@ -293,6 +300,8 @@ def main():
     frame_count = 0
     target_frame_time = 1.0 / TARGET_FPS
     fps_update_interval = 30
+
+    # For FPS calculation
     last_fps_time = start_time
     last_fps_frame = 0
 
@@ -315,6 +324,7 @@ def main():
 
         frame_count += 1
 
+        # Calculate and display FPS periodically
         if frame_count % fps_update_interval == 0:
             current_time = time.monotonic()
             elapsed = current_time - last_fps_time
@@ -324,12 +334,13 @@ def main():
             print(
                 f"Frame {frame_count:4d} | FPS: {current_fps:6.1f} | Remaining: {remaining:4.1f}s"
             )
+
             last_fps_time = current_time
             last_fps_frame = frame_count
 
         # NO THROTTLING - let it run as fast as possible!
-        # (Comment out to see maximum achievable FPS)
 
+    # Animation complete
     total_time = time.monotonic() - start_time
     actual_fps = frame_count / total_time
 
@@ -343,10 +354,12 @@ def main():
     print(f"  Target FPS: {TARGET_FPS}")
     print(f"  Achievement: {(actual_fps / TARGET_FPS * 100):.1f}%")
 
+    # Clean up
     canvas.fill(0)
     display.refresh()
     displayio.release_displays()
-    print("\nAnimation finished!\n")
+
+    print("\n Animation finished!\n")
 
 
 if __name__ == "__main__":

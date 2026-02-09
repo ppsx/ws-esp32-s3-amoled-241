@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
 Startup menu for ESP32-S3 CircuitPython
 """

@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 import gc
 import time
 
@@ -28,7 +30,7 @@ print("Initializing Touch...")
 try:
     i2c = busio.I2C(board.TP_SCL, board.TP_SDA, frequency=400000)
     lvgl.init_touch(i2c)
-    print("✓ Touch initialized")
+    print("Touch initialized")
 except Exception as e:
     print(f"Warning: Touch init failed: {e}")
     print("Note: Touch pins should be board.TP_SCL and board.TP_SDA")
@@ -60,7 +62,7 @@ else:
         rm690b0_lvgl.Font(font_data, 64),
     ]
 
-print("✓ Font loaded successfully")
+print("Font loaded successfully")
 
 title.set_style_text_font(fonts[0])
 

@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 import rm690b0
 
 display = rm690b0.RM690B0()

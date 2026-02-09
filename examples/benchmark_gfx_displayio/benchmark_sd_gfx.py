@@ -1,14 +1,13 @@
-# SPDX-FileCopyrightText: Copyright (c) 2026 Przemyslaw Patrick Socha
-#
-# SPDX-License-Identifier: MIT
-#
-# Optimized Image Loader Example (JPG, BMP, RAW) — displayio version
-# Demonstrates image loading using jpegio, OnDiskBitmap, and arrayblit.
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
+"""
+Optimized image loader example (jpg, bmp, raw) - displayio version
+Demonstrates image loading using jpegio, ondiskbitmap, and arrayblit.
+"""
 
 import gc
 import os
 import time
-
 import board
 import sdioio
 import storage
@@ -19,7 +18,7 @@ import displayio
 from rm690b0 import RM690B0, create_qspi_bus
 
 print("=" * 60)
-print("  Optimized Image Loader Example (displayio)")
+print("  Optimized Image Loader Example")
 print("=" * 60)
 
 # 1. Initialize Display
@@ -27,10 +26,7 @@ print("\nInitializing display...")
 displayio.release_displays()
 bus = create_qspi_bus(board)
 display = RM690B0(bus)
-try:
-    display.brightness = 1.0
-except RuntimeError:
-    pass
+display.brightness = 1.0
 print("Display initialized")
 
 # Create canvas bitmap + scene

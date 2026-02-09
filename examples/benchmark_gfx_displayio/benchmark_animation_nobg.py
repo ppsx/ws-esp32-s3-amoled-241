@@ -1,5 +1,7 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
-High FPS Bouncing Ball Animation — displayio version with pre-rendered sprites
+High FPS Bouncing Ball Animation - displayio version with pre-rendered sprites
 ===============================================================================
 
 Demonstrates high-performance animation using:
@@ -24,7 +26,7 @@ from rm690b0 import RM690B0, create_qspi_bus
 
 DURATION = 15  # Animation duration in seconds
 SPEED = 8.0  # Ball speed (pixels per frame)
-BALL_RADIUS = 20
+BALL_RADIUS = 20  # Ball radius in pixels
 WIDTH = 600
 HEIGHT = 450
 
@@ -134,7 +136,7 @@ class HighFPSBall:
         # Float positions for precise motion
         self.fx = float(x)
         self.fy = float(y)
-        # Int positions (aligned) for rendering
+        # Int positions for rendering
         self.x = x
         self.y = y
         self.vx = vx
@@ -153,7 +155,7 @@ class HighFPSBall:
         print("Sprite ready!")
 
     def update(self):
-        # Update float positions
+        """Update ball position and handle edge bouncing"""
         self.fx += self.vx
         self.fy += self.vy
 
@@ -222,8 +224,9 @@ class HighFPSBall:
 
 
 def main():
+    """Main high FPS animation loop"""
     print("\n" + "=" * 70)
-    print("  HIGH FPS BOUNCING BALL ANIMATION (optimized)")
+    print("  HIGH FPS BOUNCING BALL ANIMATION")
     print("=" * 70)
 
     # Initialize display
@@ -231,10 +234,7 @@ def main():
     displayio.release_displays()
     bus = create_qspi_bus(board)
     display = RM690B0(bus)
-    try:
-        display.brightness = 1.0
-    except RuntimeError:
-        pass
+    display.brightness = 1.0
 
     # Create canvas and background bitmap
     canvas = displayio.Bitmap(WIDTH, HEIGHT, 65536)
@@ -265,6 +265,8 @@ def main():
     start_y = random.randint(BALL_RADIUS + 20, HEIGHT - BALL_RADIUS - 20)
     vx = SPEED * (random.random() * 2 - 1)
     vy = SPEED * (random.random() * 2 - 1)
+
+    # Ensure minimum velocity
     if abs(vx) < 3:
         vx = 3 if vx >= 0 else -3
     if abs(vy) < 3:
@@ -276,12 +278,15 @@ def main():
     print(f"  Initial velocity: ({vx:.2f}, {vy:.2f})")
     print(f"  Duration: {DURATION} seconds\n")
 
+    # Create ball
     ball = HighFPSBall(start_x, start_y, vx, vy, BALL_RADIUS, canvas, bg_bitmap)
 
     # Animation loop
     start_time = time.monotonic()
     frame_count = 0
-    fps_update_interval = 30
+    fps_update_interval = 30  # Update FPS display every 30 frames
+
+    # For FPS calculation
     last_fps_time = start_time
     last_fps_frame = 0
 
@@ -304,20 +309,24 @@ def main():
 
         frame_count += 1
 
+        # Calculate and display FPS periodically
         if frame_count % fps_update_interval == 0:
             current_time = time.monotonic()
             elapsed = current_time - last_fps_time
             frames_rendered = frame_count - last_fps_frame
             current_fps = frames_rendered / elapsed if elapsed > 0 else 0
+
             remaining = DURATION - (current_time - start_time)
             print(
                 f"Frame {frame_count:4d} | FPS: {current_fps:6.1f} | Remaining: {remaining:4.1f}s"
             )
+
             last_fps_time = current_time
             last_fps_frame = frame_count
 
         # NO THROTTLING - let it run as fast as possible!
 
+    # Animation complete
     total_time = time.monotonic() - start_time
     actual_fps = frame_count / total_time
 
@@ -329,9 +338,11 @@ def main():
     print(f"  Total time: {total_time:.2f}s")
     print(f"  Average FPS: {actual_fps:.2f}")
 
+    # Clean up
     canvas.fill(0)
     display.refresh()
     displayio.release_displays()
+
     print("\nAnimation finished!\n")
 
 

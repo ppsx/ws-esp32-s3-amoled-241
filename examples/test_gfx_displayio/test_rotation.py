@@ -1,8 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2026 Przemyslaw Patrick Socha
-#
-# SPDX-License-Identifier: MIT
-#
-# Rotation + JPEG display test — idiomatic displayio version
+# Copyright (c) 2025 Przemyslaw Patrick Socha
 
 import gc
 import time

@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
 Waveshare ESP32-S3 Touch AMOLED 2.41 - Complete Hardware Test Suite
 Provides interactive tests for all onboard components to verify the CircuitPython port.

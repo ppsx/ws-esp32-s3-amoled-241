@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
 Simple Flappy Bird clone for the Waveshare ESP32-S3 Touch AMOLED display.
 

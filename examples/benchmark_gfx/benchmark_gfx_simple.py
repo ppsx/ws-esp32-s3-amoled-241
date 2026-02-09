@@ -1,10 +1,7 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
-Benchmark: Simple Display Performance
-
-Tests display performance for usage with firmware with integrated rm690b0 module
-(imperative API: fill_color, fill_rect, swap_buffers).
-
-Tests performed:
+Benchmark: rm690b0 performance
 - Full screen fill (600x450)
 - Partial update (100x100 rectangles)
 - Multi-element scene (4 rectangles + moving sprite)
@@ -119,7 +116,7 @@ def _cleanup(display):
 
 
 print("=" * 60)
-print("Display Benchmark (OLD FIRMWARE)")
+print("Display Benchmark")
 print("RM690B0 Imperative API (fill_color, fill_rect, swap_buffers)")
 print("=" * 60)
 
@@ -143,7 +140,7 @@ try:
     scene_ms = _bench_multi_element(display)
 
     print("\n" + "=" * 60)
-    print("Display Performance (Old Firmware)")
+    print("Baseline Performance (v2.0)")
     print("=" * 60)
     print(f"Full screen fill (600x450): {full_ms:.3f} ms")
     print(f"Partial update (100x100):   {partial_ms:.3f} ms")

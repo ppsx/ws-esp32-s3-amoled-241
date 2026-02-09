@@ -1,12 +1,11 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
 Simple test script for lvgl_symbols module
 ===========================================
 
 This script tests that the lvgl_symbols module loads correctly
 and can display all available symbols.
-
-Usage:
-    python test_symbols.py
 """
 
 # Test 1: Import the module
@@ -14,9 +13,9 @@ print("Test 1: Importing lvgl_symbols module...")
 try:
     import lvgl_symbols
 
-    print("✓ Module imported successfully")
+    print("Module imported successfully")
 except ImportError as e:
-    print(f"✗ Import failed: {e}")
+    print(f"Import failed: {e}")
     print("\nNote: Make sure lvgl_symbols.py is in the same directory")
     print("or in your CIRCUITPY lib/ folder")
     exit(1)
@@ -35,9 +34,9 @@ symbols_to_test = [
 for sym_name in symbols_to_test:
     if hasattr(lvgl_symbols, sym_name):
         sym_value = getattr(lvgl_symbols, sym_name)
-        print(f"✓ {sym_name:25s} = {repr(sym_value)}")
+        print(f"{sym_name:25s} = {repr(sym_value)}")
     else:
-        print(f"✗ {sym_name} not found!")
+        print(f"{sym_name} not found!")
 
 # Test 3: Display all symbols using the helper function
 print("\nTest 3: Listing all available symbols...")

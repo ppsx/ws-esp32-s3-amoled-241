@@ -1,6 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2026 Przemyslaw Patrick Socha
-#
-# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Przemyslaw Patrick Socha
 
 """
 DisplayCompat - rm690b0-style imperative drawing API on top of displayio.

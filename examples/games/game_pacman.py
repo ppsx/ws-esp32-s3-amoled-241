@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
 Pac-Man Clone for Waveshare ESP32-S3 Touch AMOLED 2.41
 Includes Classic Map, Ghost AI, and Touch/Joystick Controls.

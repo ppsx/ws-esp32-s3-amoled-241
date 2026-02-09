@@ -1,5 +1,8 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
-RM690B0 Text Rendering Benchmark
+Text Rendering Benchmark - rm690b0 version
+=============================================
 
 Measures the performance of text rendering operations in both Single Buffer
 and Double Buffer modes. This benchmark is used to evaluate optimizations
@@ -11,9 +14,6 @@ Tested scenarios:
 3. Medium Font (24x24) - short string
 4. Large Font (32x48) - short string
 5. Vertical List (simulating a menu)
-
-Usage:
-    import benchmark_text
 """
 
 import gc
@@ -41,8 +41,8 @@ def format_cps(chars_count, total_ms):
     """Return characters/second."""
     if total_ms <= 0:
         return 0.0
-    seconds = total_ms / 1000.0
-    return chars_count / seconds
+    return chars_count / (total_ms / 1000.0)
+
 
 def run_benchmark(iterations, func):
     """Run a benchmark case and return avg time and total time."""
@@ -83,12 +83,12 @@ def run_suite(double_buffer_requested):
         
         avg_ms, total_ms, total_chars = run_benchmark(ITERATIONS, func)
         chars_per_sec = format_cps(total_chars, total_ms)
-        
+
         results.append({
             "mode": mode_label,
             "test": test_name,
             "avg_ms": avg_ms,
-            "cps": chars_per_sec
+            "cps": chars_per_sec,
         })
 
     # --- Test Cases ---
@@ -137,14 +137,15 @@ def run_suite(double_buffer_requested):
     display.deinit()
     return results
 
+
 def main():
-    print("RM690B0 Text Rendering Benchmark")
+    print("Text Rendering Benchmark (rm690b0)")
     print(f"Iterations: {ITERATIONS}")
-    
+
     all_results = []
     for mode in RUN_MODES:
         all_results.extend(run_suite(mode))
-        
+
     if not all_results:
         print("No results.")
         return
@@ -160,6 +161,7 @@ def main():
     for r in all_results:
         print(row_fmt.format(r["mode"], r["test"], r["avg_ms"], r["cps"]))
     print()
+
 
 if __name__ == "__main__":
     main()

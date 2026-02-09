@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
 LVGL Symbol Constants for CircuitPython
 ========================================

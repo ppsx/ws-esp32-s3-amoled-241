@@ -1,13 +1,11 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
-Unified Image Benchmark Suite — displayio version
+Unified Image Benchmark Suite - displayio version
 ===================================================
 
 Comprehensive benchmark for testing image conversion and display performance.
 Supports RAW, BMP, and JPEG formats using displayio, jpegio, bitmaptools.
-
-Usage:
-    import benchmark_gfx_conversion
-    benchmark_gfx_conversion.run()  # Interactive menu
 """
 
 import gc
@@ -35,8 +33,8 @@ CONFIG = {
         "JPG": "/gfx/cerber.jpg",
     },
     "raw_dimensions": {"width": 600, "height": 450},
-    "display_time": 3.0,
-    "separator_time": 1.5,
+    "display_time": 3.0,  # seconds to show each image
+    "separator_time": 1.5,  # black screen between images
     "iterations": {
         "quick": 3,
         "normal": 10,
@@ -44,25 +42,33 @@ CONFIG = {
     },
 }
 
-CHUNK_SIZE = 1024 * 1024
+CHUNK_SIZE = 1024 * 1024  # read in 128 KB chunks by default
+
+# =============================================================================
+# Utility Functions
+# =============================================================================
 
 
 def print_line(char="=", length=70):
+    """Print separator line."""
     print(char * length)
 
 
 def print_header(text, char="="):
+    """Print centered header with separators."""
     print_line(char)
     print(text.center(70))
     print_line(char)
 
 
 def print_section(text):
+    """Print section header."""
     print(f"\n{text}")
     print_line("-")
 
 
 def format_size(bytes_val):
+    """Format bytes as human-readable string."""
     if bytes_val < 1024:
         return f"{bytes_val} bytes"
     elif bytes_val < 1024 * 1024:
@@ -72,17 +78,22 @@ def format_size(bytes_val):
 
 
 def format_time(seconds):
+    """Format time in ms."""
     return f"{seconds * 1000:.2f} ms"
 
 
 def calculate_stats(times):
+    """Calculate min, max, avg from list of times."""
     if not times:
         return 0, 0, 0
     return min(times), max(times), sum(times) / len(times)
 
 
 def get_memory_info():
+    """Get current memory info."""
     try:
+        import gc
+
         gc.collect()
         free = gc.mem_free()
         allocated = gc.mem_alloc()
@@ -92,15 +103,22 @@ def get_memory_info():
 
 
 def show_black_screen(display, canvas):
-    canvas.fill(0)
-    display.refresh()
+    """Clear display and optionally show message."""
+    display.fill_color(rm690b0.BLACK)
+    display.swap_buffers()
+    if message:
+        print(f"\n>>> {message} <<<")
 
 
 def get_bmp_parameters(data):
+    """Extract width, height, and data offset from BMP data."""
     if isinstance(data, (bytes, bytearray, memoryview)):
+        # Data Offset at 0x0A (4 bytes)
         offset = struct.unpack_from("<I", data, 10)[0]
+        # Width/Height at 0x12 (18)
         width, height = struct.unpack_from("<ii", data, 18)
     else:
+        # Assuming BytesIO or file-like
         pos = data.tell()
         data.seek(10)
         offset = struct.unpack("<I", data.read(4))[0]
@@ -116,9 +134,11 @@ def get_bmp_parameters(data):
 
 
 def load_file_into(filepath, buffer, size=None):
+    """Stream ``filepath`` into an existing bytearray using ``readinto``."""
     expected_size = size if size is not None else len(buffer)
     mv = memoryview(buffer)
     offset = 0
+
     try:
         with open(filepath, "rb") as f:
             while offset < expected_size:
@@ -129,14 +149,17 @@ def load_file_into(filepath, buffer, size=None):
                 offset += n_read
     except OSError:
         return -1
+
     return offset
 
 
 def load_file(filepath):
+    """Load a file into memory using a preallocated buffer and readinto()."""
     try:
         size = os.stat(filepath)[6]
     except OSError:
         return None
+
     try:
         buf = bytearray(size)
     except MemoryError:
@@ -144,7 +167,9 @@ def load_file(filepath):
             gc.collect()
             buf = bytearray(size)
         except MemoryError:
+            print(f"   Out of memory loading {filepath}")
             return None
+
     read_bytes = load_file_into(filepath, buf, size)
     if read_bytes < 0:
         return None
@@ -152,16 +177,22 @@ def load_file(filepath):
 
 
 def preload_files(verbose=True):
+    """Pre-load all test files into RAM."""
     if verbose:
         print_header("PRE-LOADING FILES INTO RAM")
+        print("\nEliminating file I/O from performance measurements.\n")
+
     files_data = {}
     total_size = 0
+
     for fmt, filepath in CONFIG["files"].items():
         if verbose:
             print(f"Loading {fmt:4s} from {filepath}...")
+
         t_start = time.monotonic()
         data = load_file(filepath)
         t_elapsed = time.monotonic() - t_start
+
         if data:
             files_data[fmt] = data
             total_size += len(data)
@@ -170,13 +201,15 @@ def preload_files(verbose=True):
         else:
             if verbose:
                 print(f"  File not found, skipping")
+
     if verbose:
         print(f"\nTotal: {len(files_data)} files, {format_size(total_size)}")
+
     return files_data
 
 
 # =============================================================================
-# Conversion Functions (using displayio APIs)
+# Conversion Functions
 # =============================================================================
 
 
@@ -189,12 +222,16 @@ def convert_image(format_name, data, width=None, height=None):
         raw_array = array.array("H", data)
         bitmaptools.arrayblit(bitmap, raw_array, x1=0, y1=0, x2=w, y2=h)
         info = {
-            "width": w, "height": h, "data_size": len(data),
-            "bit_depth": 16, "swapped": False,
+            "width": w,
+            "height": h,
+            "data_size": len(data),
+            "bit_depth": 16,
+            "swapped": False,
         }
         return bitmap, info
 
     elif format_name == "BMP":
+        # Parse dimensions
         w, h, offset = get_bmp_parameters(data)
         # Parse BMP header for bits_per_pixel
         bits_per_pixel = struct.unpack_from('<H', data, 28)[0]
@@ -238,12 +275,16 @@ def convert_image(format_name, data, width=None, height=None):
             raise ValueError(f"Unsupported BMP format: {bits_per_pixel}bpp")
 
         info = {
-            "width": w, "height": h, "data_size": w * h * 2,
-            "bit_depth": 16, "swapped": False,
+            "width": w,
+            "height": h,
+            "data_size": w * h * 2,
+            "bit_depth": 16,
+            "swapped": False,
         }
         return bitmap, info
 
     elif format_name == "JPG":
+        # Use jpegio
         decoder = jpegio.JpegDecoder()
         stream = io.BytesIO(data)
         w, h = decoder.open(stream)
@@ -264,8 +305,11 @@ def convert_image(format_name, data, width=None, height=None):
         del swapped
 
         info = {
-            "width": w, "height": h, "data_size": w * h * 2,
-            "bit_depth": 16, "swapped": False,  # Now properly swapped
+            "width": w,
+            "height": h,
+            "data_size": w * h * 2,
+            "bit_depth": 16,
+            "swapped": False,
         }
         return img_bitmap, info
 
@@ -279,29 +323,38 @@ def benchmark_conversion(format_name, data, iterations=10):
     info = None
 
     # Warmup
-    if format_name != "RAW":
+    if format_name != "RAW":  # RAW needs no warmup - it's instant
         try:
             gc.collect()
-            wb, _ = convert_image(format_name, data)
-            del wb
+            warmup_buffer, _ = convert_image(format_name, data)
+            del warmup_buffer
+            warmup_buffer = None
             gc.collect()
         except:
-            pass
+            pass  # If warmup fails, continue anyway
 
     for i in range(iterations):
+        # Clean memory before timing
         gc.collect()
         t_start = time.monotonic()
+
         try:
             bitmap, info = convert_image(format_name, data)
         except Exception as e:
             if i == 0:
-                raise
-            continue
+                raise  # Re-raise on first iteration
+            else:
+                print(f"  Warning: iteration {i + 1} failed: {e}")
+                continue
+
+        # Stop timing immediately after conversion
         t_elapsed = time.monotonic() - t_start
         times.append(t_elapsed)
+        # Clean up buffer (except last iteration) - AFTER timing
         if i < iterations - 1:
             del bitmap
             bitmap = None
+            # Extra gc to ensure cleanup
             gc.collect()
 
     return bitmap, info, times
@@ -318,6 +371,7 @@ def benchmark_display(display, canvas, bitmap, info, iterations=5):
         display.refresh()
         t_elapsed = time.monotonic() - t_start
         times.append(t_elapsed)
+
     return times
 
 
@@ -371,19 +425,25 @@ def _init_display():
 
 
 def quick_test():
+    """Quick sanity test - load and display each format once."""
     print_header("QUICK TEST MODE")
-    print("\nLoading and displaying each image format once.\n")
+    print("\nLoading and displaying each image format once.")
 
     display, canvas = _init_display()
+    # Load files after display is initialized
     files_data = preload_files(verbose=False)
     if not files_data:
         print("No files found!")
         displayio.release_displays()
         return
 
+    print(f"Loaded {len(files_data)} files\n")
+
+    # Test each format
     for fmt, data in files_data.items():
         print_line("-")
         print(f"Testing {fmt} ({format_size(len(data))})")
+
         try:
             t_start = time.monotonic()
             bitmap, info = convert_image(fmt, data)
@@ -402,8 +462,11 @@ def quick_test():
 
             time.sleep(2.0)
             del bitmap
+            bitmap = None
             gc.collect()
 
+        except NotImplementedError as e:
+            print(f"  {e}")
         except MemoryError:
             print(f"  Out of memory")
             gc.collect()
@@ -417,13 +480,16 @@ def quick_test():
 
 
 def full_benchmark(iterations=10):
+    """Full benchmark with detailed statistics."""
     print_header("FULL BENCHMARK MODE")
     print(f"\nIterations: {iterations} (conversion), 5 (display)\n")
 
+    # Check memory before starting
     mem = get_memory_info()
     if mem:
         print(f"Initial memory: {format_size(mem['free'])} free\n")
 
+    # Initialize display FIRST (before loading files)
     display, canvas = _init_display()
 
     files_data = preload_files()
@@ -436,23 +502,30 @@ def full_benchmark(iterations=10):
     formats = ["RAW", "BMP", "JPG"]
     available = [f for f in formats if f in files_data]
 
+    # Test each format
     for i, fmt in enumerate(available, 1):
+        print(f"\n")
         print_header(f"[{i}/{len(available)}] BENCHMARKING {fmt} FORMAT")
         data = files_data[fmt]
 
         try:
             show_black_screen(display, canvas)
             time.sleep(0.5)
+
+            # Force clean memory before benchmark
             gc.collect()
 
+            # Conversion benchmark (with memory debugging for slow cases)
             print(f"\nRunning conversion benchmark ({iterations} iterations)...")
             bitmap, info, conv_times = benchmark_conversion(fmt, data, iterations)
             conv_min, conv_max, conv_avg = calculate_stats(conv_times)
 
+            # Display benchmark
             print(f"Running display benchmark (5 iterations)...")
             disp_times = benchmark_display(display, canvas, bitmap, info, 5)
             disp_min, disp_max, disp_avg = calculate_stats(disp_times)
 
+            # Print results
             total = conv_avg + disp_avg
             fps = 1.0 / total if total > 0 else 0
 
@@ -486,32 +559,40 @@ def full_benchmark(iterations=10):
                 "info": info,
             })
 
-            # Show image
+            # Display image
             print(f"\nDisplaying {fmt} image for {CONFIG['display_time']}s...")
             bitmaptools.blit(canvas, bitmap, 0, 0)
             display.refresh()
             time.sleep(CONFIG["display_time"])
 
+            # Explicitly free memory
             del bitmap
+            bitmap = None
             gc.collect()
 
             if i < len(available):
                 show_black_screen(display, canvas)
                 time.sleep(CONFIG["separator_time"])
 
-        except MemoryError:
-            print(f"\nOUT OF MEMORY")
+        except NotImplementedError as e:
+            print(f"\nSKIPPED: {e}")
+            continue
+        except MemoryError as e:
+            print(f"\nOUT OF MEMORY: {e}")
             gc.collect()
+            continue
         except Exception as e:
             print(f"\nERROR: {e}")
+            continue
 
     # Summary
+    print("\n")
     print_header("BENCHMARK SUMMARY")
+
     if results:
-        print(
-            f"\n{'Format':<8} {'Size':<12} {'Convert':<12} {'Display':<12} {'Total':<12} {'FPS':<8}"
-        )
+        print(f"\n{'Format':<8} {'Size':<12} {'Convert':<12} {'Display':<12} {'Total':<12} {'FPS':<8}")
         print_line("-")
+
         for r in results:
             size_kb = r["file_size"] / 1024
             print(
@@ -519,9 +600,13 @@ def full_benchmark(iterations=10):
                 f"{format_time(r['display_avg']):>10}  {format_time(r['total']):>10}  "
                 f"{1.0 / r['total']:>6.1f}"
             )
+
         print_line("-")
+
+        # Find best
         fastest = min(results, key=lambda x: x["total"])
         smallest = min(results, key=lambda x: x["file_size"])
+
         print(f"\nFastest:  {fastest['format']} ({format_time(fastest['total'])})")
         print(f"Smallest: {smallest['format']} ({format_size(smallest['file_size'])})")
 
@@ -531,25 +616,34 @@ def full_benchmark(iterations=10):
 
 
 def format_comparison():
+    """Side-by-side format comparison."""
     print_header("FORMAT COMPARISON")
     print("\nComparing all available image formats.\n")
 
+    # Initialize display FIRST
+    print("Initializing display...")
     display, canvas = _init_display()
+
+    # Pre-load files after display is initialized
     files_data = preload_files(verbose=False)
     if not files_data:
         print("No files found!")
         displayio.release_displays()
         return
 
+    print(f"Found {len(files_data)} formats\n")
+
     results = []
 
     for i, (fmt, data) in enumerate(files_data.items(), 1):
         print_line("-")
         print(f"[{i}/{len(files_data)}] {fmt} FORMAT")
+        print_line("-")
         filepath = CONFIG["files"][fmt]
 
         try:
-            # File I/O benchmark
+            print(f"\nLoading: {filepath}")
+
             buffer_size = len(data)
             load_buffer = bytearray(buffer_size)
             t_start = time.monotonic()
@@ -559,11 +653,13 @@ def format_comparison():
             gc.collect()
 
             # Conversion
+            print("Converting to RGB565...")
             t_start = time.monotonic()
             bitmap, info = convert_image(fmt, data)
             t_convert = time.monotonic() - t_start
 
             # Display
+            print("Displaying image...")
             t_start = time.monotonic()
             bitmaptools.blit(canvas, bitmap, 0, 0)
             display.refresh()
@@ -571,7 +667,7 @@ def format_comparison():
 
             total = t_load + t_convert + t_display
 
-            print(f"\n  File size:     {len(data):>10,} bytes")
+            print(f"\n  File size:     {len(data):>10,} bytes ({len(data) / 1024:.1f} KB)")
             print(f"  Dimensions:    {info['width']}x{info['height']}")
             print(f"  Load time:     {format_time(t_load)}")
             print(f"  Convert time:  {format_time(t_convert)}")
@@ -581,11 +677,16 @@ def format_comparison():
             print(f"  Potential FPS: {fps:.1f}")
 
             results.append({
-                "format": fmt, "size": len(data),
-                "load": t_load, "convert": t_convert, "total": total,
+                "format": fmt,
+                "size": len(data),
+                "load": t_load,
+                "convert": t_convert,
+                "total": total,
             })
 
+            print(f"\nShowing {fmt} image for {CONFIG['display_time']}s...")
             time.sleep(CONFIG["display_time"])
+
             del bitmap
             gc.collect()
 
@@ -598,11 +699,13 @@ def format_comparison():
 
     # Summary
     print_header("COMPARISON SUMMARY")
+
     if results:
         print(
             f"\n{'Format':<8} {'Size (KB)':<12} {'Load':<12} {'Convert':<12} {'Total':<12} {'FPS':<8}"
         )
         print_line("-")
+
         for r in results:
             size_kb = r["size"] / 1024
             fps = (1.0 / r["total"]) if r["total"] > 0 else float("inf")
@@ -610,6 +713,7 @@ def format_comparison():
                 f"{r['format']:<8} {size_kb:>8.1f} KB  {format_time(r['load']):>10}  "
                 f"{format_time(r['convert']):>10}  {format_time(r['total']):>10}  {fps:>6.1f}"
             )
+
         print_line("-")
 
     show_black_screen(display, canvas)
@@ -623,34 +727,41 @@ def format_comparison():
 
 
 def show_menu():
+    """Display interactive menu."""
     print_header("IMAGE BENCHMARK SUITE (displayio)")
     print("\nSelect a test mode:\n")
     print("  1. Quick Test        - Fast sanity check")
     print("  2. Full Benchmark    - Detailed performance analysis")
     print("  3. Format Comparison - Side-by-side comparison")
-    print("  4. Exit")
+    print("  x. Exit")
     print()
 
 
 def run():
+    """Main entry point with interactive menu."""
     while True:
         show_menu()
+
         try:
-            choice = input("Enter choice (1-4): ").strip()
+            choice = input("Enter choice (1-3, x): ").strip()
             print()
+
             if choice == "1":
                 quick_test()
             elif choice == "2":
                 full_benchmark()
             elif choice == "3":
                 format_comparison()
-            elif choice == "4":
+            elif choice == "x":
                 print("Goodbye!")
                 break
             else:
                 print("Invalid choice.")
+
             print("\n")
             input("Press Enter to continue...")
+            print("\n" * 2)
+
         except KeyboardInterrupt:
             print("\n\nExiting...")
             break
@@ -658,6 +769,10 @@ def run():
             print(f"\nERROR: {e}")
             input("\nPress Enter to continue...")
 
+
+# =============================================================================
+# Entry Point
+# =============================================================================
 
 if __name__ == "__main__":
     try:

@@ -1,8 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2026 Przemyslaw Patrick Socha
-#
-# SPDX-License-Identifier: MIT
-#
-# Basic GFX Test — displayio + bitmaptools version
+# Copyright (c) 2025 Przemyslaw Patrick Socha
 
 import sys
 import board

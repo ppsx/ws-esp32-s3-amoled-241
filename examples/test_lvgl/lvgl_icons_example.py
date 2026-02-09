@@ -1,3 +1,5 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
 LVGL Icons and Symbols Example for RM690B0 Display
 ===================================================
@@ -10,13 +12,6 @@ Key Points:
 - They are part of the FontAwesome font embedded in Montserrat fonts
 - Use Unicode escape sequences like "\uf015" for HOME icon
 - Symbols work in both Labels and Buttons
-
-Hardware: Waveshare ESP32-S3-Touch-AMOLED-2.41
-- Display: RM690B0 (600×450 AMOLED)
-- Touch: FT6336U (I2C)
-
-Author: CircuitPython Community
-License: MIT
 """
 
 import time

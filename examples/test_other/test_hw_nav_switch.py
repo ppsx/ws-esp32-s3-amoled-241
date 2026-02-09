@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
 SparkFun Qwiic Navigation Switch Test for Waveshare ESP32-S3 Touch AMOLED 2.41
 
@@ -355,7 +356,7 @@ def main():
     try:
         nav = NavigationSwitch(i2c)
     except Exception as e:
-        print(f"\n❌ ERROR: Failed to initialize Navigation Switch: {e}")
+        print(f"\nERROR: Failed to initialize Navigation Switch: {e}")
         print("\nPossible issues:")
         print("  1. Navigation Switch not connected via QWIIC")
         print("  2. Wrong I2C address (should be 0x21)")
@@ -405,7 +406,7 @@ def main():
                 switches = nav.read_switches()
                 direction = nav.get_direction_string()
             except RuntimeError as e:
-                print(f"\n⚠️  I2C Error: {e}")
+                print(f"\nI2C Error: {e}")
                 print("Retrying in 1 second...")
                 time.sleep(1)
                 continue

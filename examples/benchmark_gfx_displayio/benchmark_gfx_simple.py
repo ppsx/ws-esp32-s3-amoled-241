@@ -1,20 +1,10 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
-Benchmark Phase 5: displayio performance on RM690B0 over qspibus.
-
-INSTRUKCJA:
-1. Flash firmware:
-     cd /home/pps/Downloads/__ai__/repos/circuitpython-rm690b0
-     ./build_waveshare.sh flash
-2. Copy benchmark:
-     cp /home/pps/Downloads/__ai__/repos/ws-esp32-s3-amoled-241/examples/tests/benchmark_phase5_displayio.py /media/CIRCUITPY/code.py
-3. Monitor:
-     cd /home/pps/Downloads/__ai__/repos/circuitpython-rm690b0
-     ./build_waveshare.sh monitor
-
-OUTPUT:
-  - Full screen fill (600x450)
-  - Partial update (100x100)
-  - Multi-element scene
+Benchmark: displayio performance
+- Full screen fill (600x450)
+- Partial update (100x100 rectangles)
+- Multi-element scene (4 rectangles + moving sprite)
 """
 
 import time
@@ -112,6 +102,7 @@ def _average_ms(samples):
 
 
 def _bench_full_screen(display, iterations=8):
+    """Benchmark full screen fill operations."""
     bitmap = displayio.Bitmap(600, 450, 1)
     palette = displayio.Palette(1)
     tile = displayio.TileGrid(bitmap, pixel_shader=palette)
@@ -129,6 +120,7 @@ def _bench_full_screen(display, iterations=8):
 
 
 def _bench_partial_update(display, iterations=12):
+    """Benchmark partial updates - moving 100x100 sprite."""
     bg = displayio.Bitmap(600, 450, 1)
     bg_palette = displayio.Palette(1)
     bg_palette[0] = 0x000000
@@ -166,10 +158,12 @@ def _bench_partial_update(display, iterations=12):
         start = time.monotonic()
         display.refresh()
         samples.append(time.monotonic() - start)
+
     return _average_ms(samples)
 
 
 def _bench_multi_element(display, iterations=10):
+    """Benchmark multi-element scene with moving sprite."""
     group = displayio.Group()
 
     bg = displayio.Bitmap(600, 450, 1)
@@ -196,12 +190,14 @@ def _bench_multi_element(display, iterations=10):
 
     display.root_group = group
     samples = []
+
     for i in range(iterations):
         moving_tile.x = 120 + ((i * 37) % 320)
         moving_tile.y = 90 + ((i * 29) % 220)
         start = time.monotonic()
         display.refresh()
         samples.append(time.monotonic() - start)
+
     return _average_ms(samples)
 
 
@@ -216,6 +212,7 @@ def _show_black(display):
 
 
 def _cleanup(display, qspi_bus):
+    """Benchmark multi-element scene with moving sprite."""
     if display is not None:
         try:
             _show_black(display)
@@ -230,7 +227,8 @@ def _cleanup(display, qspi_bus):
 
 
 print("=" * 60)
-print("DisplayIO Benchmark - Phase 5 (RM690B0 over qspibus)")
+print("Display Benchmark")
+print("DisplayIO over qspibus)")
 print("=" * 60)
 
 displayio.release_displays()
@@ -238,10 +236,12 @@ qspi_bus = None
 display = None
 
 try:
+    print("\nInitializing display...")
     qspi_bus = _build_qspi_bus()
     display = RM690B0(qspi_bus, width=600, height=450)
+    print("  OK: display initialized")
 
-    # Warm-up refresh to settle timings.
+    # Warm-up
     _show_black(display)
     time.sleep(0.1)
 
@@ -263,7 +263,6 @@ except Exception as exc:
     print(f"[FAIL] BENCHMARK FAILED: {exc}")
     print("=" * 60)
     import traceback
-
     traceback.print_exception(type(exc), exc, exc.__traceback__)
 
 finally:

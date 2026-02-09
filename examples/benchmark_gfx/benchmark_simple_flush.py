@@ -1,19 +1,7 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
-Simple RM690B0 flush benchmark focused on large-area operations.
-
-The goal is to quickly compare throughput before/after driver changes that
-modify DMA scheduling.  The script times three cases:
-
-1. `fill_color()` – full-screen solid fills (best-case path).
-2. `fill_rect()` – large logical rectangle path (same area as full screen).
-3. `blit_buffer()` – pushing a pre-generated RGB565 buffer covering as much
-   of the screen as available memory permits (full-height if PSRAM is free).
-
-Usage:
-    import benchmark_simple_flush
-
-The script automatically benchmarks both single- and double-buffer modes
-(double-buffering is skipped if allocation fails).
+Simple Flush Benchmark - rm690b0 version
 """
 
 import array
@@ -140,15 +128,14 @@ def run_suite(double_buffer_requested):
 
     def record(test_name, iterations, area, func):
         avg_ms, mp_per_s = run_benchmark(iterations, area, func)
-        results.append(
-            {
-                "mode": mode_label,
-                "test": test_name,
-                "avg_ms": avg_ms,
-                "mp_per_s": mp_per_s,
-            }
-        )
+        results.append({
+            "mode": mode_label,
+            "test": test_name,
+            "avg_ms": avg_ms,
+            "mp_per_s": mp_per_s,
+        })
 
+    # Test 1: fill_color (bitmap.fill)
     def fill_color_op(i):
         display.fill_color(colors[i % len(colors)])
         if active_double_buffer:
@@ -156,6 +143,7 @@ def run_suite(double_buffer_requested):
 
     record("fill_color", FILL_ITERATIONS, area_pixels, fill_color_op)
 
+    # Test 2: fill_rect (bitmaptools.fill_region)
     for case in RECT_TEST_CASES:
         label, rx, ry, rw, rh = resolve_rect_case(display, case)
         rect_area = rw * rh
@@ -170,6 +158,7 @@ def run_suite(double_buffer_requested):
 
         record(label, FILL_ITERATIONS, rect_area, fill_rect_case_op)
 
+    # Test 3: blit_buffer (bitmaptools.arrayblit)
     blit_height = display.height
     blit_buffer = None
     while blit_height > 0:
@@ -195,6 +184,7 @@ def run_suite(double_buffer_requested):
         )
         del blit_buffer
 
+    # Test 4: circle / fill_circle
     circle_radius = min(display.width, display.height) // 3
     if circle_radius > 0:
         circle_area = (circle_radius * 2 + 1) ** 2
@@ -230,7 +220,7 @@ def run_suite(double_buffer_requested):
 
 
 def main():
-    print("RM690B0 Simple Flush Benchmark")
+    print("Simple Flush Benchmark (rm690b0)")
     print(f"fill iterations={FILL_ITERATIONS}, blit iterations={BLIT_ITERATIONS}")
 
     all_results = []

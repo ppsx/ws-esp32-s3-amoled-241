@@ -1,18 +1,13 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
-Comprehensive RM690B0 Display Driver Benchmark
-
+Comprehensive Display Driver Benchmark - rm690b0 version
 Tests all drawing primitives with various sizes and outputs results in markdown table format.
-
-Hardware: Waveshare ESP32-S3 AMOLED 2.41" (600×450)
 """
 
 import rm690b0
 import time
 import gc
-
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
 
 DOUBLE_BUFF = False  # Set to True to test with double-buffering enabled
 
@@ -58,7 +53,6 @@ class BenchmarkRunner:
         result = BenchmarkResult(name, category, iterations, elapsed_ms)
         self.results.append(result)
 
-        #print(f"  {name}: {result.avg_ms:.2f}ms avg ({iterations}x)")
 
         return result
 
@@ -104,56 +98,38 @@ class BenchmarkRunner:
         # Define thresholds based on operation type
         if "fill_color" in result.name.lower() or "full screen" in result.name.lower():
             if avg < 20:
-                return "★★★"
+                return "***"
             elif avg < 30:
-                return "★★☆"
+                return "** "
             elif avg < 40:
-                return "★☆☆"
+                return "*  "
             else:
-                return "☆☆☆"
-
-        elif "circle" in result.name.lower() and "10" in result.name:
-            if avg < 20:
-                return "★★★"
-            elif avg < 30:
-                return "★★☆"
-            elif avg < 50:
-                return "★☆☆"
-            else:
-                return "☆☆☆"
+                return "   "
 
         elif "large" in result.name.lower() or "big" in result.name.lower():
             if avg < 15:
-                return "★★★"
+                return "***"
             elif avg < 25:
-                return "★★☆"
+                return "** "
             elif avg < 40:
-                return "★☆☆"
+                return "*  "
             else:
-                return "☆☆☆"
-
-        else:  # Small operations
+                return "   "
+        else:
             if avg < 1:
-                return "★★★"
+                return "***"
             elif avg < 5:
-                return "★★☆"
+                return "** "
             elif avg < 10:
-                return "★☆☆"
+                return "*  "
             else:
-                return "☆☆☆"
-
-
-def print_header(title):
-    """Print section header"""
-    #print("\n" + "-" * 80)
-    #print(f"  {title}")
-    #print("-" * 80)
+                return "   "
 
 
 def main():
     """Main benchmark routine"""
     print("\n" + "=" * 80)
-    print("  RM690B0 COMPREHENSIVE BENCHMARK")
+    print("  COMPREHENSIVE BENCHMARK (rm690b0)")
     print("  Testing all drawing primitives with various sizes")
     if DOUBLE_BUFF:
         print("  Mode: DOUBLE-BUFFERING ENABLED (tear-free rendering)")
@@ -171,16 +147,13 @@ def main():
     if DOUBLE_BUFF:
         print("Enabling double-buffering...")
         display.swap_buffers()  # Allocate front buffer
-        print("✓ Double-buffering enabled")
+        print("Double-buffering enabled")
 
-    print(f"✓ Display ready: {display.width}×{display.height} pixels\n")
+    print(f"Display ready: {display.width}×{display.height} pixels\n")
 
     runner = BenchmarkRunner(display, double_buff=DOUBLE_BUFF)
 
-    # ========================================================================
     # TEST 1: FILL_COLOR (Full Screen)
-    # ========================================================================
-    print_header("TEST 1: Full Screen Fill (fill_color)")
 
     runner.run_test(
         "fill_color (full screen)",
@@ -189,10 +162,7 @@ def main():
         iterations=50,
     )
 
-    # ========================================================================
     # TEST 2: HORIZONTAL LINES
-    # ========================================================================
-    print_header("TEST 2: Horizontal Lines (hline)")
 
     runner.run_test(
         "hline - short (50px)",
@@ -215,10 +185,7 @@ def main():
         iterations=200,
     )
 
-    # ========================================================================
     # TEST 3: VERTICAL LINES
-    # ========================================================================
-    print_header("TEST 3: Vertical Lines (vline)")
 
     runner.run_test(
         "vline - short (50px)",
@@ -241,10 +208,7 @@ def main():
         iterations=200,
     )
 
-    # ========================================================================
     # TEST 4: DIAGONAL LINES
-    # ========================================================================
-    print_header("TEST 4: Diagonal Lines (line)")
 
     runner.run_test(
         "line - short diagonal (50px)",
@@ -267,10 +231,7 @@ def main():
         iterations=100,
     )
 
-    # ========================================================================
     # TEST 5: FILLED RECTANGLES
-    # ========================================================================
-    print_header("TEST 5: Filled Rectangles (fill_rect)")
 
     runner.run_test(
         "fill_rect - tiny (10x10)",
@@ -314,10 +275,7 @@ def main():
         iterations=50,
     )
 
-    # ========================================================================
     # TEST 6: RECTANGLE OUTLINES
-    # ========================================================================
-    print_header("TEST 6: Rectangle Outlines (rect)")
 
     runner.run_test(
         "rect - small (50x50)",
@@ -354,10 +312,7 @@ def main():
         iterations=50,
     )
 
-    # ========================================================================
     # TEST 7: CIRCLE OUTLINES
-    # ========================================================================
-    print_header("TEST 7: Circle Outlines (circle)")
 
     runner.run_test(
         "circle - small (r=10)",
@@ -400,10 +355,7 @@ def main():
         setup_func=lambda: display.fill_color(0x0000),
     )
 
-    # ========================================================================
     # TEST 8: FILLED CIRCLES
-    # ========================================================================
-    print_header("TEST 8: Filled Circles (fill_circle)")
 
     runner.run_test(
         "fill_circle - small (r=10)",
@@ -433,10 +385,7 @@ def main():
         iterations=10,
     )
 
-    # ========================================================================
     # TEST 9: SINGLE PIXELS
-    # ========================================================================
-    print_header("TEST 9: Single Pixels (pixel)")
 
     runner.run_test(
         "pixel - single draw",
@@ -445,14 +394,12 @@ def main():
         iterations=1000,
     )
 
-    # ========================================================================
     # PRINT RESULTS TABLE
-    # ========================================================================
     runner.print_results_table()
 
     # Cleanup
     display.fill_color(0x0000)
-    print("✓ Benchmark complete. Display cleared.")
+    print("Benchmark complete. Display cleared.")
     display.deinit()
     print()
 

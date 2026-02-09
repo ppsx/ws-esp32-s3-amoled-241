@@ -1,12 +1,11 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
 Bouncing Ball with Background Image
 ====================================
 
 Combines background image loading with high FPS bouncing ball animation.
 Background is loaded from /gfx/cerber.raw and the ball bounces over it.
-
-Usage:
-    python test_animation_bg.py
 """
 
 import random
@@ -34,7 +33,7 @@ class HighFPSBall:
         # Float positions for precise motion (prevents cumulative rounding errors)
         self.fx = float(x)
         self.fy = float(y)
-        # Int positions for rendering
+        # Int positions (aligned) for rendering
         self.x = x
         self.y = y
         self.vx = vx
@@ -145,7 +144,7 @@ def load_background(path):
         read = f.readinto(fb)
         if read != len(fb):
             raise RuntimeError("Background file is the wrong size")
-    print("✓ Background loaded")
+    print("Background loaded")
     return fb
 
 
@@ -209,7 +208,7 @@ def main():
     last_fps_time = start_time
     last_fps_frame = 0
 
-    print("🚀 Starting animation...\n")
+    print("Starting animation...\n")
 
     while time.monotonic() - start_time < DURATION:
         frame_start = time.monotonic()
@@ -234,7 +233,6 @@ def main():
             elapsed = current_time - last_fps_time
             frames_rendered = frame_count - last_fps_frame
             current_fps = frames_rendered / elapsed if elapsed > 0 else 0
-
             remaining = DURATION - (current_time - start_time)
             print(
                 f"Frame {frame_count:4d} | FPS: {current_fps:6.1f} | Remaining: {remaining:4.1f}s"
@@ -252,7 +250,7 @@ def main():
     print("\n" + "=" * 70)
     print("  ANIMATION COMPLETE")
     print("=" * 70)
-    print(f"\n📊 Performance Results:")
+    print(f"\nPerformance Results:")
     print(f"  Total frames: {frame_count}")
     print(f"  Total time: {total_time:.2f}s")
     print(f"  Average FPS: {actual_fps:.2f}")
@@ -264,7 +262,7 @@ def main():
     display.swap_buffers()
     display.deinit()
 
-    print("\n✓ Animation finished!\n")
+    print("\n Animation finished!\n")
 
 
 if __name__ == "__main__":

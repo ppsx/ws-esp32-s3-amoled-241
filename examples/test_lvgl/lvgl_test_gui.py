@@ -1,8 +1,10 @@
-# LVGL Python Widget API Test
-# Phase 5.4: Python Bindings Verification
-#
-# This script demonstrates creating a UI using Python classes (Label, Button)
-# wrapping the underlying LVGL widgets.
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
+"""
+LVGL Python Widget API Test
+This script demonstrates creating a UI using Python classes (Label, Button)
+wrapping the underlying LVGL widgets.
+"""
 
 import gc
 import time
@@ -54,7 +56,7 @@ print("Initializing Touch...")
 try:
     i2c = busio.I2C(board.TP_SCL, board.TP_SDA, frequency=400000)
     lvgl.init_touch(i2c)
-    print("✓ Touch initialized")
+    print("Touch initialized")
 except Exception as e:
     print(f"Warning: Touch init failed: {e}")
     print("Note: Touch pins should be board.TP_SCL and board.TP_SDA")
@@ -91,22 +93,6 @@ lvgl.task_handler()
 title = rm690b0_lvgl.Label("Widget Demo")
 
 print("Creating title label...")
-
-print("Loading TTF font from: fonts/calibri.ttf")
-print("This may take a moment...")
-##@# Commented out - memory issues - screen freezing
-##@# gc.collect()  # Free up memory before loading font
-print(f"Free memory before font load: {gc.mem_free()} bytes")
-##@# font = rm690b0_lvgl.Font("fonts/calibri.ttf", 24)
-print("✓ Font loaded successfully")
-##@# gc.collect()
-print(f"Free memory after font load: {gc.mem_free()} bytes")
-print("Setting font to title...")
-##@# title.set_style_text_font(font)
-print("✓ Font applied to title")
-time.sleep(0.03)
-lvgl.task_handler()
-
 title.x = (SCREEN_WIDTH - 120) // 2  # Center horizontally
 title.y = 10
 title.set_text_color(0xFFFFFF if THEME_DARK else 0x000080)  # Navy Blue
@@ -784,22 +770,10 @@ def on_btnm_click(btnm):
 
 
 keys = [
-    "1",
-    "2",
-    "3",
-    "\n",
-    "4",
-    "5",
-    "6",
-    "\n",
-    "7",
-    "8",
-    "9",
-    "\n",
-    "*",
-    "0",
-    "#",
-    "",
+    "1", "2", "3", "\n",
+    "4", "5", "6", "\n",
+    "7", "8", "9", "\n",
+    "*", "0", "#", "",
 ]
 
 btnm = rm690b0_lvgl.Buttonmatrix(keys)
@@ -913,25 +887,6 @@ def on_keyboard_change(kb):
         hide_keyboard(clear_text=True)
 
 
-# ============================================================================
-# Image Widget (64x64 JPEG)
-# ============================================================================
-# image_lbl = rm690b0_lvgl.Label(text="Image:")
-# image_lbl.x = 30
-# image_lbl.y = 310
-# image_lbl.set_text_color(0x000000)
-#
-# try:
-#    with open("/gfx/cyborg.jpg", "rb") as f:
-#        jpeg_data = f.read()
-#
-#    img = rm690b0_lvgl.Image()
-#    img.x = -64
-#    img.y = 234
-#    img.load_jpeg(jpeg_data)
-#    img.set_zoom(64)  # Zoom to 25% (64/256 = 0.25, LVGL zoom: 256=100%)
-
-
 print("UI Created. Starting Main Loop...")
 print(f"Display: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
 print("Layout: Organized in rows with grouped widgets")
@@ -953,9 +908,7 @@ print("  - Checkboxes: Toggle Feature and Auto")
 print("  - Switch: Toggle WiFi on/off")
 print("  - Arc: Rotate the circular knob for volume")
 print("  - Dropdown: Select theme from menu")
-print(
-    "  - Textarea: Tap the field to show the on-screen keyboard, then tap the ✓ key to submit and hide it"
-)
+print("  - Textarea: Tap the field to show the on-screen keyboard, then tap the ✓ key to submit and hide it")
 print("  - Icons: Status icons displayed using Labels (WiFi, Settings, Battery, Home)")
 print("  - Chart: Press 'Update Chart' to append live telemetry")
 print("  - Scale: Use 'Next Gauge' to rotate the meter needle")

@@ -1,19 +1,11 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
-RM690B0 Unified Image Benchmark Suite
+Unified Image Benchmark Suite
 =====================================
 
-Comprehensive benchmark tool for testing image conversion and display performance.
+Comprehensive benchmark for testing image conversion and display performance.
 Supports RAW, BMP, and JPEG formats.
-
-Usage:
-    import benchmark_gfx_conversion
-    benchmark_gfx_conversion.run()  # Interactive menu
-
-Or run specific tests:
-    benchmark_gfx_conversion.quick_test()
-    benchmark_gfx_conversion.full_benchmark()
-    benchmark_gfx_conversion.diagnostic()
-    benchmark_gfx_conversion.format_comparison()
 """
 
 import gc
@@ -22,6 +14,7 @@ import sys
 import time
 import struct
 import io
+
 import bitmaptools
 import jpegio
 import displayio
@@ -172,7 +165,7 @@ def load_file(filepath):
             gc.collect()
             buf = bytearray(size)
         except MemoryError:
-            print(f"  ⚠️  Out of memory loading {filepath}")
+            print(f"   Out of memory loading {filepath}")
             return None
 
     read_bytes = load_file_into(filepath, buf, size)
@@ -181,7 +174,7 @@ def load_file(filepath):
 
     if read_bytes < size:
         print(
-            f"  ⚠️  Short read from {filepath}: expected {size} bytes, got {read_bytes}"
+            f"  Short read from {filepath}: expected {size} bytes, got {read_bytes}"
         )
         del buf[read_bytes:]
     return buf
@@ -208,10 +201,10 @@ def preload_files(verbose=True):
             files_data[fmt] = data
             total_size += len(data)
             if verbose:
-                print(f"  ✅ Loaded {len(data):>9,} bytes in {t_elapsed * 1000:.0f}ms")
+                print(f"  Loaded {len(data):>9,} bytes in {t_elapsed * 1000:.0f}ms")
         else:
             if verbose:
-                print(f"  ⚠️  File not found, skipping")
+                print(f"  File not found, skipping")
 
     if verbose:
         print(f"\nTotal: {len(files_data)} files, {format_size(total_size)}")
@@ -225,12 +218,7 @@ def preload_files(verbose=True):
 
 
 def convert_image(format_name, data, display=None, width=None, height=None):
-    """
-    Convert image data to RGB565 using optimal methods (convert_bmp/jpegio).
-
-    Returns: (buffer, info)
-    Info dict includes "swapped": True/False to indicate to blit_buffer.
-    """
+    """Convert image data to RGB565 using optimal methods (convert_bmp/jpegio)."""
     if format_name == "RAW":
         # RAW is already RGB565 format - ZERO CONVERSION NEEDED!
         w = width or CONFIG["raw_dimensions"]["width"]
@@ -245,7 +233,7 @@ def convert_image(format_name, data, display=None, width=None, height=None):
             "bit_depth": 16,
             "channels": 3,
             "has_alpha": False,
-            "swapped": False, # RAW assumed standard (or handled manually)
+            "swapped": False,
         }
         return data, info
 
@@ -294,7 +282,7 @@ def convert_image(format_name, data, display=None, width=None, height=None):
             "bit_depth": 16,
             "channels": 3,
             "has_alpha": False,
-            "swapped": True, # JPEG on ESP32-S3 is BE
+            "swapped": True,
         }
         return bitmap, info
 
@@ -303,17 +291,12 @@ def convert_image(format_name, data, display=None, width=None, height=None):
 
 
 def benchmark_conversion(format_name, data, display, iterations=10, debug_memory=False):
-    """
-    Benchmark conversion performance.
-
-    Returns: (buffer, info, times_list)
-    """
     times = []
     memory_stats = []
     buffer = None
     info = None
 
-    # Warmup iteration to trigger JIT compilation (except for RAW)
+    # Warmup
     if format_name != "RAW":  # RAW needs no warmup - it's instant
         try:
             gc.collect()
@@ -408,15 +391,15 @@ def quick_test():
     try:
         display = rm690b0.RM690B0()
         display.init_display()
-        print("✅ Display ready!\n")
+        print("Display ready!\n")
     except Exception as e:
-        print(f"❌ Failed to initialize display: {e}")
+        print(f"Failed to initialize display: {e}")
         return
 
     # Load files after display is initialized
     files_data = preload_files(verbose=False)
     if not files_data:
-        print("❌ No files found!")
+        print("No files found!")
         display.deinit()
         return
 
@@ -442,11 +425,11 @@ def quick_test():
             display.swap_buffers()
             t_display = time.monotonic() - t_start
 
-            print(f"  Dimensions: {info['width']}×{info['height']}")
+            print(f"  Dimensions: {info['width']}x{info['height']}")
             print(f"  Convert:    {format_time(t_convert)}")
             print(f"  Display:    {format_time(t_display)}")
             print(f"  Total:      {format_time(t_convert + t_display)}")
-            print(f"  ✅ Success!")
+            print(f"  Success!")
 
             time.sleep(2.0)
             del buffer
@@ -454,17 +437,17 @@ def quick_test():
             gc.collect()
 
         except NotImplementedError as e:
-            print(f"  ⚠️  {e}")
+            print(f"  {e}")
         except MemoryError:
-            print(f"  ❌ Out of memory")
+            print(f"  Out of memory")
             gc.collect()
         except Exception as e:
-            print(f"  ⚠️  {e}")
+            print(f"  Error: {e}")
 
     show_black_screen(display)
     display.deinit()
     print_line()
-    print("✅ Quick test complete!")
+    print("Quick test complete!")
 
 
 def full_benchmark(iterations=10, memory_efficient=False):
@@ -478,7 +461,7 @@ def full_benchmark(iterations=10, memory_efficient=False):
     print(f"\nIterations: {iterations} (conversion), 5 (display)\n")
 
     if memory_efficient:
-        print("🔋 Memory-efficient mode: Loading files one at a time")
+        print("Memory-efficient mode: Loading files one at a time")
         print()
 
     # Check memory before starting
@@ -491,9 +474,9 @@ def full_benchmark(iterations=10, memory_efficient=False):
     try:
         display = rm690b0.RM690B0()
         display.init_display()
-        print("✅ Display ready!")
+        print("Display ready!")
     except Exception as e:
-        print(f"❌ Failed to initialize display: {e}")
+        print(f"Failed to initialize display: {e}")
         return
 
     # Check memory after display init
@@ -501,7 +484,7 @@ def full_benchmark(iterations=10, memory_efficient=False):
     if mem:
         print(f"\nMemory after display: {format_size(mem['free'])} free")
         if mem["free"] < 500000:  # Less than 500KB
-            print("⚠️  WARNING: Low memory! Pre-loading files may fail.")
+            print("WARNING: Low memory! Pre-loading files may fail.")
             print("    Consider testing one format at a time.\n")
 
     # Pre-load files (or prepare to load individually)
@@ -519,7 +502,7 @@ def full_benchmark(iterations=10, memory_efficient=False):
                 pass
 
         if not files_data:
-            print("\n❌ No files found!")
+            print("\nNo files found!")
             display.deinit()
             return
 
@@ -528,7 +511,7 @@ def full_benchmark(iterations=10, memory_efficient=False):
         # Standard mode: pre-load all files
         files_data = preload_files()
         if not files_data:
-            print("\n❌ No files found!")
+            print("\nNo files found!")
             display.deinit()
             return
 
@@ -540,10 +523,7 @@ def full_benchmark(iterations=10, memory_efficient=False):
     results = []
     formats = ["RAW", "BMP", "JPG"]
 
-    if memory_efficient:
-        available = [f for f in formats if f in files_data]
-    else:
-        available = [f for f in formats if f in files_data]
+    available = [f for f in formats if f in files_data]
 
     # Test each format
     for i, fmt in enumerate(available, 1):
@@ -555,9 +535,9 @@ def full_benchmark(iterations=10, memory_efficient=False):
             print(f"Loading {fmt} from {files_data[fmt]['path']}...")
             data = load_file(files_data[fmt]["path"])
             if data is None:
-                print(f"❌ Failed to load file!")
+                print(f"Failed to load file!")
                 continue
-            print(f"✅ Loaded {format_size(len(data))}")
+            print(f"Loaded {format_size(len(data))}")
         else:
             data = files_data[fmt]
 
@@ -592,10 +572,8 @@ def full_benchmark(iterations=10, memory_efficient=False):
             file_size = len(data) if not memory_efficient else files_data[fmt]["size"]
 
             print(f"\n{fmt} RESULTS:")
-            print(
-                f"  File size:         {file_size:>10,} bytes ({file_size / 1024:.1f} KB)"
-            )
-            print(f"  Image size:        {info['width']}×{info['height']}")
+            print(f"  File size:         {file_size:>10,} bytes ({file_size / 1024:.1f} KB)")
+            print(f"  Image size:        {info['width']}x{info['height']}")
             print(f"  RGB565 size:       {info['data_size']:>10,} bytes")
             if fmt == "RAW":
                 print(f"  CONVERSION ({len(conv_times)} iterations):")
@@ -624,16 +602,14 @@ def full_benchmark(iterations=10, memory_efficient=False):
 
             # Store results
             file_size = len(data) if not memory_efficient else files_data[fmt]["size"]
-            results.append(
-                {
-                    "format": fmt,
-                    "file_size": file_size,
-                    "convert_avg": conv_avg,
-                    "display_avg": disp_avg,
-                    "total": total,
-                    "info": info,
-                }
-            )
+            results.append({
+                "format": fmt,
+                "file_size": file_size,
+                "convert_avg": conv_avg,
+                "display_avg": disp_avg,
+                "total": total,
+                "info": info,
+            })
 
             # Display image
             print(f"\nDisplaying {fmt} image for {CONFIG['display_time']}s...")
@@ -670,15 +646,14 @@ def full_benchmark(iterations=10, memory_efficient=False):
                 time.sleep(CONFIG["separator_time"])
 
         except NotImplementedError as e:
-            print(f"\n⚠️  SKIPPED: {e}")
+            print(f"\nSKIPPED: {e}")
             continue
         except MemoryError as e:
-            print(f"\n❌ OUT OF MEMORY: {e}")
-            print("    Try closing other programs or use smaller images.")
+            print(f"\nOUT OF MEMORY: {e}")
             gc.collect()
             continue
         except Exception as e:
-            print(f"\n❌ ERROR: {e}")
+            print(f"\nERROR: {e}")
             continue
 
     # Summary
@@ -688,9 +663,7 @@ def full_benchmark(iterations=10, memory_efficient=False):
     if results:
         print("\nFormat Comparison (TRUE performance - no file I/O):")
         print_line("-")
-        print(
-            f"{'Format':<8} {'Size':<12} {'Convert':<12} {'Display':<12} {'Total':<12} {'FPS':<8}"
-        )
+        print(f"{'Format':<8} {'Size':<12} {'Convert':<12} {'Display':<12} {'Total':<12} {'FPS':<8}")
         print_line("-")
 
         for r in results:
@@ -707,16 +680,14 @@ def full_benchmark(iterations=10, memory_efficient=False):
         fastest = min(results, key=lambda x: x["total"])
         smallest = min(results, key=lambda x: x["file_size"])
 
-        print(f"\n🏆 Fastest:  {fastest['format']} ({format_time(fastest['total'])})")
-        print(
-            f"💾 Smallest: {smallest['format']} ({format_size(smallest['file_size'])})"
-        )
+        print(f"\nFastest:  {fastest['format']} ({format_time(fastest['total'])})")
+        print(f"Smallest: {smallest['format']} ({format_size(smallest['file_size'])})")
 
         if "RAW" in [r["format"] for r in results]:
-            print(f"\nℹ️  RAW format shows true zero-conversion performance")
+            print(f"\nRAW format shows true zero-conversion performance")
             print(f"   (Data goes directly to display with no processing)")
     else:
-        print("\n⚠️  No results to display")
+        print("\nNo results to display")
 
     print_line()
     show_black_screen(display)
@@ -762,7 +733,7 @@ def diagnostic():
             try:
                 buffer = bytearray(size)
             except MemoryError:
-                print(f"  ⚠️  Not enough memory to allocate {size} bytes")
+                print(f"  Not enough memory to allocate {size} bytes")
                 continue
 
         times = []
@@ -781,7 +752,7 @@ def diagnostic():
                 short_read = True
 
         if not times:
-            print(f"  ⚠️  Unable to collect timing data")
+            print(f"  Unable to collect timing data")
             continue
 
         min_t, max_t, avg_t = calculate_stats(times)
@@ -790,7 +761,7 @@ def diagnostic():
             print(f"  Iteration {i}: {format_time(t):>10} ({size:>10,} bytes)")
 
         if short_read:
-            print(f"  ⚠️  Detected truncated read during streaming test")
+            print(f"  Detected truncated read during streaming test")
 
         if avg_t > 0:
             throughput = size / avg_t / (1024 * 1024)
@@ -819,7 +790,7 @@ def diagnostic():
         print(f"  Iteration {i}: {format_time(t):>10}")
     print(f"  Average:    {format_time(avg_t):>10}")
     if avg_t < 0.050:
-        print(f"  ✅ Memory allocation is fast")
+        print(f"  Memory allocation is fast")
 
     # Conversion tests
     print_header("CONVERSION PERFORMANCE", "=")
@@ -860,7 +831,7 @@ def diagnostic():
                 print(f"  Average:      {format_time(avg_t):>10} (throughput N/A)")
 
             if fmt == "RAW":
-                print(f"  ✅ RAW format: ZERO conversion (already RGB565)")
+                print(f"  RAW format: ZERO conversion (already RGB565)")
                 print(f"      Data goes directly to display - instant!")
                 print(f"      Measured time is just Python function call overhead")
 
@@ -870,12 +841,12 @@ def diagnostic():
     print("\nInitializing display...")
     display = rm690b0.RM690B0()
     display.init_display()
-    print("✅ Display initialized")
+    print("Display initialized")
 
     if "RAW" in files_data:
         print("\nLoading test image...")
         buffer, info = convert_image("RAW", files_data["RAW"])
-        print(f"✅ Image ready: {info['width']}×{info['height']}")
+        print(f"Image ready: {info['width']}×{info['height']}")
 
         print("\nDrawing to display...")
         times = benchmark_display(
@@ -890,7 +861,7 @@ def diagnostic():
         print(f"  Average:    {format_time(avg_t):>10} ({fps:.1f} FPS)")
 
         if avg_t > 0.070:
-            print(f"  ⚠️  Display is slow (check SPI speed?)")
+            print(f"  Display is slow (check SPI speed?)")
 
         del buffer
 
@@ -910,15 +881,15 @@ def format_comparison():
     try:
         display = rm690b0.RM690B0()
         display.init_display()
-        print("✅ Display ready!\n")
+        print("Display ready!\n")
     except Exception as e:
-        print(f"❌ Failed to initialize display: {e}")
+        print(f"Failed to initialize display: {e}")
         return
 
     # Pre-load files after display is initialized
     files_data = preload_files(verbose=False)
     if not files_data:
-        print("❌ No files found!")
+        print("No files found!")
         display.deinit()
         return
 
@@ -959,11 +930,13 @@ def format_comparison():
             del load_buffer
             gc.collect()
 
+            # Conversion
             print("Converting to RGB565...")
             t_start = time.monotonic()
             buffer, info = convert_image(fmt, data, display=display)
             t_convert = time.monotonic() - t_start
 
+            # Display
             print("Displaying image...")
             t_start = time.monotonic()
             swapped = info.get("swapped", False)
@@ -976,11 +949,8 @@ def format_comparison():
 
             total = t_load + t_convert + t_display
 
-            print(f"\nResults:")
-            print(
-                f"  File size:     {len(data):>10,} bytes ({len(data) / 1024:.1f} KB)"
-            )
-            print(f"  Dimensions:    {info['width']}×{info['height']}")
+            print(f"\n  File size:     {len(data):>10,} bytes ({len(data) / 1024:.1f} KB)")
+            print(f"  Dimensions:    {info['width']}x{info['height']}")
             print(f"  Load time:     {format_time(t_load)}")
             print(f"  Convert time:  {format_time(t_convert)}")
             print(f"  Display time:  {format_time(t_display)}")
@@ -988,15 +958,13 @@ def format_comparison():
             fps = 1.0 / total if total > 0 else float("inf")
             print(f"  Potential FPS: {fps:.1f}")
 
-            results.append(
-                {
-                    "format": fmt,
-                    "size": len(data),
-                    "load": t_load,
-                    "convert": t_convert,
-                    "total": total,
-                }
-            )
+            results.append({
+                "format": fmt,
+                "size": len(data),
+                "load": t_load,
+                "convert": t_convert,
+                "total": total,
+            })
 
             print(f"\nShowing {fmt} image for {CONFIG['display_time']}s...")
             time.sleep(CONFIG["display_time"])
@@ -1009,7 +977,7 @@ def format_comparison():
                 time.sleep(CONFIG["separator_time"])
 
         except Exception as e:
-            print(f"\n⚠️  SKIPPED: {e}")
+            print(f"\n  SKIPPED: {e}")
 
     # Summary
     print_header("COMPARISON SUMMARY")
@@ -1039,7 +1007,7 @@ def format_comparison():
     print_line()
     show_black_screen(display)
     display.deinit()
-    print("\n✅ Comparison complete!")
+    print("\nComparison complete!")
 
 
 # =============================================================================
@@ -1049,13 +1017,13 @@ def format_comparison():
 
 def show_menu():
     """Display interactive menu."""
-    print_header("RM690B0 UNIFIED BENCHMARK SUITE")
+    print_header("IMAGE BENCHMARK SUITE (rm690b0)")
     print("\nSelect a test mode:\n")
-    print("  1. Quick Test        - Fast sanity check (3 iterations)")
-    print("  2. Full Benchmark    - Detailed performance analysis (10 iterations)")
-    print("  3. Diagnostic        - Identify bottlenecks")
-    print("  4. Format Comparison - Side-by-side comparison")
-    print("  5. Exit")
+    print("  1. Quick Test        - Fast sanity check")
+    print("  2. Full Benchmark    - Detailed performance analysis")
+    print("  3. Format Comparison - Side-by-side comparison")
+    print("  4. Diagnostic        - Identify bottlenecks")
+    print("  x. Exit")
     print()
 
 
@@ -1065,7 +1033,7 @@ def run():
         show_menu()
 
         try:
-            choice = input("Enter choice (1-5): ").strip()
+            choice = input("Enter choice (1-4, x): ").strip()
             print()
 
             if choice == "1":
@@ -1073,14 +1041,14 @@ def run():
             elif choice == "2":
                 full_benchmark()
             elif choice == "3":
-                diagnostic()
-            elif choice == "4":
                 format_comparison()
-            elif choice == "5":
+            elif choice == "4":
+                diagnostic()
+            elif choice == "x":
                 print("Goodbye!")
                 break
             else:
-                print("Invalid choice. Please enter 1-5.")
+                print("Invalid choice.")
 
             print("\n")
             input("Press Enter to continue...")
@@ -1090,9 +1058,7 @@ def run():
             print("\n\nExiting...")
             break
         except Exception as e:
-            print(f"\n❌ ERROR: {e}")
-            if hasattr(sys, "print_exception"):
-                sys.print_exception(e)
+            print(f"\nERROR: {e}")
             input("\nPress Enter to continue...")
 
 

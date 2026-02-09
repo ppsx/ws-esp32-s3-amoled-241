@@ -1,5 +1,7 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
-Text Rendering Benchmark — displayio version
+Text Rendering Benchmark - displayio version
 =============================================
 
 Measures the performance of text rendering using adafruit_display_text Labels
@@ -11,9 +13,6 @@ Tested scenarios:
 3. Scale 2 (~12x24) - short string
 4. Scale 4 (~24x48) - short string
 5. Menu simulation (5 labels per frame)
-
-Usage:
-    import benchmark_text
 """
 
 import gc
@@ -25,12 +24,7 @@ import displayio
 import terminalio
 from adafruit_display_text import label as label_mod
 from rm690b0 import RM690B0, create_qspi_bus
-
-try:
-    from display_compat import DisplayCompat
-except ImportError:
-    sys.path.insert(0, ".")
-    from display_compat import DisplayCompat
+from display_compat import DisplayCompat
 
 # ============================================================================
 # Configuration
@@ -49,14 +43,15 @@ TEST_STRINGS = {
 # Benchmarking Engine
 # ============================================================================
 
-
 def format_cps(chars_count, total_ms):
+    """Return characters/second."""
     if total_ms <= 0:
         return 0.0
     return chars_count / (total_ms / 1000.0)
 
 
 def run_benchmark(iterations, func):
+    """Run a benchmark case and return avg time and total time."""
     gc.collect()
     start_ns = time.monotonic_ns()
     count = 0
@@ -65,7 +60,6 @@ def run_benchmark(iterations, func):
     elapsed_ms = (time.monotonic_ns() - start_ns) / 1_000_000.0
     avg_ms = elapsed_ms / iterations
     return avg_ms, elapsed_ms, count
-
 
 def run_suite():
     displayio.release_displays()
@@ -187,6 +181,7 @@ def main():
         print("No results.")
         return
 
+    # Print Table
     op_width = max(20, max(len(r["test"]) for r in all_results))
     header = f"{{:<{op_width}}}  {{:>8}}  {{:>8}}"
     row_fmt = f"{{:<{op_width}}}  {{:8.2f}}  {{:8.1f}}"

@@ -1,17 +1,7 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
 """
-Simple Flush Benchmark — displayio version
-============================================
-
-Benchmarks large-area operations using displayio + bitmaptools.
-
-Tests performed:
-1. fill_color() — full-screen solid fills (bitmap.fill)
-2. fill_rect() — large fill_region operations
-3. blit_buffer() — arrayblit of pre-generated RGB565 buffer
-4. circle / fill_circle — circle primitives
-
-Usage:
-    import benchmark_simple_flush
+Simple Flush Benchmark - displayio version
 """
 
 import array
@@ -23,21 +13,21 @@ import displayio
 import bitmaptools
 import sys
 from rm690b0 import RM690B0, create_qspi_bus
-
-try:
-    from display_compat import DisplayCompat
-except ImportError:
-    sys.path.insert(0, ".")
-    from display_compat import DisplayCompat
+from display_compat import DisplayCompat
 
 # ============================================================================
 # Configuration
 # ============================================================================
 
-FILL_ITERATIONS = 25
-BLIT_ITERATIONS = 10
-CIRCLE_ITERATIONS = 20
+FILL_ITERATIONS = 25  # Iterations for fill_color/fill_rect
+BLIT_ITERATIONS = 10  # Iterations for blit_buffer test
+CIRCLE_ITERATIONS = 20  # Iterations for circle/fill_circle tests
 
+# Additional rectangles to probe recent driver optimizations.
+# Each tuple: (label, width_pixels or ratio, height_pixels, align)
+# - width_entry: if <= 1.0 treat as ratio of display width, otherwise absolute pixels.
+# - height_pixels: positive integer rows or None for full height.
+# - align: placement hint ("top" or "middle").
 RECT_TEST_CASES = (
     ("fill_rect (FS)", 1.0, None, "top"),
     ("fill_rect (full width, 64 rows)", 1.0, 64, "top"),
@@ -46,6 +36,7 @@ RECT_TEST_CASES = (
 
 
 def resolve_rect_case(dc, case):
+    """Return (label, x, y, width, height) for a configured rect test."""
     label, width_entry, height_rows, align = case
     screen_w = dc.width
     screen_h = dc.height
@@ -79,6 +70,7 @@ def resolve_rect_case(dc, case):
 
 
 def format_mp_per_sec(total_pixels, total_ms):
+    """Return megapixels/second based on processed pixels and time."""
     if total_ms <= 0:
         return 0.0
     seconds = total_ms / 1000.0
@@ -86,6 +78,7 @@ def format_mp_per_sec(total_pixels, total_ms):
 
 
 def run_benchmark(iterations, area_pixels, op, dc):
+    """Run a benchmark case and return timing/throughput."""
     gc.collect()
     start_ns = time.monotonic_ns()
     for i in range(iterations):
@@ -100,18 +93,20 @@ def run_benchmark(iterations, area_pixels, op, dc):
 
 
 def build_blit_buffer(width, height):
-    """Create a gradient RGB565 buffer."""
+    """Create a gradient RGB565 buffer of the requested size."""
     pixels = width * height
     data = array.array("H", (0,) * pixels)
     for row in range(height):
+        # Create a simple gradient that changes every row to avoid RLE effects
         base = row * width
+        # Cycle through red/green/blue bands
         red = ((row * 3) & 0x1F) << 11
         green = ((row * 5) & 0x3F) << 5
         blue = (row * 7) & 0x1F
         color = red | green | blue
         for col in range(width):
             data[base + col] = color
-            color ^= 0x1F
+            color ^= 0x1F  # Flip a few bits to avoid identical cache lines
     return data
 
 
@@ -168,6 +163,7 @@ def run_suite():
             gc.collect()
 
     if blit_buffer is not None:
+
         def blit_op(_):
             bitmaptools.arrayblit(
                 dc.bitmap, blit_buffer,
