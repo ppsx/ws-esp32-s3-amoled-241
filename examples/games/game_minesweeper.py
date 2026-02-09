@@ -407,26 +407,27 @@ def main():
     display = rm690b0.RM690B0()
     display.init_display()
     display.brightness = 1.0
-    
+
     i2c = busio.I2C(board.TP_SCL, board.TP_SDA)
     touch = TouchInput(i2c)
     joy = JoystickInput(i2c)
-    
-    game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
-    
-    last_draw = 0
-    needs_redraw_grid = True
-    needs_redraw_ui = True
-    
-    cursor_vis = False # Hide cursor until joystick used
-    joy_last_move = 0
-    joy_btn_pressed = False
-    joy_press_start = 0
-    
-    # Stabilize sensors
-    time.sleep(0.5)
-    
-    while True:
+
+    try:
+        game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
+
+        last_draw = 0
+        needs_redraw_grid = True
+        needs_redraw_ui = True
+
+        cursor_vis = False # Hide cursor until joystick used
+        joy_last_move = 0
+        joy_btn_pressed = False
+        joy_press_start = 0
+
+        # Stabilize sensors
+        time.sleep(0.5)
+
+        while True:
         now = time.monotonic()
         
         # Input
@@ -553,8 +554,23 @@ def main():
 
             display.swap_buffers()
             needs_redraw_grid = False
-        
-        time.sleep(0.01)
+
+            time.sleep(0.01)
+
+    except KeyboardInterrupt:
+        print("\nGame interrupted by user")
+    except Exception as e:
+        print(f"\nGame crashed: {e}")
+    finally:
+        print("Cleaning up display...")
+        display.fill_color(0x0000)
+        display.swap_buffers()
+        display.deinit()
+        try:
+            i2c.deinit()
+        except:
+            pass
+        print("Minesweeper exited")
 
 if __name__ == "__main__":
     main()

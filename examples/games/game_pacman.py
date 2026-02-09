@@ -1474,7 +1474,8 @@ def main():
 
     game = Game(display, None)
 
-    while True:
+    try:
+        while True:
         # Welcome Screen
         game.draw_welcome()
 
@@ -1535,7 +1536,22 @@ def main():
                 waiting = False
             time.sleep(0.05)
 
-        # Loop back to welcome
+            # Loop back to welcome
+
+    except KeyboardInterrupt:
+        print("\nGame interrupted by user")
+    except Exception as e:
+        print(f"\nGame crashed: {e}")
+    finally:
+        print("Cleaning up display...")
+        display.fill_color(0x0000)
+        display.swap_buffers()
+        display.deinit()
+        try:
+            i2c.deinit()
+        except:
+            pass
+        print("Pac-Man exited")
 
 
 if __name__ == "__main__":

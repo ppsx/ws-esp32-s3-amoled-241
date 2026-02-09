@@ -702,6 +702,8 @@ def main():
 
     except KeyboardInterrupt:
         print("\nInterrupted. Exiting.")
+    except Exception as e:
+        print(f"\nGame crashed: {e}")
     finally:
         display.fill_color(rm690b0.BLACK)
         display.swap_buffers()

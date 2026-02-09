@@ -3,6 +3,10 @@ Sokoban Game for Waveshare ESP32-S3 Touch AMOLED 2.41
 Based on Bansoko levels.
 """
 
+BASE_DIR = "/games"
+
+import os
+import sys
 import time
 import board
 import busio
@@ -15,7 +19,15 @@ try:
 except ImportError:
     adafruit_focaltouch = None
 
-from game_sokoban_levels import LEVELS
+try:
+    from game_sokoban_levels import LEVELS
+except ImportError:
+    if __file__ == "<stdin>":
+        path = BASE_DIR
+    else:
+        path = "/" + __file__.rsplit("/", 1)[0] if "/" in __file__ else ""
+    sys.path.insert(0, path)
+    from game_sokoban_levels import LEVELS
 
 # ---------------------------------------------------------------------------
 # Hardware & Configuration
@@ -554,23 +566,24 @@ def main():
 
     level_idx, game = load_level(level_idx)
 
-    cell_size = 20  # Base size, maybe scale?
-    # Max dims: 450x600 (portrait) or 600x450 (landscape)
-    # Most levels are small, some are large.
-    # Map 62 is 27x19. 600/27 = 22px. 
-    # Let's verify screen orientation. Snake uses 600 width logic.
-    width = display.width # 600?
-    height = display.height # 450?
+    try:
+        cell_size = 20  # Base size, maybe scale?
+        # Max dims: 450x600 (portrait) or 600x450 (landscape)
+        # Most levels are small, some are large.
+        # Map 62 is 27x19. 600/27 = 22px.
+        # Let's verify screen orientation. Snake uses 600 width logic.
+        width = display.width # 600?
+        height = display.height # 450?
 
-    menu_items = ["RESUME", "UNDO", "RESET", "NEXT LEVEL", "PREV LEVEL", "EXIT"]
-    menu_open = False
-    menu_sel = 0
+        menu_items = ["RESUME", "UNDO", "RESET", "NEXT LEVEL", "PREV LEVEL", "EXIT"]
+        menu_open = False
+        menu_sel = 0
 
-    last_act_time = 0
-    act_delay = 0.15 # Repeat rate
-    solved_timestamp = None
+        last_act_time = 0
+        act_delay = 0.15 # Repeat rate
+        solved_timestamp = None
 
-    while True:
+        while True:
         # Animation update loop (Run first!)
         if game.update():
             needs_redraw = True
@@ -681,6 +694,20 @@ def main():
         else:
             solved_timestamp = None
 
+    except KeyboardInterrupt:
+        print("\nGame interrupted by user")
+    except Exception as e:
+        print(f"\nGame crashed: {e}")
+    finally:
+        print("Cleaning up display...")
+        display.fill_color(0x0000)
+        display.swap_buffers()
+        display.deinit()
+        try:
+            i2c.deinit()
+        except:
+            pass
+        print("Sokoban exited")
+
 if __name__ == "__main__":
     main()
-
