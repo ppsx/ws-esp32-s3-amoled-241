@@ -428,134 +428,134 @@ def main():
         time.sleep(0.5)
 
         while True:
-        now = time.monotonic()
-        
-        # Input
-        t_action = touch.get_action() # (x, y, long, released)
-        j_state = joy.get_state()
-        
-        # Touch Handling
-        if t_action:
-            tx, ty, is_long, is_rel = t_action
-            if is_rel:
-                # Handle Game Over Restart
-                if game.game_over:
-                    game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
-                    needs_redraw_grid = True
-                    needs_redraw_ui = True
-                    # Debounce slightly
-                    time.sleep(0.2)
-                    continue
+            now = time.monotonic()
 
-                # Map to grid
-                if tx >= OFFSET_X and tx < OFFSET_X + GRID_W and \
-                   ty >= OFFSET_Y and ty < OFFSET_Y + GRID_H:
-                    gx = (tx - OFFSET_X) // TILE_SIZE
-                    gy = (ty - OFFSET_Y) // TILE_SIZE
-                    
-                    # Update cursor to touched pos (optional, keep hidden if touch only)
-                    game.cursor = [gx, gy]
-                    # cursor_vis = True # Uncomment if you want touch to show cursor
-                    
-                    # Prevent Joystick phantom click conflict
-                    joy_btn_pressed = False 
-                    
-                    if is_long:
-                        game.reveal(gx, gy) # Long press = Reveal (User request)
+            # Input
+            t_action = touch.get_action() # (x, y, long, released)
+            j_state = joy.get_state()
+
+            # Touch Handling
+            if t_action:
+                tx, ty, is_long, is_rel = t_action
+                if is_rel:
+                    # Handle Game Over Restart
+                    if game.game_over:
+                        game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
+                        needs_redraw_grid = True
+                        needs_redraw_ui = True
+                        # Debounce slightly
+                        time.sleep(0.2)
+                        continue
+
+                    # Map to grid
+                    if tx >= OFFSET_X and tx < OFFSET_X + GRID_W and \
+                       ty >= OFFSET_Y and ty < OFFSET_Y + GRID_H:
+                        gx = (tx - OFFSET_X) // TILE_SIZE
+                        gy = (ty - OFFSET_Y) // TILE_SIZE
+
+                        # Update cursor to touched pos (optional, keep hidden if touch only)
+                        game.cursor = [gx, gy]
+                        # cursor_vis = True # Uncomment if you want touch to show cursor
+
+                        # Prevent Joystick phantom click conflict
+                        joy_btn_pressed = False
+
+                        if is_long:
+                            game.reveal(gx, gy) # Long press = Reveal (User request)
+                        else:
+                            game.flag(gx, gy)   # Short press = Flag
+
+                        needs_redraw_grid = True
+                        needs_redraw_ui = True
+
+                    # Check Face reset
+                    if ty < 50 and tx > WIDTH//2 - 50 and tx < WIDTH//2 + 50:
+                        game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
+                        needs_redraw_grid = True
+                        needs_redraw_ui = True
+
+            # Joystick Handling
+            if now - joy_last_move > 0.1:
+                moved = False
+                if j_state['right']:
+                    game.cursor[0] = min(game.cols-1, game.cursor[0]+1)
+                    moved = True
+                if j_state['left']:
+                    game.cursor[0] = max(0, game.cursor[0]-1)
+                    moved = True
+                if j_state['down']:
+                    game.cursor[1] = min(game.rows-1, game.cursor[1]+1)
+                    moved = True
+                if j_state['up']:
+                    game.cursor[1] = max(0, game.cursor[1]-1)
+                    moved = True
+
+                if moved:
+                    joy_last_move = now
+                    needs_redraw_grid = True
+                    cursor_vis = True # Show cursor on joystick move
+
+            # Joystick Button
+            if j_state['center']:
+                if not joy_btn_pressed:
+                    joy_btn_pressed = True
+                    joy_press_start = now
+            else:
+                if joy_btn_pressed:
+                    # Released
+                    joy_btn_pressed = False
+
+                    # Handle Game Over Restart
+                    if game.game_over:
+                        game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
+                        needs_redraw_grid = True
+                        needs_redraw_ui = True
+                        continue
+
+                    dur = now - joy_press_start
+                    cx, cy = game.cursor
+
+                    if dur > 0.4:
+                        game.reveal(cx, cy) # Long press = Reveal
                     else:
-                        game.flag(gx, gy)   # Short press = Flag
-                        
-                    needs_redraw_grid = True
-                    needs_redraw_ui = True
-                
-                # Check Face reset
-                if ty < 50 and tx > WIDTH//2 - 50 and tx < WIDTH//2 + 50:
-                    game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
+                        game.flag(cx, cy)   # Short press = Flag
+
                     needs_redraw_grid = True
                     needs_redraw_ui = True
 
-        # Joystick Handling
-        if now - joy_last_move > 0.1:
-            moved = False
-            if j_state['right']: 
-                game.cursor[0] = min(game.cols-1, game.cursor[0]+1)
-                moved = True
-            if j_state['left']: 
-                game.cursor[0] = max(0, game.cursor[0]-1)
-                moved = True
-            if j_state['down']: 
-                game.cursor[1] = min(game.rows-1, game.cursor[1]+1)
-                moved = True
-            if j_state['up']: 
-                game.cursor[1] = max(0, game.cursor[1]-1)
-                moved = True
-            
-            if moved:
-                joy_last_move = now
-                needs_redraw_grid = True
-                cursor_vis = True # Show cursor on joystick move
+            # Draw
+            if needs_redraw_ui or (now - last_draw > 1.0): # Update time every sec
+                draw_ui(display, game)
+                last_draw = now
+                needs_redraw_ui = False
 
-        # Joystick Button
-        if j_state['center']:
-            if not joy_btn_pressed:
-                joy_btn_pressed = True
-                joy_press_start = now
-        else:
-            if joy_btn_pressed:
-                # Released
-                joy_btn_pressed = False
-                
-                # Handle Game Over Restart
+            if needs_redraw_grid:
+                for r in range(ROWS):
+                    for c in range(COLS):
+                        xx = OFFSET_X + c * TILE_SIZE
+                        yy = OFFSET_Y + r * TILE_SIZE
+
+                        # Optimization: Only draw forced or changed tiles?
+                        # For simplicity redraw whole grid if flag set
+                        force_rev = game.game_over and (game.data[r][c] == -1)
+                        draw_tile(display, game, c, r, xx, yy, TILE_SIZE, force_reveal=force_rev)
+
+
+                        # Cursor Highlight
+                        if cursor_vis and c == game.cursor[0] and r == game.cursor[1]:
+                            display.rect(xx, yy, TILE_SIZE, TILE_SIZE, C_CURSOR)
+                            display.rect(xx+1, yy+1, TILE_SIZE-2, TILE_SIZE-2, C_CURSOR)
+
+                # Draw Game Over Overlay
                 if game.game_over:
-                    game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
-                    needs_redraw_grid = True
-                    needs_redraw_ui = True
-                    continue
+                     msg = "VICTORY!" if game.won else "GAME OVER"
+                     col = rgb565(50, 255, 50) if game.won else rgb565(255, 50, 50)
+                     draw_overlay(display, msg, "TAP TO RESTART", col)
 
-                dur = now - joy_press_start
-                cx, cy = game.cursor
-                
-                if dur > 0.4:
-                    game.reveal(cx, cy) # Long press = Reveal
-                else:
-                    game.flag(cx, cy)   # Short press = Flag
-                    
-                needs_redraw_grid = True
-                needs_redraw_ui = True
-            
-        # Draw
-        if needs_redraw_ui or (now - last_draw > 1.0): # Update time every sec
-            draw_ui(display, game)
-            last_draw = now
-            needs_redraw_ui = False
-            
-        if needs_redraw_grid:
-            for r in range(ROWS):
-                for c in range(COLS):
-                    xx = OFFSET_X + c * TILE_SIZE
-                    yy = OFFSET_Y + r * TILE_SIZE
-                    
-                    # Optimization: Only draw forced or changed tiles?
-                    # For simplicity redraw whole grid if flag set
-                    force_rev = game.game_over and (game.data[r][c] == -1)
-                    draw_tile(display, game, c, r, xx, yy, TILE_SIZE, force_reveal=force_rev)
-                    
-                    
-                    # Cursor Highlight
-                    if cursor_vis and c == game.cursor[0] and r == game.cursor[1]:
-                        display.rect(xx, yy, TILE_SIZE, TILE_SIZE, C_CURSOR)
-                        display.rect(xx+1, yy+1, TILE_SIZE-2, TILE_SIZE-2, C_CURSOR)
-            
-            # Draw Game Over Overlay
-            if game.game_over:
-                 msg = "VICTORY!" if game.won else "GAME OVER"
-                 col = rgb565(50, 255, 50) if game.won else rgb565(255, 50, 50)
-                 draw_overlay(display, msg, "TAP TO RESTART", col)
+                display.swap_buffers()
+                needs_redraw_grid = False
 
-            display.swap_buffers()
-            needs_redraw_grid = False
-
-            time.sleep(0.01)
+                time.sleep(0.01)
 
     except KeyboardInterrupt:
         print("\nGame interrupted by user")

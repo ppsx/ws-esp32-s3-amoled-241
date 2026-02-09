@@ -1476,67 +1476,67 @@ def main():
 
     try:
         while True:
-        # Welcome Screen
-        game.draw_welcome()
+            # Welcome Screen
+            game.draw_welcome()
 
-        # Wait for inputs to be released (debounce)
-        # We loop until no inputs are detected
-        while check_start() or get_combined_input() != DIR_NONE:
-            time.sleep(0.1)
+            # Wait for inputs to be released (debounce)
+            # We loop until no inputs are detected
+            while check_start() or get_combined_input() != DIR_NONE:
+                time.sleep(0.1)
 
-        # Wait for input to start
-        start = False
-        while not start:
-            if check_start():
-                start = True
-            elif get_combined_input() != DIR_NONE:
-                start = True
-            time.sleep(0.05)
+            # Wait for input to start
+            start = False
+            while not start:
+                if check_start():
+                    start = True
+                elif get_combined_input() != DIR_NONE:
+                    start = True
+                time.sleep(0.05)
 
-        # Play Game
-        game.previous_high_score = (
-            game.high_score
-        )  # Remember high score before this game
-        game.reset_level()
-        game.pacman.score = 0
-        game.pacman.lives = 3
+            # Play Game
+            game.previous_high_score = (
+                game.high_score
+            )  # Remember high score before this game
+            game.reset_level()
+            game.pacman.score = 0
+            game.pacman.lives = 3
 
-        last_time = time.monotonic()
+            last_time = time.monotonic()
 
-        while not game.game_over:
-            now = time.monotonic()
-            dt = now - last_time
-            if dt > 0.033:  # 30 FPS cap
-                last_time = now
+            while not game.game_over:
+                now = time.monotonic()
+                dt = now - last_time
+                if dt > 0.033:  # 30 FPS cap
+                    last_time = now
 
-                # Input
-                inp = get_combined_input()
-                if inp != DIR_NONE:
-                    game.pacman.next_dir = inp
+                    # Input
+                    inp = get_combined_input()
+                    if inp != DIR_NONE:
+                        game.pacman.next_dir = inp
 
-                game.update()
-                game.draw()
+                    game.update()
+                    game.draw()
 
-        # Game Over
-        if game.pacman.score > game.high_score:
-            game.high_score = game.pacman.score
+            # Game Over
+            if game.pacman.score > game.high_score:
+                game.high_score = game.pacman.score
 
-        game.draw_game_over()
+            game.draw_game_over()
 
-        # Wait for inputs to be released (debounce)
-        while check_start() or get_combined_input() != DIR_NONE:
-            time.sleep(0.1)
+            # Wait for inputs to be released (debounce)
+            while check_start() or get_combined_input() != DIR_NONE:
+                time.sleep(0.1)
 
-        # Wait for any input to continue
-        waiting = True
-        while waiting:
-            if check_start():
-                waiting = False
-            elif get_combined_input() != DIR_NONE:
-                waiting = False
-            time.sleep(0.05)
+            # Wait for any input to continue
+            waiting = True
+            while waiting:
+                if check_start():
+                    waiting = False
+                elif get_combined_input() != DIR_NONE:
+                    waiting = False
+                time.sleep(0.05)
 
-            # Loop back to welcome
+                # Loop back to welcome
 
     except KeyboardInterrupt:
         print("\nGame interrupted by user")

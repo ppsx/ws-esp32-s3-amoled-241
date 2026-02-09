@@ -584,115 +584,115 @@ def main():
         solved_timestamp = None
 
         while True:
-        # Animation update loop (Run first!)
-        if game.update():
-            needs_redraw = True
+            # Animation update loop (Run first!)
+            if game.update():
+                needs_redraw = True
 
-        # Calculate scaling
-        max_w = display.width - 20
-        max_h = display.height - 20
+            # Calculate scaling
+            max_w = display.width - 20
+            max_h = display.height - 20
 
-        scale_w = max_w // game.cols
-        scale_h = max_h // game.rows
-        cell_size = min(scale_w, scale_h)
-        if cell_size > 40: cell_size = 40
+            scale_w = max_w // game.cols
+            scale_h = max_h // game.rows
+            cell_size = min(scale_w, scale_h)
+            if cell_size > 40: cell_size = 40
 
-        offset_x = (display.width - game.cols * cell_size) // 2
-        offset_y = (display.height - game.rows * cell_size) // 2
+            offset_x = (display.width - game.cols * cell_size) // 2
+            offset_y = (display.height - game.rows * cell_size) // 2
 
-        # Drawing
-        if menu_open:
-            draw_menu(display, menu_items, menu_sel)
-        else:
-            # Pass current time for animation
-            draw_game(display, game, offset_x, offset_y, cell_size, time.monotonic())
-            # info text
-            display.set_font(FONT_SMALL)
-            display.text(10, 10, f"Level {level_idx+1}/{len(LEVELS)}", color=TEXT_COLOR)
-            display.text(10, 30, f"Moves: {game.moves} Pushes: {game.pushes}", color=TEXT_COLOR)
-
-            if game.is_solved():
-                display.set_font(FONT_LARGE)
-                display.text(display.width//2 - 60, display.height//2, "SOLVED!", color=rm690b0.GREEN)
-
-        display.swap_buffers()
-
-        # Input Handling
-        d = None
-        center = False
-
-        if joystick:
-            d = joystick.get_action()
-            if joystick.is_center_pressed():
-                center = True
-
-        if not d and not center and touch:
-            d = touch.get_action()
-            if touch.is_center_pressed():
-                center = True
-
-        now = time.monotonic()
-        if now - last_act_time < act_delay:
-            continue
-
-        if center:
-            last_act_time = now
-            if game.is_solved() and not menu_open:
-                # Next level
-                level_idx, game = load_level(level_idx + 1)
-                solved_timestamp = None
-            elif not menu_open:
-                 # Open Menu
-                 menu_open = True
-                 menu_sel = 0
+            # Drawing
+            if menu_open:
+                draw_menu(display, menu_items, menu_sel)
             else:
-                 # Select Item in Menu
-                 item = menu_items[menu_sel]
-                 if item == "RESUME":
-                     menu_open = False
-                 elif item == "UNDO":
-                     game.undo()
-                     menu_open = False
-                 elif item == "RESET":
-                     _, game = load_level(level_idx)
-                     menu_open = False
-                 elif item == "NEXT LEVEL":
+                # Pass current time for animation
+                draw_game(display, game, offset_x, offset_y, cell_size, time.monotonic())
+                # info text
+                display.set_font(FONT_SMALL)
+                display.text(10, 10, f"Level {level_idx+1}/{len(LEVELS)}", color=TEXT_COLOR)
+                display.text(10, 30, f"Moves: {game.moves} Pushes: {game.pushes}", color=TEXT_COLOR)
+
+                if game.is_solved():
+                    display.set_font(FONT_LARGE)
+                    display.text(display.width//2 - 60, display.height//2, "SOLVED!", color=rm690b0.GREEN)
+
+            display.swap_buffers()
+
+            # Input Handling
+            d = None
+            center = False
+
+            if joystick:
+                d = joystick.get_action()
+                if joystick.is_center_pressed():
+                    center = True
+
+            if not d and not center and touch:
+                d = touch.get_action()
+                if touch.is_center_pressed():
+                    center = True
+
+            now = time.monotonic()
+            if now - last_act_time < act_delay:
+                continue
+
+            if center:
+                last_act_time = now
+                if game.is_solved() and not menu_open:
+                    # Next level
+                    level_idx, game = load_level(level_idx + 1)
+                    solved_timestamp = None
+                elif not menu_open:
+                     # Open Menu
+                     menu_open = True
+                     menu_sel = 0
+                else:
+                     # Select Item in Menu
+                     item = menu_items[menu_sel]
+                     if item == "RESUME":
+                         menu_open = False
+                     elif item == "UNDO":
+                         game.undo()
+                         menu_open = False
+                     elif item == "RESET":
+                         _, game = load_level(level_idx)
+                         menu_open = False
+                     elif item == "NEXT LEVEL":
+                         level_idx, game = load_level(level_idx + 1)
+                         menu_open = False
+                     elif item == "PREV LEVEL":
+                         level_idx, game = load_level(level_idx - 1)
+                         menu_open = False
+                     elif item == "EXIT":
+                         break
+
+            elif menu_open:
+                if d == DIR_UP:
+                    menu_sel = (menu_sel - 1) % len(menu_items)
+                    last_act_time = now
+                elif d == DIR_DOWN:
+                    menu_sel = (menu_sel + 1) % len(menu_items)
+                    last_act_time = now
+                elif d == DIR_RIGHT:
+                     # Also allow Right as Select
+                     pass
+
+            elif game.is_solved():
+                # Wait for center to go next
+                pass
+            if d:
+                if game.move(d):
+                   last_act_time = now
+                   needs_redraw = True
+
+            # Auto-advance logic
+            if game.is_solved():
+                if solved_timestamp is None:
+                    solved_timestamp = time.monotonic()
+                elif time.monotonic() - solved_timestamp > 2.0:
                      level_idx, game = load_level(level_idx + 1)
-                     menu_open = False
-                 elif item == "PREV LEVEL":
-                     level_idx, game = load_level(level_idx - 1)
-                     menu_open = False
-                 elif item == "EXIT":
-                     break
-
-        elif menu_open:
-            if d == DIR_UP:
-                menu_sel = (menu_sel - 1) % len(menu_items)
-                last_act_time = now
-            elif d == DIR_DOWN:
-                menu_sel = (menu_sel + 1) % len(menu_items)
-                last_act_time = now
-            elif d == DIR_RIGHT:
-                 # Also allow Right as Select
-                 pass
-
-        elif game.is_solved():
-            # Wait for center to go next
-            pass
-        if d:
-            if game.move(d):
-               last_act_time = now
-               needs_redraw = True
-
-        # Auto-advance logic
-        if game.is_solved():
-            if solved_timestamp is None:
-                solved_timestamp = time.monotonic()
-            elif time.monotonic() - solved_timestamp > 2.0:
-                 level_idx, game = load_level(level_idx + 1)
-                 solved_timestamp = None
-        else:
-            solved_timestamp = None
+                     solved_timestamp = None
+            else:
+                solved_timestamp = None
 
     except KeyboardInterrupt:
         print("\nGame interrupted by user")
