@@ -7,12 +7,13 @@ This directory contains example scripts demonstrating the RM690B0 display driver
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
-2. [Display Driver Examples (rm690b0)](#display-driver-examples-rm690b0)
-3. [LVGL Examples (rm690b0_lvgl)](#lvgl-examples-rm690b0_lvgl)
-4. [Games](#games)
-5. [Hardware Tests](#hardware-tests)
-6. [Benchmarks](#benchmarks)
-7. [Setup Instructions](#setup-instructions)
+2. [Directory Structure](#directory-structure)
+3. [Display Driver Examples](#display-driver-examples)
+4. [LVGL Examples](#lvgl-examples)
+5. [Games](#games)
+6. [Hardware Tests](#hardware-tests)
+7. [Benchmarks](#benchmarks)
+8. [Setup Instructions](#setup-instructions)
 
 ---
 
@@ -36,17 +37,77 @@ Copy any example to your device as `code.py`:
 
 ```bash
 # Using mpremote
-mpremote cp game_flappy_bird.py :code.py
+mpremote cp games/game_flappy_bird.py :code.py
 mpremote reset
 
 # Using ampy
-ampy put game_flappy_bird.py /code.py
+ampy put games/game_flappy_bird.py /code.py
 ampy reset
 ```
 
 ---
 
-## Display Driver Examples (rm690b0)
+## Directory Structure
+
+Examples are organized into subdirectories by category:
+
+### `test_gfx/` - Legacy rm690b0 API Tests
+Examples using the original `rm690b0` display driver API:
+- `test_basic_gfx.py` - Graphics primitives and text rendering
+- `test_all_fonts.py` - All 7 built-in fonts showcase
+- `test_rotation.py` - Display rotation test
+
+### `test_gfx_displayio/` - Modern displayio API Tests
+Examples using the new `displayio` + `adafruit_rm690b0` panel driver:
+- `test_basic_gfx.py` - displayio-based graphics test
+- `test_rotation.py` - displayio rotation test
+
+### `benchmark_gfx/` - Legacy API Benchmarks
+Performance tests for the original `rm690b0` driver:
+- `benchmark_gfx_display.py` - Display primitives benchmark
+- `benchmark_simple_flush.py` - DMA/flush stress test
+- `benchmark_text.py` - Text rendering performance
+- `benchmark_gfx_conversion.py` - Image conversion benchmark
+- `benchmark_sd_gfx.py` - SD card + graphics combined test
+- `benchmark_animation_bg.py` / `benchmark_animation_nobg.py` - Animation tests
+- `benchmark_gfx_simple.py` - Simplified graphics benchmark
+
+### `benchmark_gfx_displayio/` - Modern API Benchmarks
+Performance tests for the new displayio-based driver (same tests as above, using new API)
+
+### `benchmark_sd/` - SD Card Benchmarks
+- `benchmark_sdcard.py` - SD card read/write performance
+- `benchmark_sdcard_freq_sweep.py` - Frequency sweep test
+
+### `games/` - Complete Game Implementations
+- `game_flappy_bird.py` - Flappy Bird clone
+- `game_snake.py` - Classic Snake
+- `game_pacman.py` - Full Pac-Man with ghost AI
+- `game_sokoban.py` - Puzzle game
+- `game_minesweeper.py` - Minesweeper clone
+
+### `test_lvgl/` - LVGL Widget Examples
+- `lvgl_test_gui.py` - Complete widget demo
+- `lvgl_icons_example.py` - FontAwesome icons
+- `lvgl_test_symbols.py` - Symbol catalog
+- `lvgl_test_ttf.py` - TrueType font test
+
+### `test_other/` - Hardware Tests
+- `test_board_hardware.py` - Comprehensive hardware test
+- `test_hw_nav_switch.py` - Navigation switch test
+- `test_espnow.py` - ESP-NOW wireless test
+
+### `gfx/` - Test Images
+- BMP, JPEG, and RAW format test images (cerber, cyborg)
+
+### `lib/` - Helper Libraries
+- `lvgl_symbols.py` - LVGL symbol constants
+- `display_compat.py` - Compatibility layer for old API
+
+### `fonts/` - Font Files
+- TrueType fonts for LVGL examples
+
+---
 
 These examples use the standalone `rm690b0` display driver (no LVGL).
 
@@ -64,22 +125,24 @@ These examples use the standalone `rm690b0` display driver (no LVGL).
 **Usage:**
 
 ```python
-import test_basic_gfx
-# Follow on-screen prompts
+# Legacy API
+from test_gfx import test_basic_gfx
+
+# displayio API
+from test_gfx_displayio import test_basic_gfx
 ```
 
 **Key Concepts:**
-
-- Font selection with `set_font()`
-- Text rendering with `text()`
-- Graphics primitives
-- Double buffering with `swap_buffers()`
+- **Legacy:** Font selection with `set_font()`, text with `text()`, `swap_buffers()`
+- **displayio:** `displayio.Bitmap`, `bitmaptools`, `adafruit_display_text.Label`
 
 ---
 
 ### test_all_fonts.py
 
-**Description:** Comprehensive test of all 7 native bitmap fonts.
+**Location:** `test_gfx/test_all_fonts.py`
+
+**Description:** Comprehensive showcase of all 7 native bitmap fonts (legacy API only).
 
 **Features:**
 
@@ -93,7 +156,7 @@ import test_basic_gfx
 **Usage:**
 
 ```python
-import test_all_fonts
+from test_gfx import test_all_fonts
 ```
 
 **Fonts Available:**
@@ -108,47 +171,25 @@ import test_all_fonts
 
 ---
 
-### test_sd_gfx.py
-
-**Description:** Demonstrates fast image loading from SD card or flash.
-
-**Features:**
-
-- Loads and displays BMP/JPEG images
-- Shows performance metrics
-- Supports SD card and internal storage
-
-**Usage:**
-
-```python
-import test_sd_gfx
-```
-
----
-
 ### test_rotation.py
 
-**Description:** Verifies hardware-accelerated software rotation of images.
+**Location:** `test_gfx/test_rotation.py` (legacy) or `test_gfx_displayio/test_rotation.py` (displayio)
+
+**Description:** Verifies display rotation functionality.
 
 **Features:**
 
-- Loads `cyborg.jpg` from internal flash
-- Rotates image to 0°, 90°, 180°, 270°
-- Demonstrates seamless rotation support in driver
+- Loads `cyborg.jpg` from `/gfx/` directory
+- Rotates display to 0°, 90°, 180°, 270°
+- Demonstrates rotation support in driver
 - Includes brightness fading effect
 
 **Usage:**
 
 ```python
-import test_rotation
-# Watch display for rotation sequence
-```
 
----
 
-### test_animation.py
 
-**Description:** Optimized bouncing ball targeting 60 FPS.
 
 **Features:**
 
@@ -170,9 +211,7 @@ import test_animation
 
 ---
 
-### test_animation_bg.py
 
-**Description:** Bouncing ball with background image.
 
 **Features:**
 
@@ -322,26 +361,33 @@ import lvgl_test_ttf
 
 ## Games
 
-Complete game implementations using the display and touch input.
+**Location:** `games/`
+
+Complete game implementations using the display and touch/joystick input.
 
 ### code.py
+
+**Location:** `code.py` (root of examples/)
 
 **Description:** Main menu launcher for games.
 
 **Features:**
 
 - Touch-based menu interface
-- Game selection
-- Clean UI with visual feedback
+- Game selection with visual feedback
+- Automatically loads games from `games/` directory
 
 **Usage:**
 
 - Automatically runs on device boot
 - Touch buttons to select game
+- Returns to menu after game exits
 
 ---
 
 ### game_flappy_bird.py
+
+**Location:** `games/game_flappy_bird.py`
 
 **Description:** Complete Flappy Bird clone with touch controls.
 
@@ -362,7 +408,8 @@ Complete game implementations using the display and touch input.
 **Usage:**
 
 ```python
-import game_flappy_bird
+from games import game_flappy_bird
+game_flappy_bird.main()
 # Or select from code.py menu
 ```
 
@@ -378,7 +425,9 @@ import game_flappy_bird
 
 ### game_snake.py
 
-**Description:** Classic Snake game with joystick controls.
+**Location:** `games/game_snake.py`
+
+**Description:** Classic Snake game with joystick or touch controls.
 
 **Features:**
 
@@ -401,7 +450,8 @@ import game_flappy_bird
 **Usage:**
 
 ```python
-import game_snake
+from games import game_snake
+game_snake.main()
 # Or select from code.py menu
 ```
 
@@ -415,6 +465,8 @@ import game_snake
 ---
 
 ### game_pacman.py
+
+**Location:** `games/game_pacman.py`
 
 **Description:** Full-featured Pac-Man clone with multiple maps.
 
@@ -432,12 +484,15 @@ import game_snake
 **Usage:**
 
 ```python
-import game_pacman
+from games import game_pacman
+game_pacman.main()
 ```
 
 ---
 
 ### game_sokoban.py
+
+**Location:** `games/game_sokoban.py`
 
 **Description:** Classic puzzle game where you push crates to goals.
 
@@ -458,13 +513,16 @@ import game_pacman
 **Usage:**
 
 ```python
-import game_sokoban
-# Requires game_sokoban_levels.py
+from games import game_sokoban
+game_sokoban.main()
+# Requires games/game_sokoban_levels.py
 ```
 
 ---
 
 ### game_minesweeper.py
+
+**Location:** `games/game_minesweeper.py`
 
 **Description:** Full-featured Minesweeper clone.
 
@@ -485,16 +543,21 @@ import game_sokoban
 **Usage:**
 
 ```python
-import game_minesweeper
+from games import game_minesweeper
+game_minesweeper.main()
 ```
 
 ---
 
 ## Hardware Tests
 
+**Location:** `test_other/`
+
 Tests for specific hardware peripherals and sensors.
 
 ### test_hw_nav_switch.py
+
+**Location:** `test_other/test_hw_nav_switch.py`
 
 **Description:** Test SparkFun Qwiic Navigation Switch with RGB LED support.
 
@@ -520,13 +583,15 @@ Tests for specific hardware peripherals and sensors.
 **Usage:**
 
 ```python
-import test_hw_nav_switch
+from test_other import test_hw_nav_switch
 # Press switches to see LED changes
 ```
 
 ---
 
 ### test_espnow.py
+
+**Location:** `test_other/test_espnow.py`
 
 **Description:** ESP-NOW wireless communication test.
 
@@ -539,13 +604,15 @@ import test_hw_nav_switch
 **Usage:**
 
 ```python
-import test_espnow
+from test_other import test_espnow
 # Requires two ESP32 devices
 ```
 
 ---
 
 ### test_board_hardware.py
+
+**Location:** `test_other/test_board_hardware.py`
 
 **Description:** Comprehensive hardware test suite.
 
@@ -560,7 +627,7 @@ import test_espnow
 **Usage:**
 
 ```python
-import test_board_hardware
+from test_other import test_board_hardware
 # Interactive test menu
 ```
 
@@ -570,7 +637,16 @@ import test_board_hardware
 
 Performance measurement and optimization tools.
 
-### benchmark_gfx_conversion.py
+**Locations:**
+- `benchmark_gfx/` - Legacy rm690b0 API benchmarks
+- `benchmark_gfx_displayio/` - Modern displayio API benchmarks
+- `benchmark_sd/` - SD card performance tests
+
+### Graphics & Display Benchmarks
+
+#### benchmark_gfx_conversion.py
+
+**Location:** `benchmark_gfx/benchmark_gfx_conversion.py` (legacy) or `benchmark_gfx_displayio/benchmark_gfx_conversion.py` (displayio)
 
 **Description:** Comprehensive image conversion benchmark suite (RAW/BMP/JPEG → framebuffer).
 
@@ -595,8 +671,11 @@ Performance measurement and optimization tools.
 **Usage:**
 
 ```python
-import benchmark_gfx_conversion
-# Results printed to console
+# Legacy API
+from benchmark_gfx import benchmark_gfx_conversion
+
+# displayio API
+from benchmark_gfx_displayio import benchmark_gfx_conversion
 ```
 
 **Sample Output:**
@@ -608,7 +687,7 @@ Text "Hello" (16×16): 1.2 ms
 JPEG decode: 145 ms
 ```
 
-### benchmark_gfx_display.py
+---
 
 **Description:** Full display primitive benchmark derived from the comprehensive graphics test suite. Measures fill operations, line/circle drawing, rectangles, text fill paths, and overall FPS impact.
 
@@ -622,11 +701,16 @@ JPEG decode: 145 ms
 **Usage:**
 
 ```python
-import benchmark_gfx_display
-# Interactive prompts / summary table printed to console
+# Legacy API
+from benchmark_gfx import benchmark_gfx_display
+
+# displayio API
+from benchmark_gfx_displayio import benchmark_gfx_display
 ```
 
-### benchmark_simple_flush.py
+---
+
+#### benchmark_simple_flush.py
 
 **Description:** Lightweight stress test that targets high-bandwidth DMA operations. It runs full-screen `fill_color`, multiple `fill_rect` variants (full screen, full-width×64 rows, centered 64 px column), `blit_buffer`, and `circle`/`fill_circle`, first in single-buffer mode and then in double-buffer mode.
 
@@ -657,7 +741,7 @@ import benchmark_simple_flush
 **Usage:**
 
 ```python
-import benchmark_sdcard
+from benchmark_sd import benchmark_sdcard
 # Benchmark runs automatically on import
 ```
 
@@ -667,22 +751,18 @@ import benchmark_sdcard
 - Large block file operations
 - GC management for consistent timing
 
-### benchmark_text.py
+---
 
-**Description:** Measures text rendering performance in Single and Double Buffer modes.
+#### benchmark_sdcard_freq_sweep.py
 
-**Features:**
+**Location:** `benchmark_sd/benchmark_sdcard_freq_sweep.py`
 
-- Tests multiple font sizes (8x8, 24x24, 32x48)
-- Benchmarks short vs long strings
-- Simulates vertical menu list rendering
-- Reports Characters Per Second (CPS)
+**Description:** SD card frequency sweep test for finding optimal SDIO clock frequency.
 
 **Usage:**
 
 ```python
-import benchmark_text
-# Results table printed to console
+from benchmark_sd import benchmark_sdcard_freq_sweep
 ```
 
 ---
@@ -989,26 +1069,38 @@ display_y = touch_x
 
 ### Simple Examples
 
-- `test_basic_gfx.py` - Native text and fonts
-- `test_all_fonts.py` - Font showcase
-- `test_animation.py` / `test_animation_bg.py` - Graphics + motion
+- `test_gfx/test_basic_gfx.py` - Native text and graphics primitives
+- `test_gfx/test_all_fonts.py` - All 7 fonts showcase
+- `test_gfx/test_rotation.py` - Display rotation test
+- `test_gfx_displayio/test_basic_gfx.py` - displayio-based graphics
 
-### Advanced Examples
+### Games
 
-- `test_gui.py` - Complete LVGL UI
-- `flappy_bird_clone.py` - Full game with physics
-- `snake_game.py` - Grid-based game with joystick
+- `games/game_flappy_bird.py` - Flappy Bird clone with physics
+- `games/game_snake.py` - Classic Snake with joystick
+- `games/game_pacman.py` - Full Pac-Man with ghost AI
+- `games/game_sokoban.py` - Puzzle game with undo system
+- `games/game_minesweeper.py` - Complete Minesweeper
+
+### LVGL Examples
+
+- `test_lvgl/lvgl_test_gui.py` - Complete widget demo
+- `test_lvgl/lvgl_icons_example.py` - FontAwesome icons
+- `test_lvgl/lvgl_test_ttf.py` - TrueType fonts
 
 ### Hardware Tests
 
-- `test_hw_nav_switch.py` - 5-way switch + RGB LED
-- `test_board_hardware.py` - Complete hardware check
+- `test_other/test_hw_nav_switch.py` - 5-way switch + RGB LED
+- `test_other/test_board_hardware.py` - Complete hardware check
+- `test_other/test_espnow.py` - ESP-NOW wireless test
 
 ### Benchmarks
 
-- `benchmark_gfx_conversion.py` - Image conversion throughput
-- `benchmark_gfx_display.py` - Display primitive performance
-- `benchmark_simple_flush.py` - Full-screen flush stress test
+- `benchmark_gfx/benchmark_gfx_conversion.py` - Image conversion (legacy API)
+- `benchmark_gfx_displayio/benchmark_gfx_conversion.py` - Image conversion (displayio API)
+- `benchmark_gfx/benchmark_gfx_display.py` - Display primitives performance
+- `benchmark_gfx/benchmark_simple_flush.py` - DMA flush stress test
+- `benchmark_sd/benchmark_sdcard.py` - SD card read/write speed
 
 ---
 

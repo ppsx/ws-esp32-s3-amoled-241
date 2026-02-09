@@ -62,8 +62,10 @@ Complete CircuitPython support for the Waveshare ESP32-S3 Touch AMOLED 2.41 boar
 **Games:**
 
 - `game_flappy_bird.py` - Flappy Bird clone
-- `game_snake.py` - Snake (touchscreen)
-- `game_pacman.py` - Pac-Man
+- `game_snake.py` - Snake with joystick/touch
+- `game_pacman.py` - Pac-Man with ghost AI
+- `game_sokoban.py` - Puzzle game
+- `game_minesweeper.py` - Minesweeper clone
 
 **Hardware Tests:**
 
