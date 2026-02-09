@@ -109,15 +109,19 @@ Performance tests for the new displayio-based driver (same tests as above, using
 
 ---
 
-These examples use the standalone `rm690b0` display driver (no LVGL).
+## Display Driver Examples
+
+These examples demonstrate graphics and display functionality.
 
 ### test_basic_gfx.py
 
-**Description:** Interactive test of native text rendering with all built-in fonts.
+**Location:** `test_gfx/test_basic_gfx.py` (legacy rm690b0 API) or `test_gfx_displayio/test_basic_gfx.py` (displayio API)
+
+**Description:** Interactive test of graphics primitives and text rendering.
 
 **Features:**
 
-- Tests all 7 built-in fonts (8×8 to 32×48)
+- Tests all 7 built-in fonts (8×8 to 32×48) - **legacy version only**
 - Text rendering with colors and backgrounds
 - Graphics primitives (lines, rectangles, circles)
 - Interactive prompts between tests
@@ -187,54 +191,18 @@ from test_gfx import test_all_fonts
 **Usage:**
 
 ```python
+# Legacy API
+from test_gfx import test_rotation
 
-
-
-
-**Features:**
-
-- Frame rate monitoring
-- Optimized rendering
-- Performance metrics
-
-**Usage:**
-
-```python
-import test_animation
+# displayio API
+from test_gfx_displayio import test_rotation
 ```
-
-**Key Concepts:**
-
-- Frame timing optimization
-- `swap_buffers(copy=False)` for performance
-- FPS calculation
 
 ---
 
+## LVGL Examples
 
-
-**Features:**
-
-- Background image loading (BMP/JPEG)
-- Image + graphics compositing
-- Performance with complex scenes
-
-**Usage:**
-
-```python
-import test_animation_bg
-# Requires image files under /gfx (cerber/cyborg)
-```
-
-**Key Concepts:**
-
-- `blit_jpeg()` for images
-- Layered rendering
-- Performance with images
-
----
-
-## LVGL Examples (rm690b0_lvgl)
+**Location:** `test_lvgl/`
 
 These examples use the LVGL integration for rich UI widgets.
 
@@ -689,7 +657,11 @@ JPEG decode: 145 ms
 
 ---
 
-**Description:** Full display primitive benchmark derived from the comprehensive graphics test suite. Measures fill operations, line/circle drawing, rectangles, text fill paths, and overall FPS impact.
+#### benchmark_gfx_display.py
+
+**Location:** `benchmark_gfx/benchmark_gfx_display.py` (legacy) or `benchmark_gfx_displayio/benchmark_gfx_display.py` (displayio)
+
+**Description:** Full display primitive benchmark. Measures fill operations, line/circle drawing, rectangles, text, and overall FPS impact.
 
 **Features:**
 
@@ -712,24 +684,114 @@ from benchmark_gfx_displayio import benchmark_gfx_display
 
 #### benchmark_simple_flush.py
 
-**Description:** Lightweight stress test that targets high-bandwidth DMA operations. It runs full-screen `fill_color`, multiple `fill_rect` variants (full screen, full-width×64 rows, centered 64 px column), `blit_buffer`, and `circle`/`fill_circle`, first in single-buffer mode and then in double-buffer mode.
+**Location:** `benchmark_gfx/benchmark_simple_flush.py` (legacy) or `benchmark_gfx_displayio/benchmark_simple_flush.py` (displayio)
+
+**Description:** Lightweight stress test targeting high-bandwidth DMA operations. Tests full-screen fills, multiple `fill_rect` variants, `blit_buffer`, and circles.
 
 **Why it matters:** Exercises the most recent driver optimizations (DMA scheduling, `fill_rect_pixels`, span cache for circles), so regressions in throughput or buffer synchronization become visible immediately.
 
 **Usage:**
 
 ```python
-import benchmark_simple_flush
-# Result table (Avg ms + MP/s) printed to console
+# Legacy API
+from benchmark_gfx import benchmark_simple_flush
+
+# displayio API
+from benchmark_gfx_displayio import benchmark_simple_flush
 ```
 
 **Tip:** Capture results before and after firmware changes to quantify the impact of each tweak.
 
 ---
 
-### benchmark_sdcard.py
+#### benchmark_text.py
 
-**Description:** Comparison benchmark script for testing SD card performance (Write, Read, Read-ZeroCopy).
+**Location:** `benchmark_gfx/benchmark_text.py` (legacy) or `benchmark_gfx_displayio/benchmark_text.py` (displayio)
+
+**Description:** Text rendering performance benchmark.
+
+**Features:**
+
+- Tests multiple font sizes (8×8, 24×24, 32×48) - **legacy only**
+- Benchmarks short vs long strings
+- Simulates vertical menu list rendering
+- Reports Characters Per Second (CPS)
+
+**Usage:**
+
+```python
+# Legacy API
+from benchmark_gfx import benchmark_text
+
+# displayio API
+from benchmark_gfx_displayio import benchmark_text
+```
+
+---
+
+#### benchmark_animation_nobg.py / benchmark_animation_bg.py
+
+**Location:** `benchmark_gfx/` or `benchmark_gfx_displayio/`
+
+**Description:** Animation performance tests with and without background images.
+
+**Usage:**
+
+```python
+# Legacy API
+from benchmark_gfx import benchmark_animation_nobg
+from benchmark_gfx import benchmark_animation_bg
+
+# displayio API
+from benchmark_gfx_displayio import benchmark_animation_nobg
+from benchmark_gfx_displayio import benchmark_animation_bg
+```
+
+---
+
+#### benchmark_sd_gfx.py
+
+**Location:** `benchmark_gfx/benchmark_sd_gfx.py` (legacy) or `benchmark_gfx_displayio/benchmark_sd_gfx.py` (displayio)
+
+**Description:** Combined SD card + graphics performance test.
+
+**Usage:**
+
+```python
+# Legacy API
+from benchmark_gfx import benchmark_sd_gfx
+
+# displayio API
+from benchmark_gfx_displayio import benchmark_sd_gfx
+```
+
+---
+
+#### benchmark_gfx_simple.py
+
+**Location:** `benchmark_gfx/benchmark_gfx_simple.py` (legacy) or `benchmark_gfx_displayio/benchmark_gfx_simple.py` (displayio)
+
+**Description:** Simplified graphics primitives benchmark.
+
+**Usage:**
+
+```python
+# Legacy API
+from benchmark_gfx import benchmark_gfx_simple
+
+# displayio API
+from benchmark_gfx_displayio import benchmark_gfx_simple
+```
+
+---
+
+### SD Card Benchmarks
+
+#### benchmark_sdcard.py
+
+**Location:** `benchmark_sd/benchmark_sdcard.py`
+
+**Description:** SD card performance benchmark (Write, Read, Read-ZeroCopy).
 
 **Features:**
 
