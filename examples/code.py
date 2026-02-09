@@ -283,35 +283,35 @@ def main():
     if selected == "flappy":
         print("\nStarting Flappy Bird...\n")
         try:
-            import game_flappy_bird
+            from games import game_flappy_bird
             game_flappy_bird.main()
         except Exception as e:
             print(f"Error: {e}")
     elif selected == "snake":
         print("\nStarting Snake Game...\n")
         try:
-            import game_snake
+            from games import game_snake
             game_snake.main()
         except Exception as e:
             print(f"Error: {e}")
     elif selected == "pacman":
         print("\nStarting Pac-Man...\n")
         try:
-            import game_pacman
+            from games import game_pacman
             game_pacman.main()
         except Exception as e:
             print(f"Error: {e}")
     elif selected == "sokoban":
         print("\nStarting Sokoban...\n")
         try:
-            import game_sokoban
+            from games import game_sokoban
             game_sokoban.main()
         except Exception as e:
             print(f"Error: {e}")
     elif selected == "minesweeper":
         print("\nStarting Minesweeper...\n")
         try:
-            import game_minesweeper
+            from games import game_minesweeper
             game_minesweeper.main()
         except Exception as e:
             print(f"Error: {e}")
