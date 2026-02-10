@@ -30,6 +30,7 @@
 - Rendering core refactored around framebuffer batching, lazy allocations, and clip helpers verified in `CODE_VERIFICATION_COMPLETE.md`
 - Image support refactored: Dedicated `image_converter` module removed in favor of `jpegio` with hardware acceleration and optimized C-level `convert_bmp` for 24-bit bitmap loading. Both paths now support direct RGB565 byte-swapped output for zero-copy DMA.
 - Redundant RAW conversion function was removed to cut a 56 ms overhead.
+- **Conditional double-buffering** (`#6`): `RM690B0(buffer_mode=)` constructor kwarg selects `BUFFER_SINGLE` (one framebuffer, 540 KB, dirty-tracked flush) or `BUFFER_DOUBLE` (two framebuffers, 1080 KB, tear-free swap, default). Module constants `rm690b0.BUFFER_SINGLE` / `rm690b0.BUFFER_DOUBLE` exposed. Single-buffer `swap_buffers()` path now uses dirty tracking instead of unconditional full-screen flush. Verified on hardware: ~512 KB savings in BUFFER_SINGLE mode (`test_gfx/test_buffer_mode.py`).
 - Double-buffering with `swap_buffers()` API enables flicker-free updates and smooth animations
 - Native text rendering API with 7 built-in bitmap fonts (8×8, 16×16, 16×24, 24×24, 24×32, 32×32, 32×48 pixels)
 - Text rendering features: `set_font(id)` for font selection, `text(x,y,str,color,bg)` for rendering, transparent or solid backgrounds, UTF-8 support, ASCII 0x20-0x7E (95 chars)

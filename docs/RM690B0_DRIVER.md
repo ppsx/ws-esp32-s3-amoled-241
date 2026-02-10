@@ -213,19 +213,57 @@ Main display driver class providing graphics, text, and image rendering.
 #### Constructor
 
 ```python
-display = rm690b0.RM690B0()
+display = rm690b0.RM690B0(*, buffer_mode=rm690b0.BUFFER_DOUBLE)
 ```
 
 Creates a new RM690B0 display instance. Only one instance should exist at a time.
 
-**Parameters:** None
+**Parameters:**
+
+- `buffer_mode` (int, keyword-only, optional): Selects the framebuffer allocation strategy.
+  - `rm690b0.BUFFER_DOUBLE` *(default)* — allocates a second 540 KB front buffer in SPIRAM on the
+    first `swap_buffers()` call; provides tear-free animation via pointer swap.
+  - `rm690b0.BUFFER_SINGLE` — uses only one framebuffer (540 KB); the front buffer is **never**
+    allocated, saving ~540 KB of SPIRAM. `swap_buffers()` flushes dirty regions tracked since the
+    last call, or the full screen if no dirty regions are recorded. Recommended for static
+    UI / dashboard applications.
 
 **Example:**
 
 ```python
 import rm690b0
+
+# Default: double-buffered (backward compatible)
 display = rm690b0.RM690B0()
+
+# Explicit double-buffered
+display = rm690b0.RM690B0(buffer_mode=rm690b0.BUFFER_DOUBLE)
+
+# Single-buffered: saves ~540 KB of SPIRAM
+display = rm690b0.RM690B0(buffer_mode=rm690b0.BUFFER_SINGLE)
 ```
+
+---
+
+#### Buffer Mode Constants
+
+| Constant               | Value | Description                                              |
+| ---------------------- | ----- | -------------------------------------------------------- |
+| `rm690b0.BUFFER_SINGLE` | `0`  | Single framebuffer — dirty-tracked flush, saves 540 KB  |
+| `rm690b0.BUFFER_DOUBLE` | `1`  | Double framebuffer — tear-free animation (default)       |
+
+**Choosing the right mode:**
+
+| Use case                         | Recommended mode  |
+| -------------------------------- | ----------------- |
+| Animations, games, smooth motion | `BUFFER_DOUBLE`   |
+| Static UI, dashboards, text      | `BUFFER_SINGLE`   |
+| Memory-constrained applications  | `BUFFER_SINGLE`   |
+
+**Memory usage:**
+
+- `BUFFER_DOUBLE`: ~1080 KB SPIRAM (back buffer + front buffer)
+- `BUFFER_SINGLE`: ~540 KB SPIRAM (back buffer only)
 
 ---
 
