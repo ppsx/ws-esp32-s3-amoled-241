@@ -134,6 +134,17 @@ def run_suite(double_buffer_requested):
         return chars
     record("Menu (5 lines)", rm690b0.FONT_24x24, test_menu)
 
+    # 6. Centered text using text_width / font_width / font_height
+    def test_centered(i):
+        txt = TEST_STRINGS["long"]
+        tw = display.text_width(txt)
+        x = (display.width - tw) // 2
+        y = (display.height - display.font_height) // 2
+        display.text(x, y, txt, rm690b0.WHITE)
+        if active_double_buffer: display.swap_buffers(copy=False)
+        return len(txt)
+    record("Centered text", rm690b0.FONT_16x16, test_centered)
+
     display.deinit()
     return results
 
