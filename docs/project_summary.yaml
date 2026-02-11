@@ -180,7 +180,12 @@ required_libraries:
 key_files:
   board_definition: ports/espressif/boards/waveshare_esp32s3_amoled_241/
   panel_driver: ports/espressif/boards/waveshare_esp32s3_amoled_241/esp_lcd_rm690b0.c
-  common_hal_driver: ports/espressif/common-hal/rm690b0/RM690B0.c
+  common_hal_driver:
+    - ports/espressif/common-hal/rm690b0/RM690B0.c        # Core: lifecycle, DMA, flush, properties
+    - ports/espressif/common-hal/rm690b0/rm690b0_internal.h # Shared header, inline helpers
+    - ports/espressif/common-hal/rm690b0/rm690b0_draw.c    # Drawing primitives
+    - ports/espressif/common-hal/rm690b0/rm690b0_text.c    # Font rendering
+    - ports/espressif/common-hal/rm690b0/rm690b0_image.c   # BMP/JPEG support
   python_bindings: shared-bindings/rm690b0/RM690B0.c
   test_scripts: test_scripts/
   documentation_root: docs/

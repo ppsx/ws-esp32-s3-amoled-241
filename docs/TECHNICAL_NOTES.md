@@ -227,6 +227,36 @@ The driver implements robust synchronization using a FreeRTOS semaphore to manag
 
 ---
 
+## Modular C Driver Architecture (2026-02-11)
+
+### File Split
+
+The monolithic `RM690B0.c` (~3225 lines) was split into 5 cohesive compilation units for maintainability:
+
+| File | Lines | Responsibility |
+|---|---|---|
+| `rm690b0_internal.h` | ~500 | Shared header: macros, structs, inline helpers, cross-file declarations |
+| `RM690B0.c` | ~1240 | Core: lifecycle, DMA, flush, display properties, direct fill helpers |
+| `rm690b0_text.c` | ~410 | Font rendering: 7 glyph accessors, draw_glyph_impl, text API |
+| `rm690b0_image.c` | ~355 | Image support: BMP blitting, JPEG decoding, BMP→RGB565 conversion |
+| `rm690b0_draw.c` | ~660 | Drawing primitives: pixel, rect, line, circle, fill_circle, blit_buffer |
+
+**Build system**: Uses `$(wildcard common-hal/rm690b0/*.c)` — new files auto-discovered, no Makefile changes needed.
+
+### Internal Header Design
+
+`rm690b0_internal.h` provides the glue between compilation units:
+
+- **Inline helpers** (`static inline`): `rm690b0_fill_span_fast`, `rm690b0_fill_rect_framebuffer`, `map_rect_for_rotation`, `clip_logical_rect`, `rm690b0_map_point`, `rm690b0_write_pixel_rotated`, `rm690b0_finalize_draw`, DMA pending queue operations
+- **Extern globals**: `TAG`, `rm690b0_spinlock`, `rm690b0_singleton`
+- **Cross-file declarations**: `mark_dirty_region`, `rm690b0_flush_region`, `rm690b0_fill_color_direct`, `rm690b0_fill_rect_direct_fullwidth`, `expand_even_region`, `rm690b0_acquire_span_cache`, `rm690b0_span_update`
+
+### Performance Notes
+
+Hot-path function `rm690b0_fill_rect_framebuffer` is `static inline` in the header to avoid cross-translation-unit call overhead. Remaining cross-file calls (`mark_dirty_region`, `rm690b0_flush_region`) cause ~3-5% overhead vs monolith in animation-heavy workloads. LTO (`-flto`) would eliminate this entirely if needed.
+
+---
+
 ## Rendering Optimizations
 
 ### Circle Rendering Performance

@@ -77,4 +77,4 @@ Optional benchmarks:
 - CircuitPython fork root: [`../../circuitpython-rm690b0/`](../../circuitpython-rm690b0/)
 - Board support root: [`../`](../)
 
-Last updated: `2026-02-06`
+Last updated: `2026-02-11`

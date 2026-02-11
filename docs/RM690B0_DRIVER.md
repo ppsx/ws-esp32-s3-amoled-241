@@ -82,10 +82,11 @@ The **RM690B0 driver** is a high-performance, standalone display driver for the 
 │  • swap_buffers()     • rect()                     │
 ├────────────────────────────────────────────────────┤
 │           C Driver (common-hal/rm690b0/)           │
-│  • Framebuffer Management                          │
-│  • DMA Transfer Engine                             │
-│  • Text Rendering Engine                           │
-│  • Image Decoders (BMP/JPEG)                       │
+│  RM690B0.c       — Core, DMA, flush, properties    │
+│  rm690b0_draw.c  — Primitives (rect, line, circle) │
+│  rm690b0_text.c  — Font rendering (7 fonts)        │
+│  rm690b0_image.c — BMP/JPEG decoders               │
+│  rm690b0_internal.h — Shared header & inline helpers│
 ├────────────────────────────────────────────────────┤
 │              ESP-IDF LCD Component                 │
 │  • esp_lcd_rm690b0.c (panel driver)                │

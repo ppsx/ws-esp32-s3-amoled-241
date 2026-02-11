@@ -17,6 +17,7 @@
 - **AMOLED Optimized**: LVGL Dark Theme background is now pure black (0x000000) for maximum power efficiency and contrast.
 - **Dynamic Themes**: Added `set_theme_color()` API for switching between Light and Dark modes in real-time.
 - Native text API provides lightweight, fast text rendering with 7 embedded fonts (8×8 to 32×48 pixels), independent from LVGL, with TTF-to-bitmap conversion toolchain
+- **Modular C driver**: Monolithic `RM690B0.c` (~3225 lines) split into 5 files — `RM690B0.c` (core/DMA/flush), `rm690b0_draw.c` (primitives), `rm690b0_text.c` (fonts), `rm690b0_image.c` (BMP/JPEG), `rm690b0_internal.h` (shared header). Zero performance regression on critical paths; build system auto-discovers new files.
 - Alignment corrections, dynamic span allocation, and property-only APIs eliminate earlier crashes, stack pressure, and duplicate entry points
 - Validation passes confirm expected frame timings (~25 ms full-screen fill, ~14 ms 10-circle burst) on the Waveshare ESP32-S3 AMOLED board; long‑running stability with GC and LVGL+touch is an open issue
 
