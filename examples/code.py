@@ -215,6 +215,7 @@ def main():
     # Column 2
     pacman_button = Button(col2_x, y1, btn_w, btn_h, "PAC-MAN")
     sokoban_button = Button(col2_x, y2, btn_w, btn_h, "SOKOBAN")
+    robbo_button = Button(col2_x, y3, btn_w, btn_h, "ROBBO")
 
     # Exit (Centered)
     exit_button = Button((display.width - 300) // 2, y_exit, 300, btn_h, "EXIT")
@@ -225,6 +226,7 @@ def main():
         pacman_button,
         sokoban_button,
         minesweeper_button,
+        robbo_button,
         exit_button,
     ]
 
@@ -315,6 +317,13 @@ def main():
         try:
             from games import game_minesweeper
             game_minesweeper.main()
+        except Exception as e:
+            print(f"Error: {e}")
+    elif selected == "robbo":
+        print("\nStarting Robbo...\n")
+        try:
+            from games import game_robbo
+            game_robbo.main()
         except Exception as e:
             print(f"Error: {e}")
     else:

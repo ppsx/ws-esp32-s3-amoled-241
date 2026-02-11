@@ -1,0 +1,119 @@
+ Symbol | Data        | Additional Data
+ ----------------------------------------------------------------------
+ .  Empty Field       |
+ O  Wall              | It's the white wall.
+ o  Green Wall        |
+ -  Black Wall        |
+ Q  Red Wall          |
+ q  Fat Wall          | It's the fat bricked red wall.
+ p  Round Wall        | It's the circular orange wall.
+ P  Boulder Wall      | It's the boulder like blue wall.
+ s  Square Wall       | It's the square yellow wall.
+ S  Lattice Wall      | It's the lattice purple wall.
+ H  Ground            |
+ R  Robbo             |
+ '  Bullet            | It's actually a clip of 9 bullets.
+ T  Screw             |
+ !  Capsule           | A level can have more than one capsule.
+ %  Key               |
+ D  Door              |
+ #  Box               |
+ ~  Push Box          |
+ b  Bomb              |
+ ?  Questionmark      | Once destroyed will randomnly spawn an empty field, push box, screw, bullet, key, bomb, ground, butterfly, gun or another questionmark.
+ &  Teleport          | teleportgroup.teleportid (teleportid is 0 based)
+ V  Butterfly         | Heads straight for Robbo.
+ @  Bear              | Bears will follow the left-hand maze traversal rule and initial direction is important.
+ *  Black Bear        | Black bears will follow the right-hand maze traversal rule and initial direction is important.
+ ^  Bird              | direction.direction2.shooting
+ }  Gun               | direction.direction2.shottype.moveable.rotateable.randomrotateable (if shottype is 2 then it's a blaster)
+ L  Horizontal Laser  | direction (only 0=east & 2=west)
+ l  Vertical Laser    | direction (only 1=south & 3=north)
+ M  Magnet            | direction (all 4 directions)
+ =  Force Field       | direction (only 0=east and 2=west)
+ +  Extra Life        | Exists in some converted level packs but GNU Robbo does not support this object anymore.
+ X  Stop              | Millenium object.
+ k  Radioactive Field | Millenium object.
+ B  Bomb2             | Alex object: explodes and then shoots in all directions.
+ ,  Special character | You can produce strange effects with this object, in theory you should be able to create any object with it
+		              | the arguments are: type,state,direction,destroyable,blowable,killing,movable,shooted
+ a  Metal Wall        | Well, it looks metal to me
+
+
+
+[level]
+1
+[colour]
+996600
+[author]
+Ala Dems
+[data]
+OOOOOOOOOOOOOOOO
+O.R..O%T^......O    ^E
+OT...OOOOOOOOODO
+O.'.&O.......^.O    &A0  ^WS
+O...&O%........O    &B0
+OOOOOOOOOO.OOO.O
+O!....D.&O.....O    &C1
+O...#.OOOO.....O
+O..}.TO..?^....O    }N.0  ^E
+OOOOOOO........O
+------O..?..^..O    ^E
+------O........O
+------O..?^....O    ^E
+------O........O
+----OOODOOOOOOOO
+----O}O....O----    }S.1
+----O.O&...O----    &C0
+----O.OOHHHO----
+----O......O----
+----O.----.O----
+----O.-&.-.O----    &B2
+----O.-..-#O----
+----O.-.T-.OOOOO
+--OOO.----.....O
+--O}........#.%O    }E.1
+--OOO.OOOOOOObOO
+--O&...........O    &A1
+OOOOO.OOOOOOOOOO
+O.&O.........#TO    &B1
+OT.O.......#...O
+OOOOOOOOOOOOOOOO
+[end]
+
+[level]
+2
+[author]
+Ala Dems
+[data]
+OOOOOOOOOOOOOOOO
+OR&H@.......@.!O    &A0  @E  @E
+O'HH...........O
+OHTH.&..@.....@O    &C0  @W  @W
+OHHH...ooooooooO
+O......o&.....%O    &B0
+O.@....o...~##.O    @W
+OOODOOOoM......O    ME
+O*....Oo%......O    *S
+O.TTT.Oo%......O
+O.TTT.OoM......O    ME
+O.TTT'Oo.......O
+O.....DD......MO    MW
+OOOOOOOOOOOOOOOO
+O&TTTTTTTTTTTTTO    &C1
+O.TTTTTTTTTTTTTO
+OTTTTTTTTTTTTTTO
+OQQQQQQQQQ.....O
+OT&...^..Q.....O    &B1  ^S
+O..^.....Q.....O    ^E
+OQQQQ????Q.....O
+OH%HQ....Q.....O
+OHHHQ####Q.....O
+OHHHQbbbbQ.....O
+OHHTQDDDDQ....?O
+OHHHQ....Q.....O
+OHQQQ....Q....TO
+OT.&}..'.Q....}O    &A1  }NE0*  }N.1
+OOOOOOOOOOOOOOOO
+[end]
+

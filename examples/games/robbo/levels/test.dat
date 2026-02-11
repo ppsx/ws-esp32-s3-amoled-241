@@ -1,0 +1,166 @@
+ It's the file format for new levels :-
+
+ Symbol | Data        | Additional Data
+ ----------------------------------------------------------------------
+ .  Empty Field       |
+ O  Wall              | It's the white wall.
+ o  Green Wall        |
+ -  Black Wall        |
+ Q  Red Wall          |
+ q  Fat Wall          | It's the fat bricked red wall.
+ p  Round Wall        | It's the circular orange wall.
+ P  Boulder Wall      | It's the boulder like blue wall.
+ s  Square Wall       | It's the square yellow wall.
+ S  Lattice Wall      | It's the lattice purple wall.
+ H  Ground            |
+ R  Robbo             |
+ '  Bullet            | It's actually a clip of 9 bullets.
+ T  Screw             |
+ !  Capsule           | A level can have more than one capsule.
+ %  Key               |
+ D  Door              |
+ #  Box               |
+ ~  Push Box          |
+ b  Bomb              |
+ ?  Questionmark      | Once destroyed will randomnly spawn an empty field, push box, screw, bullet, key, bomb, ground, butterfly, gun or another questionmark.
+ &  Teleport          | teleportgroup.teleportid (teleportgroup is 1 based and teleportid is 0 based)
+ V  Butterfly         | Heads straight for Robbo.
+ @  Bear              | Bears will follow the left-hand maze traversal rule and initial direction is important.
+ *  Black Bear        | Black bears will follow the right-hand maze traversal rule and initial direction is important.
+ ^  Bird              | direction.direction2.shooting
+ }  Gun               | direction.direction2.shottype.moveable.rotateable.randomrotateable (if shottype is 2 then it's a blaster)
+ L  Horizontal Laser  | direction (only 0=east & 2=west)
+ l  Vertical Laser    | direction (only 1=south & 3=north)
+ M  Magnet            | direction (all 4 directions)
+ =  Force Field       | direction (only 0=east and 2=west)
+ +  Extra Life        | Exists in some converted level packs but GNU Robbo does not support this object anymore.
+ X  Stop              | Millenium object.
+ k  Radioactive Field | Millenium object.
+ B  Bomb2             | Alex object: explodes and then shoots in all directions.
+ ,  Special character | You can produce strange effects with this object, in theory you should be able to create any object with it
+		              | the arguments are: type,state,direction,destroyable,blowable,killing,movable,shooted
+ a  Metal Wall        | Well, it looks metal to me
+
+
+Level File Format
+=================
+
+All comments up until the [name] and [last_level] tags are ignored.
+
+Level Pack Tags
+===============
+
+The [name] tag: A name for the pack e.g. MyLevels-01 (up to 11 letters and no spaces).
+
+The [last_level] tag: The number of levels in the pack.
+
+The [default_level_colour] tag: A default level colour that can be used throughout the
+entire pack if any or all individual level [colour] tags are undefined; OPTIONAL.
+
+The [notes] tag: Notes about the entire level pack; OPTIONAL.
+
+Level Tags
+==========
+
+Sometimes an [offset] tag exists. It was created while taking the levels from Atari.
+These tags can be removed without any problems.
+
+The [level] tag: Level number.
+
+The [colour] tag: Hexadecimal RGB background colour. If this is missing then the colour
+will come from the [default_level_colour] if defined; OPTIONAL.
+
+The [size] tag: Map width, map height.
+
+The [screws] tag: Number of screws robbo needs to enter capsule. This can be different
+from the number of screws placed in the level. This tag is ignored by older versions of
+GNU Robbo. If this is missing then the needed number of screws will be the number of
+screws placed in the level; OPTIONAL.
+area
+The [author] tag: The author of the level; OPTIONAL.
+
+The [level_notes] tag: Notes about the level; OPTIONAL.
+
+The [data] tag: Object identifiers for the complete map (see the list above for the
+legends).
+
+The [additional] tag: This is where additional data is placed that describes the behaviour
+of certain objects if applicable.
+
+The first number is the object (lines) count. Following this is a line for each object.
+All the objects start with an x position, a y position and a symbol from the above list
+followed by any number of additional parameters depending on which object it is describing.
+
+Teleport example: 13.2.&.1.0 would give you a teleport at 13x 2y with 7.2.&.1.1 giving
+you it's first group partner at 7x 2y (there could be other teleports that are part of
+this group and they would be 1.2, 1.3 etc. If you want another group somewhere else then
+the first teleport would be 2.0, its first partner 2.1 and so on.
+
+Gun example: 13.10.}.1.1.1.0.0.0 (looks scary but it isn't :) ) would give you a gun at
+13x 10y which has direction (is facing) south (0=east|1=south|2=west|3=north). The next
+value (1) describes the direction in which the gun is moving if moveable. The next value
+(1) states that this is a solid laser (0=burst|1=solid|2=blaster). The next value (0)
+describes this gun as unmoveable (0=unmoveable|1=moveable) with the last two zeros stating
+non-rotateable and non-random-rotateable.
+
+The bear follows the left-hand maze traversal rule and will go left if possible else it'll
+go forward. You can think of this as when it's going clockwise it's pushing outwards and
+when going anti-clockwise it's pulling inwards.
+
+The black bear follows the right-hand maze traversal rule and will go right if possible
+else it'll go forward. You can think of this as when it's going clockwise it's pulling
+inwards and when going anti-clockwise it's pushing outwards.
+
+The initial positioning and/or direction of both bears is important. If neither of them
+have entries in this section then their default direction will be 0 (east) and this may
+suffice depending on where they are placed.
+
+The bird has a movement direction, a shot direction and 0 or 1 describing if it is shooting
+or not.
+
+The magnets have a direction of 0=east, 1=south, 2=west and 3=north.
+
+The force fields have a direction of 0=east and 2=west only and they are contained by either
+a wall or the edges of the level. Everything else they will consume.
+
+The [end] tag: Defines the end of the level data.
+
+
+[name]
+Test
+
+[last_level]
+1
+
+[default_level_colour]
+608050
+
+[level]
+1
+[colour]
+996600
+[size]
+16.14
+[author]
+Janusz Pelc
+[level_notes]
+level_notes relating to this level can go here.
+[data]
+QQQQQQQQQQQQQQQQ
+QR'.....?.....TQ
+Q....@.........Q
+Q..............Q
+Q..............Q
+Q..............Q
+Q..............Q
+Q..............Q
+Q..............Q
+Q..............Q
+Q..............Q
+Q..............Q
+Q!.............Q
+QQQQQQQQQQQQQQQQ
+[additional]
+[end]
+
+

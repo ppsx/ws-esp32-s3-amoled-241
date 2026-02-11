@@ -85,6 +85,8 @@ Performance tests for the new displayio-based driver (same tests as above, using
 - `game_pacman.py` - Full Pac-Man with ghost AI
 - `game_sokoban.py` - Puzzle game
 - `game_minesweeper.py` - Minesweeper clone
+- `game_robbo.py` - Robbo puzzle platformer
+- `robbo/` - Robbo game engine and pygame shim
 
 ### `test_lvgl/` - LVGL Widget Examples
 - `lvgl_test_gui.py` - Complete widget demo
@@ -514,6 +516,51 @@ game_sokoban.main()
 from games import game_minesweeper
 game_minesweeper.main()
 ```
+
+---
+
+### game_robbo.py
+
+**Location:** `games/game_robbo.py` + `games/robbo/` (complete game engine)
+
+**Description:** Robbo - classic puzzle platformer game originally created for Atari XE/XL.
+
+**Features:**
+
+- Full Robbo game engine with pygame compatibility shim
+- Multiple level sets (original levels)
+- Puzzle-platformer mechanics (shooting, keys, teleports, bears)
+- Complete sprite system with animations
+
+**Controls:**
+
+- **Arrow Keys (pygame shim):** Move Robbo
+- **Push + Arrow Keys:** Shoot
+
+**Architecture:**
+
+The game uses a complete pygame compatibility layer (`robbo/pygame/`) that translates pygame calls to CircuitPython rm690b0 driver calls, allowing the original Robbo game code to run unmodified.
+
+**Key Components:**
+
+- `games/robbo/__init__.py` - Main game loop
+- `games/robbo/game.py` - Game logic
+- `games/robbo/board.py` - Level board management
+- `games/robbo/sprites/` - Sprite system (robbo, mobs, items, static)
+- `games/robbo/pygame/` - pygame → rm690b0 compatibility shim
+- `games/robbo/levels/` - Level data files
+
+**Usage:**
+
+```python
+from games import game_robbo
+game_robbo.main()
+```
+
+**Requirements:**
+
+- Level data files in `games/robbo/levels/`
+- Sprite images in `games/robbo/skins/default/bmp/`
 
 ---
 
@@ -1143,6 +1190,7 @@ display_y = touch_x
 - `games/game_pacman.py` - Full Pac-Man with ghost AI
 - `games/game_sokoban.py` - Puzzle game with undo system
 - `games/game_minesweeper.py` - Complete Minesweeper
+- `games/game_robbo.py` - Robbo puzzle platformer
 
 ### LVGL Examples
 

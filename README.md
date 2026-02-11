@@ -66,6 +66,7 @@ Complete CircuitPython support for the Waveshare ESP32-S3 Touch AMOLED 2.41 boar
 - `game_pacman.py` - Pac-Man with ghost AI
 - `game_sokoban.py` - Puzzle game
 - `game_minesweeper.py` - Minesweeper clone
+- `game_robbo.py` - Robbo puzzle platformer
 
 **Hardware Tests:**
 

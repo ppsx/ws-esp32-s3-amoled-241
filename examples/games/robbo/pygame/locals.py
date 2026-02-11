@@ -1,0 +1,44 @@
+# Copyright (c) 2025 Przemyslaw Patrick Socha
+
+# Pygame Constants
+QUIT = 0x100
+KEYDOWN = 0x101
+KEYUP = 0x102
+MOUSEBUTTONDOWN = 0x103
+MOUSEBUTTONUP = 0x104
+MOUSEMOTION = 0x105
+JOYAXISMOTION = 0x106
+JOYBUTTONDOWN = 0x107
+JOYBUTTONUP = 0x108
+
+# Keys (Mapped to our Virtual Keys)
+K_UP = 0
+K_DOWN = 1
+K_LEFT = 2
+K_RIGHT = 3
+K_b = 4
+K_f = 5
+K_q = 6
+K_x = 7
+K_l = 8
+K_m = 9
+K_PLUS = 10
+K_EQUALS = 11
+K_MINUS = 12
+K_w = 13
+K_s = 14
+K_a = 15
+K_d = 16
+K_LCTRL = 17
+K_RCTRL = 18
+
+# Mods
+KMOD_NONE = 0
+KMOD_SHIFT = 1
+KMOD_CTRL = 2
+KMOD_ALT = 4
+KMOD_META = 8
+
+# Fullscreen
+FULLSCREEN = 1
+RESIZABLE = 2
