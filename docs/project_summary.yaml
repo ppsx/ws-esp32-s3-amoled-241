@@ -52,7 +52,7 @@ current_status:
   lvgl_integration: Feature-complete, but NOT production-ready - known critical bug - LVGL + touch can become unresponsive under GC pressure (frequent gc.collect() / large heap allocations like TTF). Supports dynamic theme switching (Light/Dark) with pure black AMOLED background.
   sd_card: ✅ SOLVED - optimized `sdcardio` module provides reliable SD card access (~645KB/s) utilizing native ESP-IDF drivers via VFS
   esp_modules: espnow enabled, espcamera disabled, espulp available, espidf enabled, espsdcard removed
-  next_milestone: Phase 6 - Documentation, Stability & Widget Library Expansion (Slider, Checkbox, Switch, etc.)
+  next_milestone: Phase 6 - Documentation, Stability & Widget Hardware Validation
 
 major_task:
   goal: Expand Python widget library and create comprehensive documentation for both rm690b0 and rm690b0_lvgl modules.
@@ -73,7 +73,7 @@ implementation_plan_summary:
   - ✅ Widget inheritance system: Label and Button inherit Widget properties correctly.
   - ✅ Interactive GUI examples tested on hardware (counter app, multi-button controls, settings panels).
   - ✅ Build system integration: All widget files added to circuitpy_defns.mk (SRC_BINDINGS_ENUMS and SRC_COMMON_HAL_ALL).
-  - ✅ Phase 6 Tasks: Create Getting Started guides, expand widget library with 9-13 additional widgets (Slider, Checkbox, Switch, Arc, Bar, Image, Textarea, Dropdown, Roller, Panel, Tabview, Spinner, Chart).
+  - ✅ Phase 6 Tasks: All 25 widgets implemented. Remaining: Getting Started guides, hardware validation of all widgets, stability testing.
 
 issues_solved:
   - {
@@ -143,13 +143,10 @@ working_features:
     - LVGL v8.x library fully compiled and integrated.
     - Display driver renders at 100+ FPS with zero tearing or artifacts.
     - Touch input driver with automatic portrait→landscape coordinate transformation.
-    - Python widget classes: Widget (base container), Label (text display), Button (clickable button).
+    - "25 Python widget classes fully implemented: Widget (base), Label, Button, Arc, Bar, Buttonmatrix, Canvas, Chart (+ChartSeries), Checkbox, Container, Dropdown, Font, Keyboard, Line, List, Msgbox, Roller, Scale, Slider, Spinbox, Spinner, Switch, Table, Tabview, Textarea."
     - Full property support: x, y, width, height (read/write on all widgets).
-    - Label properties: text (read/write), set_text_color() method.
-    - Button properties: text (read/write), on_click (callback function).
-    - Widget methods: set_style_bg_color(), set_style_bg_opa().
-    - Event system: Python callbacks execute on button clicks.
-    - Widget inheritance: Label and Button inherit all Widget properties and methods.
+    - Event system: Python callbacks for widget interactions (on_click, on_change, on_value_changed).
+    - Widget inheritance: all widgets inherit Widget base properties and methods.
     - Memory efficient: 72 KB for LVGL display buffers, ~150-600 bytes per widget.
     - Interactive GUI examples working: counter app, multi-button controls, settings panels.
     - Dynamic Theme Switching: "`set_theme_color(primary, secondary, dark)` API supports real-time Light/Dark mode transitions."
@@ -157,7 +154,7 @@ working_features:
     - Build system: All files compiled and linked (Widget.c, Label.c, Button.c, RM690B0_LVGL.c).
 
 limitations:
-  - Widget library currently limited to 3 widgets (Widget, Label, Button); 9-13 additional widgets planned for Phase 6.
+  - 25 widgets implemented but not all individually hardware-validated on device.
   - No Getting Started guides yet; documentation in progress.
   - "`board.DISPLAY` auto-initialization not implemented (manual initialization required)."
   - "`blit_buffer()` supports standard RGB565; for best performance with `convert_bmp` or `jpegio`, use `dest_is_swapped=True`."

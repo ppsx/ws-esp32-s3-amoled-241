@@ -48,13 +48,18 @@
 - **LVGL Library**: v8.x compiled and integrated into CircuitPython firmware
 - **Display Driver**: Flush callback implemented using existing RM690B0 DMA paths, rendering at 100+ FPS with zero artifacts in standard scenarios
 - **Touch Input**: FT6336U driver integrated with automatic portrait→landscape coordinate transformation; known issue: frequent `gc.collect()` and large heap activity (e.g. TTF font loading) can break touch responsiveness
-- **Python Widget API**: CircuitPython-native widget classes (Widget, Label, Button) with property support
-- **Event System**: Python callbacks for button clicks and widget interactions working in normal operation
+- **Python Widget API**: 25 widget classes fully implemented with both shared-bindings and common-hal layers:
+  - **Base**: Widget (container with x/y/width/height/style properties)
+  - **Display**: Label, Spinner
+  - **Input**: Button, Buttonmatrix, Checkbox, Dropdown, Keyboard, Roller, Slider, Spinbox, Switch, Textarea
+  - **Data**: Arc, Bar, Chart (with ChartSeries), Scale, Table
+  - **Layout**: Container (flexbox), List, Msgbox, Tabview
+  - **Graphics**: Canvas, Line
+  - **Utility**: Font (TTF via Tiny TTF)
+- **Event System**: Python callbacks for widget interactions working in normal operation
 - **Memory Architecture**: ~72 KB PSRAM for LVGL display buffers (2×30-row), ~150-600 bytes per widget
-- **Interactive GUIs**: Counter app, multi-button controls, and settings panels tested on hardware
-- **Build System**: Widget files (Widget.c, Label.c, Button.c) integrated into build system
 - **Property System**: MP_TYPE_FLAG_HAS_SPECIAL_ACCESSORS enables read/write properties on all widgets
-- **Inheritance**: Label and Button inherit Widget properties (x, y, width, height)
+- **Inheritance**: All widgets inherit Widget base properties (x, y, width, height, styling)
 
 ### Documentation
 
@@ -87,11 +92,11 @@
 - Added `TESTING_GUIDE.md` with complete hardware validation flow for Phase 1-4 plus optional benchmarks.
 - Updated documentation index links and phase status references for release readiness.
 
-### Next Track: Stability & Widget Expansion
+### Next Track: Stability & Testing
 
 - Document known LVGL+GC touch issue with clear workarounds and constraints
-- Expand widget library: add Slider, Checkbox, Switch, Arc, Bar, Image, Textarea, Dropdown, Roller
 - Build widget gallery examples for regression coverage
+- Hardware-validate all 25 widgets on device
 
 ### Performance & Testing
 
