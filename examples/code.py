@@ -197,20 +197,22 @@ def main():
     col1_x = 25
     col2_x = 315
     btn_w = 260
-    btn_h = 70
-    gap_y = 20
+    btn_h = 58
+    gap_y = 14
 
-    # 3 Rows + Exit
-    start_y = 80
+    # 4 Rows + Exit
+    start_y = 76
     y1 = start_y
     y2 = start_y + btn_h + gap_y
     y3 = start_y + (btn_h + gap_y) * 2
-    y_exit = 350
+    y4 = start_y + (btn_h + gap_y) * 3
+    y_exit = y4 + btn_h + gap_y + 4
 
     # Column 1
     flappy_button = Button(col1_x, y1, btn_w, btn_h, "FLAPPY BIRD")
     snake_button = Button(col1_x, y2, btn_w, btn_h, "SNAKE")
     minesweeper_button = Button(col1_x, y3, btn_w, btn_h, "MINESWEEPER")
+    frogger_button = Button(col1_x, y4, btn_w, btn_h, "FROGGER")
 
     # Column 2
     pacman_button = Button(col2_x, y1, btn_w, btn_h, "PAC-MAN")
@@ -227,6 +229,7 @@ def main():
         sokoban_button,
         minesweeper_button,
         robbo_button,
+        frogger_button,
         exit_button,
     ]
 
@@ -262,6 +265,8 @@ def main():
                             selected = "minesweeper"
                         elif btn == robbo_button:
                             selected = "robbo"
+                        elif btn == frogger_button:
+                            selected = "frogger"
                         elif btn == exit_button:
                             selected = "exit"
                         elif btn == flight_button:
@@ -324,6 +329,13 @@ def main():
         try:
             from games import game_robbo
             game_robbo.main()
+        except Exception as e:
+            print(f"Error: {e}")
+    elif selected == "frogger":
+        print("\nStarting Frogger...\n")
+        try:
+            from games import game_frogger
+            game_frogger.main()
         except Exception as e:
             print(f"Error: {e}")
     else:

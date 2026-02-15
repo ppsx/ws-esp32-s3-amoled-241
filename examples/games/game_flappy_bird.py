@@ -91,6 +91,69 @@ BIRD_EYE = rm690b0.WHITE
 BIRD_PUPIL = rm690b0.BLACK
 OVERLAY_BG = rgb565(20, 25, 35)
 OVERLAY_BORDER = rm690b0.YELLOW if hasattr(rm690b0, "YELLOW") else rgb565(255, 255, 0)
+SPRITE_TRANSPARENT = rgb565(255, 0, 255)  # 0xF81F magenta
+
+
+# ---------------------------------------------------------------------------
+# Sprite pre-rendering helpers (run once at startup, Python speed is OK)
+# ---------------------------------------------------------------------------
+def _sp_fill_circle(buf, bw, bh, cx, cy, r, color):
+    """Fill circle into RGB565 sprite buffer using span-based writes."""
+    pixel = bytes([color & 0xFF, (color >> 8) & 0xFF])
+    r2 = r * r
+    for y in range(max(0, cy - r), min(bh, cy + r + 1)):
+        dy = y - cy
+        dx = int((r2 - dy * dy) ** 0.5)
+        x0 = max(0, cx - dx)
+        x1 = min(bw, cx + dx + 1)
+        span = x1 - x0
+        if span > 0:
+            off = (y * bw + x0) * 2
+            buf[off:off + span * 2] = pixel * span
+
+
+def _sp_fill_rect(buf, bw, bh, rx, ry, rw, rh, color):
+    """Fill rect into RGB565 sprite buffer using row-based writes."""
+    pixel = bytes([color & 0xFF, (color >> 8) & 0xFF])
+    x0 = max(0, rx)
+    x1 = min(bw, rx + rw)
+    span = x1 - x0
+    if span <= 0:
+        return
+    row_data = pixel * span
+    for y in range(max(0, ry), min(bh, ry + rh)):
+        off = (y * bw + x0) * 2
+        buf[off:off + span * 2] = row_data
+
+
+def pre_render_bird():
+    """Pre-render bird sprite once. Returns (buf, w, h, offset_x, offset_y)."""
+    # Bird extents from center: left=-14, right=+20, top=-14, bottom=+14
+    w, h = 36, 30
+    ox, oy = 15, 15  # center offsets from top-left
+    magenta = bytes([SPRITE_TRANSPARENT & 0xFF, (SPRITE_TRANSPARENT >> 8) & 0xFF])
+    buf = bytearray(magenta * (w * h))
+    _sp_fill_circle(buf, w, h, ox, oy, BIRD_RADIUS, BIRD_BODY)
+    _sp_fill_circle(buf, w, h, ox - 6, oy + 1, BIRD_RADIUS - 6, BIRD_WING)
+    _sp_fill_rect(buf, w, h, ox + BIRD_RADIUS - 2, oy - 2, 8, 6, BIRD_BEAK)
+    _sp_fill_circle(buf, w, h, ox + 6, oy - 4, 5, BIRD_EYE)
+    _sp_fill_circle(buf, w, h, ox + 8, oy - 4, 2, BIRD_PUPIL)
+    return buf, w, h, ox, oy
+
+
+def pre_render_cloud():
+    """Pre-render cloud sprite once. Returns (buf, w, h, offset_x, offset_y)."""
+    r = CLOUD_RADIUS
+    # Extents: left=-46, right=+48, top=-26, bottom=+26
+    w, h = 96, 54
+    ox, oy = 47, 27
+    magenta = bytes([SPRITE_TRANSPARENT & 0xFF, (SPRITE_TRANSPARENT >> 8) & 0xFF])
+    buf = bytearray(magenta * (w * h))
+    white = rm690b0.WHITE
+    _sp_fill_circle(buf, w, h, ox, oy, r, white)
+    _sp_fill_circle(buf, w, h, ox + r, oy + 4, r - 4, white)
+    _sp_fill_circle(buf, w, h, ox - r, oy + 6, r - 6, white)
+    return buf, w, h, ox, oy
 
 
 def text_pixel_width(text: str, font_id: int = FONT_HUD) -> int:
@@ -363,111 +426,205 @@ def play_round(display, touch, best_score):
     ground_y = height - GROUND_HEIGHT
     bird = Bird(int(width * BIRD_X_OFFSET), height // 2)
 
-    # Initialize difficulty parameters
+    # Pre-render sprites (one-time cost)
+    print("Pre-rendering sprites...")
+    bird_spr, bird_sw, bird_sh, bird_ox, bird_oy = pre_render_bird()
+    cloud_spr, cloud_sw, cloud_sh, cloud_ox, cloud_oy = pre_render_cloud()
+    print(f"  Bird: {bird_sw}x{bird_sh}, Cloud: {cloud_sw}x{cloud_sh}")
+
+    # Difficulty
     current_pipe_gap = BASE_PIPE_GAP
     current_pipe_speed = BASE_PIPE_SPEED
     current_spawn_gap = BASE_PIPE_SPAWN_GAP
 
     pipes = []
     spawn_pipe(pipes, width + 40, ground_y, height, current_pipe_gap)
-    spawn_pipe(
-        pipes, width + 40 + current_spawn_gap, ground_y, height, current_pipe_gap
-    )
+    spawn_pipe(pipes, width + 40 + current_spawn_gap, ground_y, height, current_pipe_gap)
 
     clouds = [
         [random.randint(0, width), random.randint(20, height // 2)]
         for _ in range(CLOUD_COUNT)
     ]
 
-    def update_clouds():
-        for cloud in clouds:
-            cloud[0] -= CLOUD_SPEED
-            if cloud[0] < -CLOUD_RADIUS * 2:
-                cloud[0] = width + random.randint(10, 60)
-                cloud[1] = random.randint(20, height // 2)
-
-    def calculate_difficulty(score):
-        """Calculate difficulty parameters based on score."""
-        difficulty_level = score // DIFFICULTY_SCALE_SCORE
-
-        # Gradually decrease pipe gap
-        pipe_gap = max(MIN_PIPE_GAP, BASE_PIPE_GAP - (difficulty_level * 8))
-
-        # Gradually increase pipe speed
-        pipe_speed = min(MAX_PIPE_SPEED, BASE_PIPE_SPEED + (difficulty_level * 0.5))
-
-        # Gradually decrease spawn gap (pipes closer together)
-        spawn_gap = max(
-            MIN_PIPE_SPAWN_GAP, BASE_PIPE_SPAWN_GAP - (difficulty_level * 10)
-        )
-
-        return pipe_gap, pipe_speed, spawn_gap
-
     score = 0
     local_best = best_score
-    elapsed_timer = time.monotonic()
     frame_time = 1.0 / TARGET_FPS
     game_over = False
     last_difficulty_score = 0
 
+    # Cache methods/constants as locals (avoid attribute lookups in hot loop)
+    _fill_color = display.fill_color
+    _fill_rect = display.fill_rect
+    _blit = display.blit_buffer
+    _set_font = display.set_font
+    _text = display.text
+    _swap = display.swap_buffers
+    _poll = touch.poll
+    _mono = time.monotonic
+    _sleep = time.sleep
+    _randint = random.randint
+    _bird_update = bird.update
+    _flap = bird.flap
+
+    _SKY = SKY_COLOR
+    _TRANS = SPRITE_TRANSPARENT
+    _GC = GROUND_COLOR
+    _GD = GROUND_DARK
+    _GH = GROUND_HEIGHT
+    _PC = PIPE_COLOR
+    _PS = PIPE_SHADE
+    _PW = PIPE_WIDTH
+    _PCH = PIPE_CAP_HEIGHT
+    _PE = PIPE_EDGE
+    _HC = rm690b0.BLACK
+    _HM = HUD_MARGIN
+    _BR = BIRD_RADIUS
+    _CS = CLOUD_SPEED
+    _CR2 = CLOUD_RADIUS * 2
+    _half_h = height // 2
+
+    elapsed_timer = _mono()
+    frame_count = 0
+
     while not game_over:
-        frame_start = time.monotonic()
+        frame_start = _mono()
 
-        if touch.poll():
-            bird.flap()
+        if _poll():
+            _flap()
 
-        bird.update()
+        _bird_update()
 
-        if bird.y - BIRD_RADIUS <= 0:
-            bird.y = BIRD_RADIUS
+        # Bounds
+        by = bird.y
+        if by - _BR <= 0:
+            bird.y = _BR
+            by = _BR
             game_over = True
-        elif bird.y + BIRD_RADIUS >= ground_y:
-            bird.y = ground_y - BIRD_RADIUS
+        elif by + _BR >= ground_y:
+            bird.y = ground_y - _BR
+            by = ground_y - _BR
             game_over = True
 
-        # Update difficulty when score changes
+        # Difficulty (only when score changes)
         if score != last_difficulty_score:
-            current_pipe_gap, current_pipe_speed, current_spawn_gap = (
-                calculate_difficulty(score)
-            )
-            # Update speed of existing pipes
-            for pipe in pipes:
-                pipe.speed = current_pipe_speed
+            dl = score // DIFFICULTY_SCALE_SCORE
+            current_pipe_gap = max(MIN_PIPE_GAP, BASE_PIPE_GAP - dl * 8)
+            current_pipe_speed = min(MAX_PIPE_SPEED, BASE_PIPE_SPEED + dl * 0.5)
+            current_spawn_gap = max(MIN_PIPE_SPAWN_GAP, BASE_PIPE_SPAWN_GAP - dl * 10)
+            for p in pipes:
+                p.speed = current_pipe_speed
             last_difficulty_score = score
 
-        for pipe in list(pipes):
-            pipe.update()
-            if pipe.x + PIPE_WIDTH < 0:
-                pipes.remove(pipe)
+        # Update pipes (inlined)
+        for p in list(pipes):
+            p.x -= p.speed
+            if p.x + _PW < 0:
+                pipes.remove(p)
 
         if not pipes or pipes[-1].x < width - current_spawn_gap:
-            spawn_pipe(pipes, width + PIPE_WIDTH, ground_y, height, current_pipe_gap)
+            spawn_pipe(pipes, width + _PW, ground_y, height, current_pipe_gap)
 
-        for pipe in pipes:
-            if not pipe.passed and pipe.x + PIPE_WIDTH < bird.x:
-                pipe.passed = True
+        # Scoring & collision (inlined — avoids collides() method call per pipe)
+        bx = bird.x
+        b_left = bx - _BR
+        b_right = bx + _BR
+        b_top = by - _BR
+        b_bot = by + _BR
+        for p in pipes:
+            if not p.passed and p.x + _PW < bx:
+                p.passed = True
                 score += 1
                 if score > local_best:
                     local_best = score
-            if pipe.collides(bird):
-                game_over = True
+            p_left = p.x
+            p_right = p.x + _PW
+            if b_right >= p_left and b_left <= p_right:
+                gap_half = p.gap_size / 2
+                if b_top < p.gap_y - gap_half or b_bot > p.gap_y + gap_half:
+                    game_over = True
 
-        update_clouds()
-        draw_scene(display, clouds, pipes, bird, ground_y, score, local_best)
-        display.swap_buffers(copy=False)
+        # Cloud update (inlined)
+        for c in clouds:
+            c[0] -= _CS
+            if c[0] < -_CR2:
+                c[0] = width + _randint(10, 60)
+                c[1] = _randint(20, _half_h)
 
-        if time.monotonic() - elapsed_timer >= 1.0:
-            elapsed_timer = time.monotonic()
-            difficulty_level = score // DIFFICULTY_SCALE_SCORE
-            print(
-                f"Score: {score:02d}  Pipes: {len(pipes)}  Bird Y: {bird.y:6.1f}  "
-                f"Difficulty: {difficulty_level}  Gap: {current_pipe_gap}  "
-                f"Speed: {current_pipe_speed:.1f}"
-            )
+        # ===== RENDER (fully inlined) =====
 
-        frame_elapsed = time.monotonic() - frame_start
+        _fill_color(_SKY)
+
+        # Clouds (pre-rendered sprite)
+        for cx, cy in clouds:
+            sx = int(cx) - cloud_ox
+            sy = int(cy) - cloud_oy
+            if sx + cloud_sw <= 0 or sx >= width:
+                continue
+            if sx >= 0 and sx + cloud_sw <= width:
+                _blit(sx, sy, cloud_sw, cloud_sh, cloud_spr,
+                      transparent_color=_TRANS)
+            else:
+                # Edge clipping
+                sx1 = max(0, -sx)
+                sx2 = min(cloud_sw, width - sx)
+                _blit(max(0, sx), sy, cloud_sw, cloud_sh, cloud_spr,
+                      transparent_color=_TRANS,
+                      src_x1=sx1, src_y1=0, src_x2=sx2, src_y2=cloud_sh)
+
+        # Ground
+        _fill_rect(0, ground_y, width, _GH, _GC)
+        _fill_rect(0, ground_y, width, 6, _GD)
+
+        # Pipes (inlined draw — avoids pipe.draw() method call)
+        for p in pipes:
+            px = int(p.x)
+            gap_half = p.gap_size // 2
+            top_end = int(p.gap_y - gap_half)
+            bot_start = int(p.gap_y + gap_half)
+            if top_end > 0:
+                _fill_rect(px, 0, _PW, top_end, _PC)
+                cap_y = max(0, top_end - _PCH)
+                _fill_rect(px - _PE, cap_y, _PW + _PE * 2,
+                           min(_PCH, top_end - cap_y), _PS)
+            if bot_start < ground_y:
+                bh = ground_y - bot_start
+                _fill_rect(px, bot_start, _PW, bh, _PC)
+                _fill_rect(px - _PE, bot_start, _PW + _PE * 2,
+                           min(_PCH, bh), _PS)
+
+        # Bird (pre-rendered sprite — 1 blit vs 5 primitives)
+        _blit(int(bx) - bird_ox, int(by) - bird_oy,
+              bird_sw, bird_sh, bird_spr,
+              transparent_color=_TRANS)
+
+        # HUD (no shadows — saves ~50% of text calls)
+        _set_font(FONT_HUD)
+        _text(_HM, _HM, "SCORE", color=_HC)
+        _text(_HM, _HM + 22, str(score), color=_HC)
+        best_str = str(local_best)
+        best_w = max(4, len(best_str)) * CHAR_WIDTH_HUD
+        _best_x = width - _HM - best_w
+        _text(_best_x, _HM, "BEST", color=_HC)
+        _text(_best_x, _HM + 22, best_str, color=_HC)
+
+        _swap(copy=False)
+
+        frame_count += 1
+
+        # FPS logging (every second)
+        now = _mono()
+        if now - elapsed_timer >= 1.0:
+            fps = frame_count / (now - elapsed_timer)
+            dl = score // DIFFICULTY_SCALE_SCORE
+            print(f"FPS:{fps:.0f}  Score:{score:02d}  Pipes:{len(pipes)}  "
+                  f"Diff:{dl}  Gap:{current_pipe_gap}  Spd:{current_pipe_speed:.1f}")
+            elapsed_timer = now
+            frame_count = 0
+
+        # Frame pacing
+        frame_elapsed = _mono() - frame_start
         if frame_elapsed < frame_time:
-            time.sleep(frame_time - frame_elapsed)
+            _sleep(frame_time - frame_elapsed)
 
     return score, local_best
 

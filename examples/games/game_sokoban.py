@@ -7,13 +7,11 @@ Based on Bansoko levels.
 
 BASE_DIR = "/games"
 
-import os
 import sys
 import time
 import board
 import busio
 import rm690b0
-import random
 import math
 
 try:
@@ -22,14 +20,14 @@ except ImportError:
     adafruit_focaltouch = None
 
 try:
-    from game_sokoban_levels import LEVELS
+    from sokoban.levels import LEVELS
 except ImportError:
     if __file__ == "<stdin>":
         path = BASE_DIR
     else:
         path = "/" + __file__.rsplit("/", 1)[0] if "/" in __file__ else ""
     sys.path.insert(0, path)
-    from game_sokoban_levels import LEVELS
+    from sokoban.levels import LEVELS
 
 # ---------------------------------------------------------------------------
 # Hardware & Configuration
@@ -48,9 +46,6 @@ PIN_CENTER = 4
 # Colors (RGB565)
 def rgb565(r, g, b):
     return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
-
-FONT_SMALL = rm690b0.FONT_16x16
-FONT_LARGE = rm690b0.FONT_24x24
 
 FONT_SMALL = rm690b0.FONT_16x16
 FONT_LARGE = rm690b0.FONT_24x24
@@ -78,6 +73,10 @@ CRATE_GOAL_DARK = rgb565(50, 150, 50)
 PLAYER_BODY = rgb565(0, 150, 255)
 GOAL_COLOR = rgb565(255, 60, 60)
 TEXT_COLOR = rm690b0.WHITE
+FLOOR_DOT = rgb565(60, 60, 70)
+MENU_SHADOW = rgb565(10, 10, 10)
+MENU_BG = rgb565(30, 30, 40)
+MENU_SEL = rgb565(60, 60, 80)
 
 # Directions
 DIR_UP = (0, -1)
@@ -231,9 +230,6 @@ class SokobanGame:
         self.goals = set()
         self.crates = set()
         self.player = (0, 0)
-        self.moves = 0
-        self.pushes = 0
-        self.history = []
         self.moves = 0
         self.pushes = 0
         self.history = []
@@ -427,7 +423,7 @@ def draw_cell(display, game, x, y, offset_x, offset_y, cell_size, ticks=0):
     else:
         display.fill_rect(px, py, cell_size, cell_size, FLOOR_COLOR)
         # Floor detail? dot in corners?
-        display.fill_rect(px, py, 1, 1, rgb565(60,60,70))
+        display.fill_rect(px, py, 1, 1, FLOOR_DOT)
     
     # Goal
     if pos in game.goals and pos not in game.crates and pos != game.player:
@@ -460,7 +456,6 @@ def draw_cell(display, game, x, y, offset_x, offset_y, cell_size, ticks=0):
             draw_player(display, px, py, cell_size, ticks)
 
 def draw_game(display, game, offset_x, offset_y, cell_size, ticks=0):
-    display.fill_color(BG_COLOR)
     
     # Draw centered grid background
     width_px = game.cols * cell_size
@@ -507,10 +502,10 @@ def draw_menu(display, items, selected_idx):
     my = (h - menu_h) // 2
 
     # Shadow
-    display.fill_rect(mx + 5, my + 5, menu_w, menu_h, rgb565(10, 10, 10))
+    display.fill_rect(mx + 5, my + 5, menu_w, menu_h, MENU_SHADOW)
 
     # Background
-    display.fill_rect(mx, my, menu_w, menu_h, rgb565(30, 30, 40))
+    display.fill_rect(mx, my, menu_w, menu_h, MENU_BG)
 
     # Border (Double)
     display.rect(mx, my, menu_w, menu_h, rm690b0.WHITE)
@@ -524,7 +519,7 @@ def draw_menu(display, items, selected_idx):
 
         # Selection Bar
         if i == selected_idx:
-            display.fill_rect(mx + 10, y, menu_w - 20, item_h - 4, rgb565(60, 60, 80))
+            display.fill_rect(mx + 10, y, menu_w - 20, item_h - 4, MENU_SEL)
             color = rm690b0.GREEN
             prefix = "> "
         else:
@@ -584,16 +579,19 @@ def main():
         last_act_time = 0
         act_delay = 0.15 # Repeat rate
         solved_timestamp = None
+        needs_redraw = True
+        bg_dirty = True
 
         while True:
-            # Animation update loop (Run first!)
-            if game.update():
+            # Animation update
+            was_animating = game.anim is not None
+            animating = game.update()
+            if animating or was_animating:
                 needs_redraw = True
 
             # Calculate scaling
             max_w = display.width - 20
             max_h = display.height - 20
-
             scale_w = max_w // game.cols
             scale_h = max_h // game.rows
             cell_size = min(scale_w, scale_h)
@@ -602,22 +600,26 @@ def main():
             offset_x = (display.width - game.cols * cell_size) // 2
             offset_y = (display.height - game.rows * cell_size) // 2
 
-            # Drawing
-            if menu_open:
-                draw_menu(display, menu_items, menu_sel)
+            # Drawing (only when needed)
+            if needs_redraw:
+                if bg_dirty:
+                    display.fill_color(BG_COLOR)
+                    bg_dirty = False
+                if menu_open:
+                    draw_menu(display, menu_items, menu_sel)
+                else:
+                    draw_game(display, game, offset_x, offset_y, cell_size, time.monotonic())
+                    display.set_font(FONT_SMALL)
+                    display.fill_rect(10, 10, 400, 36, BG_COLOR)
+                    display.text(10, 10, f"Level {level_idx+1}/{len(LEVELS)}", color=TEXT_COLOR)
+                    display.text(10, 30, f"Moves: {game.moves} Pushes: {game.pushes}", color=TEXT_COLOR)
+                    if game.is_solved():
+                        display.set_font(FONT_LARGE)
+                        display.text(display.width // 2 - 60, display.height // 2, "SOLVED!", color=rm690b0.GREEN)
+                display.swap_buffers(copy=True)
+                needs_redraw = False
             else:
-                # Pass current time for animation
-                draw_game(display, game, offset_x, offset_y, cell_size, time.monotonic())
-                # info text
-                display.set_font(FONT_SMALL)
-                display.text(10, 10, f"Level {level_idx+1}/{len(LEVELS)}", color=TEXT_COLOR)
-                display.text(10, 30, f"Moves: {game.moves} Pushes: {game.pushes}", color=TEXT_COLOR)
-
-                if game.is_solved():
-                    display.set_font(FONT_LARGE)
-                    display.text(display.width//2 - 60, display.height//2, "SOLVED!", color=rm690b0.GREEN)
-
-            display.swap_buffers()
+                time.sleep(0.01)
 
             # Input Handling
             d = None
@@ -639,60 +641,64 @@ def main():
 
             if center:
                 last_act_time = now
+                needs_redraw = True
                 if game.is_solved() and not menu_open:
-                    # Next level
                     level_idx, game = load_level(level_idx + 1)
+                    bg_dirty = True
                     solved_timestamp = None
                 elif not menu_open:
-                     # Open Menu
-                     menu_open = True
-                     menu_sel = 0
+                    menu_open = True
+                    menu_sel = 0
                 else:
-                     # Select Item in Menu
-                     item = menu_items[menu_sel]
-                     if item == "RESUME":
-                         menu_open = False
-                     elif item == "UNDO":
-                         game.undo()
-                         menu_open = False
-                     elif item == "RESET":
-                         _, game = load_level(level_idx)
-                         menu_open = False
-                     elif item == "NEXT LEVEL":
-                         level_idx, game = load_level(level_idx + 1)
-                         menu_open = False
-                     elif item == "PREV LEVEL":
-                         level_idx, game = load_level(level_idx - 1)
-                         menu_open = False
-                     elif item == "EXIT":
-                         break
+                    item = menu_items[menu_sel]
+                    if item == "RESUME":
+                        menu_open = False
+                        bg_dirty = True
+                    elif item == "UNDO":
+                        game.undo()
+                        menu_open = False
+                        bg_dirty = True
+                    elif item == "RESET":
+                        _, game = load_level(level_idx)
+                        menu_open = False
+                        bg_dirty = True
+                    elif item == "NEXT LEVEL":
+                        level_idx, game = load_level(level_idx + 1)
+                        menu_open = False
+                        bg_dirty = True
+                    elif item == "PREV LEVEL":
+                        level_idx, game = load_level(level_idx - 1)
+                        menu_open = False
+                        bg_dirty = True
+                    elif item == "EXIT":
+                        break
 
             elif menu_open:
                 if d == DIR_UP:
                     menu_sel = (menu_sel - 1) % len(menu_items)
                     last_act_time = now
+                    needs_redraw = True
                 elif d == DIR_DOWN:
                     menu_sel = (menu_sel + 1) % len(menu_items)
                     last_act_time = now
-                elif d == DIR_RIGHT:
-                     # Also allow Right as Select
-                     pass
+                    needs_redraw = True
 
             elif game.is_solved():
-                # Wait for center to go next
                 pass
-            if d:
+
+            elif d:
                 if game.move(d):
-                   last_act_time = now
-                   needs_redraw = True
+                    last_act_time = now
 
             # Auto-advance logic
             if game.is_solved():
                 if solved_timestamp is None:
                     solved_timestamp = time.monotonic()
                 elif time.monotonic() - solved_timestamp > 2.0:
-                     level_idx, game = load_level(level_idx + 1)
-                     solved_timestamp = None
+                    level_idx, game = load_level(level_idx + 1)
+                    needs_redraw = True
+                    bg_dirty = True
+                    solved_timestamp = None
             else:
                 solved_timestamp = None
 

@@ -51,7 +51,7 @@ PIN_CENTER = 4
 # ---------------------------------------------------------------------------
 GRID_SIZE = 15  # Size of each grid cell in pixels
 GRID_COLS = 40  # Number of columns
-GRID_ROWS = 30  # Number of rows
+GRID_ROWS = 28  # Number of rows (reduced from 30 to make room for HUD bar)
 INITIAL_SPEED = 8  # Initial moves per second
 SPEED_INCREMENT = 0.5  # Speed increase per food eaten
 MAX_SPEED = 20  # Maximum speed
@@ -64,7 +64,8 @@ CHAR_WIDTH_HUD = 16
 CHAR_HEIGHT_HUD = 16
 CHAR_WIDTH_TITLE = 24
 CHAR_HEIGHT_TITLE = 24
-HUD_MARGIN = 12
+HUD_MARGIN = 8
+HUD_BAR_HEIGHT = 22
 
 WAIT_POLL_INTERVAL = 0.02
 
@@ -87,6 +88,7 @@ WALL_COLOR = rgb565(100, 100, 100)  # Gray walls
 HUD_COLOR = rm690b0.WHITE
 OVERLAY_BG = rgb565(20, 25, 35)
 OVERLAY_BORDER = rgb565(255, 255, 0)
+HUD_BAR_BG = rgb565(10, 10, 15)
 
 # Direction constants
 DIR_UP = (0, -1)
@@ -413,21 +415,14 @@ def draw_food(display, food, offset_x, offset_y):
 
 
 def draw_hud(display, score, best, width):
-    """Draw score HUD."""
-    label_x = HUD_MARGIN
-    label_y = HUD_MARGIN
-    draw_text(display, "SCORE", label_x, label_y, HUD_COLOR, font_id=FONT_HUD)
-    value = str(score)
-    draw_text(display, value, label_x, label_y + 22, HUD_COLOR, font_id=FONT_HUD)
-
-    best_label = "BEST"
-    best_value = str(best)
-    best_width = max(text_pixel_width(best_label), text_pixel_width(best_value))
-    right_margin = width - HUD_MARGIN - best_width
-    draw_text(display, best_label, right_margin, label_y, HUD_COLOR, font_id=FONT_HUD)
-    draw_text(
-        display, best_value, right_margin, label_y + 22, HUD_COLOR, font_id=FONT_HUD
-    )
+    """Draw score HUD in dedicated bar above the grid."""
+    display.fill_rect(0, 0, width, HUD_BAR_HEIGHT, HUD_BAR_BG)
+    display.set_font(FONT_HUD)
+    text_y = (HUD_BAR_HEIGHT - CHAR_HEIGHT_HUD) // 2
+    display.text(HUD_MARGIN, text_y, f"SCORE: {score}", color=HUD_COLOR)
+    best_text = f"BEST: {best}"
+    best_w = len(best_text) * CHAR_WIDTH_HUD
+    display.text(width - HUD_MARGIN - best_w, text_y, best_text, color=HUD_COLOR)
 
 
 def draw_start_screen(display, best):
@@ -509,17 +504,17 @@ def draw_scene(display, snake, food, score, best):
     width = display.width
     height = display.height
 
-    # Calculate offsets to center the grid
+    # Calculate offsets — grid centered below HUD bar
     grid_width = GRID_COLS * GRID_SIZE
     grid_height = GRID_ROWS * GRID_SIZE
     offset_x = (width - grid_width) // 2
-    offset_y = (height - grid_height) // 2
+    offset_y = HUD_BAR_HEIGHT + (height - HUD_BAR_HEIGHT - grid_height) // 2
 
     display.fill_color(BG_COLOR)
+    draw_hud(display, score, best, width)
     draw_grid(display, offset_x, offset_y)
     draw_food(display, food, offset_x, offset_y)
     draw_snake(display, snake, offset_x, offset_y)
-    draw_hud(display, score, best, width)
 
 
 # ---------------------------------------------------------------------------
@@ -531,6 +526,12 @@ def play_round(display, joystick, touch, best_score):
     """Play one round of Snake."""
     width = display.width
     height = display.height
+
+    # Pre-calculate grid offsets — grid centered below HUD bar
+    grid_width = GRID_COLS * GRID_SIZE
+    grid_height = GRID_ROWS * GRID_SIZE
+    offset_x = (width - grid_width) // 2
+    offset_y = HUD_BAR_HEIGHT + (height - HUD_BAR_HEIGHT - grid_height) // 2
 
     # Initialize game state
     start_x = GRID_COLS // 2
@@ -545,6 +546,24 @@ def play_round(display, joystick, touch, best_score):
     elapsed_timer = time.monotonic()
     last_move_time = time.monotonic()
     input_poll_rate = 60  # Hz - check input 60 times per second
+
+    # --- Initial full draw (once) ---
+    display.fill_color(BG_COLOR)
+    draw_grid(display, offset_x, offset_y)
+    draw_food(display, food, offset_x, offset_y)
+    draw_snake(display, snake, offset_x, offset_y)
+    draw_hud(display, score, local_best, width)
+    display.swap_buffers(copy=True)
+
+    # Cache locals for hot path
+    _fill_rect = display.fill_rect
+    _GS = GRID_SIZE
+    _ox = offset_x
+    _oy = offset_y
+    _BG = BG_COLOR
+    _HEAD = SNAKE_HEAD_COLOR
+    _BODY = SNAKE_BODY_COLOR
+    last_drawn_score = score
 
     while not game_over:
         frame_start = time.monotonic()
@@ -562,6 +581,12 @@ def play_round(display, joystick, touch, best_score):
         move_interval = 1.0 / speed
         if time.monotonic() - last_move_time >= move_interval:
             last_move_time = time.monotonic()
+
+            # Remember state before move
+            old_tail = snake.segments[-1]
+            old_head = snake.segments[0]
+            was_growing = snake.grow_pending > 0
+
             snake.move()
 
             # Check collisions
@@ -572,7 +597,8 @@ def play_round(display, joystick, touch, best_score):
                 game_over = True
 
             # Check food collision
-            if snake.get_head() == food.position:
+            ate_food = snake.get_head() == food.position
+            if ate_food:
                 snake.grow()
                 score += SCORE_PER_FOOD
                 if score > local_best:
@@ -580,9 +606,33 @@ def play_round(display, joystick, touch, best_score):
                 speed = min(speed + SPEED_INCREMENT, MAX_SPEED)
                 food.respawn(GRID_COLS, GRID_ROWS, snake.segments)
 
-            # Draw scene
-            draw_scene(display, snake, food, score, local_best)
-            display.swap_buffers(copy=False)
+            # --- Delta drawing (only changed cells) ---
+            # 1. Clear old tail (if snake didn't grow)
+            if not was_growing:
+                tx, ty = old_tail
+                _fill_rect(_ox + tx * _GS + 1, _oy + ty * _GS + 1,
+                           _GS - 2, _GS - 2, _BG)
+
+            # 2. Old head → body color
+            ohx, ohy = old_head
+            _fill_rect(_ox + ohx * _GS + 1, _oy + ohy * _GS + 1,
+                       _GS - 2, _GS - 2, _BODY)
+
+            # 3. New head → head color
+            nhx, nhy = snake.segments[0]
+            _fill_rect(_ox + nhx * _GS + 1, _oy + nhy * _GS + 1,
+                       _GS - 2, _GS - 2, _HEAD)
+
+            # 4. Draw new food if eaten
+            if ate_food:
+                draw_food(display, food, offset_x, offset_y)
+
+            # 5. Update HUD only when score changed
+            if score != last_drawn_score:
+                draw_hud(display, score, local_best, width)
+                last_drawn_score = score
+
+            display.swap_buffers(copy=True)
 
             # Status update
             if time.monotonic() - elapsed_timer >= 1.0:
@@ -619,7 +669,8 @@ def main():
     display = rm690b0.RM690B0()
     display.init_display()
     display.brightness = 1.0
-    display.swap_buffers()
+    display.fill_color(rm690b0.BLACK)
+    display.swap_buffers(copy=True)
 
     # Initialize input devices
     i2c = busio.I2C(board.TP_SCL, board.TP_SDA, frequency=400000)

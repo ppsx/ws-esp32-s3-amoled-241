@@ -512,6 +512,9 @@ class Game:
         self.scatter_chase_phase = 0  # Track which phase we're in (0-6)
         self.ghosts_eaten_combo = 0  # Track consecutive ghost eats for bonus
         self.walls_drawn = False  # Track if static walls are drawn
+        self._gc_counter = 0
+        self._last_drawn_score = -1
+        self._last_drawn_lives = -1
 
         # Map progression system
         self.current_map_index = 0
@@ -1272,9 +1275,10 @@ class Game:
 
     def draw(self):
         """Dirty regions optimization - walls once, entities every frame"""
-        gc.collect()
-
-        entities = [self.pacman] + self.ghosts
+        self._gc_counter += 1
+        if self._gc_counter >= 60:
+            gc.collect()
+            self._gc_counter = 0
 
         # First frame - draw everything
         if not self.walls_drawn:
@@ -1302,57 +1306,65 @@ class Game:
                         self.display.fill_circle(px + 7, py + 7, 5, COLOR_POWER)
 
             self.draw_ui()
+            self._last_drawn_score = self.pacman.score
+            self._last_drawn_lives = self.pacman.lives
 
-            for e in entities:
-                px, py = e.get_pixel_pos()
-                if isinstance(e, Pacman):
-                    self.display.fill_circle(px, py, 7, e.color)
-                elif isinstance(e, Ghost):
-                    if e.state == STATE_DEAD:
-                        self.display.circle(px, py, 6, COLOR_GHOST_EYES)
-                        self.display.fill_circle(px - 2, py - 1, 1, COLOR_WHITE)
-                        self.display.fill_circle(px + 2, py - 1, 1, COLOR_WHITE)
-                    elif e.state == STATE_FRIGHTENED:
-                        if (self.scared_timer < 60) and (
-                            (self.scared_timer // 5) % 2 == 0
-                        ):
-                            self.display.fill_circle(px, py, 7, COLOR_WHITE)
-                        else:
-                            self.display.fill_circle(px, py, 7, COLOR_GHOST_SCARED)
-                    else:
-                        self.display.fill_circle(px, py, 7, e.color)
+            # Draw Pacman
+            px, py = self.pacman.get_pixel_pos()
+            self.display.fill_circle(px, py, 7, self.pacman.color)
 
-            self.display.swap_buffers()
-            self.walls_drawn = True
-            return
-
-        # Subsequent frames - only clear/redraw entity areas (dirty regions!)
-        for e in entities:
-            self.clear_entity_area(e)
-
-        # Redraw UI
-        self.draw_ui()
-
-        # Draw entities at new positions
-        for e in entities:
-            px, py = e.get_pixel_pos()
-
-            if isinstance(e, Pacman):
-                self.display.fill_circle(px, py, 7, e.color)
-            elif isinstance(e, Ghost):
-                if e.state == STATE_DEAD:
+            # Draw Ghosts
+            for g in self.ghosts:
+                px, py = g.get_pixel_pos()
+                if g.state == STATE_DEAD:
                     self.display.circle(px, py, 6, COLOR_GHOST_EYES)
                     self.display.fill_circle(px - 2, py - 1, 1, COLOR_WHITE)
                     self.display.fill_circle(px + 2, py - 1, 1, COLOR_WHITE)
-                elif e.state == STATE_FRIGHTENED:
-                    if (self.scared_timer < 60) and ((self.scared_timer // 5) % 2 == 0):
+                elif g.state == STATE_FRIGHTENED:
+                    if (self.scared_timer < 60) and (
+                        (self.scared_timer // 5) % 2 == 0
+                    ):
                         self.display.fill_circle(px, py, 7, COLOR_WHITE)
                     else:
                         self.display.fill_circle(px, py, 7, COLOR_GHOST_SCARED)
                 else:
-                    self.display.fill_circle(px, py, 7, e.color)
+                    self.display.fill_circle(px, py, 7, g.color)
 
-        # Swap buffers - driver auto-tracks dirty regions with fixed chunk size!
+            self.display.swap_buffers(copy=True)
+            self.walls_drawn = True
+            return
+
+        # Subsequent frames - only clear/redraw entity areas (dirty regions!)
+        self.clear_entity_area(self.pacman)
+        for g in self.ghosts:
+            self.clear_entity_area(g)
+
+        # Redraw UI only when score or lives changed
+        if (self.pacman.score != self._last_drawn_score or
+                self.pacman.lives != self._last_drawn_lives):
+            self.draw_ui()
+            self._last_drawn_score = self.pacman.score
+            self._last_drawn_lives = self.pacman.lives
+
+        # Draw Pacman
+        px, py = self.pacman.get_pixel_pos()
+        self.display.fill_circle(px, py, 7, self.pacman.color)
+
+        # Draw Ghosts
+        for g in self.ghosts:
+            px, py = g.get_pixel_pos()
+            if g.state == STATE_DEAD:
+                self.display.circle(px, py, 6, COLOR_GHOST_EYES)
+                self.display.fill_circle(px - 2, py - 1, 1, COLOR_WHITE)
+                self.display.fill_circle(px + 2, py - 1, 1, COLOR_WHITE)
+            elif g.state == STATE_FRIGHTENED:
+                if (self.scared_timer < 60) and ((self.scared_timer // 5) % 2 == 0):
+                    self.display.fill_circle(px, py, 7, COLOR_WHITE)
+                else:
+                    self.display.fill_circle(px, py, 7, COLOR_GHOST_SCARED)
+            else:
+                self.display.fill_circle(px, py, 7, g.color)
+
         self.display.swap_buffers()
 
     def draw_welcome(self):
@@ -1518,6 +1530,8 @@ def main():
 
                     game.update()
                     game.draw()
+                else:
+                    time.sleep(0.002)
 
             # Game Over
             if game.pacman.score > game.high_score:

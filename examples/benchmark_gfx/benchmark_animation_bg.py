@@ -23,7 +23,8 @@ import rm690b0
 
 DURATION = 15  # Animation duration in seconds
 SPEED = 8.0  # Ball speed (pixels per frame)
-TARGET_FPS = 60  # Target frame rate
+TARGET_FPS = 100  # Target frame rate
+LOCK_FPS = False
 BALL_RADIUS = 20  # Ball radius in pixels
 BACKGROUND_PATH = "/gfx/cerber.raw"  # Background image path
 WIDTH = 600
@@ -174,16 +175,17 @@ class HighFPSBall:
         self.offset_x = offset_x  # Ball center offset within sprite
         self.offset_y = offset_y
 
-        # Track previous position for efficient clearing
-        self.prev_x = x
-        self.prev_y = y
+        # Track previous position PER BUFFER for double-buffering coherence
+        # buf_idx alternates 0/1 with each swap
+        self.buf_idx = 0
+        self.prev_x = [x, x]  # per-buffer previous X
+        self.prev_y = [y, y]  # per-buffer previous Y
+
+        # Pre-allocated clear buffer (avoids GC pressure from per-frame allocation)
+        self.clear_buf = bytearray(sprite_w * sprite_h * 2)
 
     def update(self):
         """Update ball position and handle edge bouncing"""
-        # Store previous position BEFORE updating (original structure)
-        self.prev_x = self.x
-        self.prev_y = self.y
-
         # Update position using float for precision
         self.fx += self.vx
         self.fy += self.vy
@@ -210,10 +212,14 @@ class HighFPSBall:
             self.vy = -abs(self.vy)
 
     def clear_previous(self, display):
-        """Restore background at previous ball position (where sprite was)"""
-        # Calculate sprite top-left corner at previous position
-        sprite_x = int(self.prev_x) - self.offset_x
-        sprite_y = int(self.prev_y) - self.offset_y
+        """Restore background at previous ball position for CURRENT back buffer"""
+        bi = self.buf_idx
+        px = self.prev_x[bi]
+        py = self.prev_y[bi]
+
+        # Calculate sprite top-left corner at previous position for this buffer
+        sprite_x = px - self.offset_x
+        sprite_y = py - self.offset_y
 
         # Calculate the region to restore (sprite bounding box)
         x1 = max(0, sprite_x)
@@ -224,32 +230,41 @@ class HighFPSBall:
         h = y2 - y1
 
         if w > 0 and h > 0:
-            # Extract the region from background buffer
-            region = bytearray(w * h * 2)
+            # Reuse pre-allocated buffer (no GC pressure)
+            buf = self.clear_buf
+            bw = self.display_width
             for row in range(h):
-                src_offset = ((y1 + row) * self.display_width + x1) * 2
+                src_offset = ((y1 + row) * bw + x1) * 2
                 dst_offset = row * w * 2
-                region[dst_offset : dst_offset + w * 2] = self.background[
+                buf[dst_offset : dst_offset + w * 2] = self.background[
                     src_offset : src_offset + w * 2
                 ]
 
             # Blit the background region back
-            display.blit_buffer(x1, y1, w, h, region)
+            display.blit_buffer(x1, y1, w, h, buf)
 
     def draw(self, display):
         """Blit pre-rendered sprite with transparency at current position"""
+        # Save current position for THIS buffer (will be cleared next time this buffer is back)
+        bi = self.buf_idx
+        self.prev_x[bi] = self.x
+        self.prev_y[bi] = self.y
+
         # Calculate sprite top-left corner (ball center - offset)
-        sprite_x = int(self.x) - self.offset_x
-        sprite_y = int(self.y) - self.offset_y
+        sprite_x = self.x - self.offset_x
+        sprite_y = self.y - self.offset_y
 
         # Blit sprite with black (0x0000) as transparent color
-        # This skips all black pixels, only drawing the ball
         display.blit_buffer(
             sprite_x, sprite_y,
             self.sprite_w, self.sprite_h,
             self.sprite_data,
-            transparent_color=0x0000  # Skip black background
+            transparent_color=0x0000
         )
+
+    def on_swap(self):
+        """Call after swap_buffers to toggle buffer index"""
+        self.buf_idx ^= 1
 
 
 def load_background(path):
@@ -338,17 +353,18 @@ def main():
     while time.monotonic() - start_time < DURATION:
         frame_start = time.monotonic()
 
-        # Restore background at old ball position
+        # Restore background at old ball position (per-buffer tracking)
         ball.clear_previous(display)
 
         # Update physics
         ball.update()
 
-        # Draw ball at new position
+        # Draw ball at new position (saves pos for this buffer)
         ball.draw(display)
 
-        # Swap buffers
+        # Swap buffers and toggle buffer index
         display.swap_buffers(copy=False)
+        ball.on_swap()
 
         frame_count += 1
 
@@ -366,7 +382,11 @@ def main():
             last_fps_time = current_time
             last_fps_frame = frame_count
 
-        # NO THROTTLING - let it run as fast as possible!
+        # Frame pacing — cap at TARGET_FPS for consistent motion
+        if LOCK_FPS:
+          elapsed = time.monotonic() - frame_start
+          if elapsed < target_frame_time:
+              time.sleep(target_frame_time - elapsed)
 
     # Animation complete
     total_time = time.monotonic() - start_time

@@ -206,10 +206,13 @@ class MinesweeperGame:
         self.mines_count = mines
         self.data = [[0]*cols for _ in range(rows)] # -1 = Mine, 0-8 = Neighbors
         self.state = [[0]*cols for _ in range(rows)] # 0=Hidden, 1=Revealed, 2=Flagged
+        self.dirty = [[True]*cols for _ in range(rows)]
+        self._needs_draw = True
         self.first_click = True
         self.game_over = False
         self.won = False
         self.start_time = 0
+        self.end_time = 0
         self.flags_placed = 0
         self.cursor = [cols//2, rows//2]
     
@@ -241,19 +244,23 @@ class MinesweeperGame:
     def reveal(self, x, y):
         if self.state[y][x] != 0: return # Already revealed or flagged
         if self.game_over: return
-        
+
         if self.first_click:
             self.place_mines(x, y)
             self.first_click = False
             self.start_time = time.monotonic()
-            
+
         self.state[y][x] = 1 # Reveal
-        
+        self.dirty[y][x] = True
+        self._needs_draw = True
+
         if self.data[y][x] == -1:
             self.game_over = True
             self.won = False
+            self.end_time = time.monotonic()
+            self.mark_all_dirty()
             return
-            
+
         if self.data[y][x] == 0:
             # Flood fill
             stack = [(x,y)]
@@ -265,9 +272,10 @@ class MinesweeperGame:
                         if 0<=nx<self.cols and 0<=ny<self.rows:
                             if self.state[ny][nx] == 0:
                                 self.state[ny][nx] = 1
+                                self.dirty[ny][nx] = True
                                 if self.data[ny][nx] == 0:
                                     stack.append((nx, ny))
-                                    
+
         self.check_win()
 
     def flag(self, x, y):
@@ -277,19 +285,31 @@ class MinesweeperGame:
         if st == 0:
             self.state[y][x] = 2
             self.flags_placed += 1
+            self.dirty[y][x] = True
+            self._needs_draw = True
         elif st == 2:
             self.state[y][x] = 0
             self.flags_placed -= 1
+            self.dirty[y][x] = True
+            self._needs_draw = True
             
     def check_win(self):
         hidden_cnt = sum(row.count(0) + row.count(2) for row in self.state)
         if hidden_cnt == self.mines_count:
             self.game_over = True
             self.won = True
-            
+            self.end_time = time.monotonic()
+            self.mark_all_dirty()
+
+    def mark_all_dirty(self):
+        for r in range(self.rows):
+            for c in range(self.cols):
+                self.dirty[r][c] = True
+        self._needs_draw = True
+
     def get_time(self):
         if self.first_click: return 0
-        if self.game_over: return self.end_time - self.start_time if hasattr(self, 'end_time') else 0
+        if self.game_over: return self.end_time - self.start_time
         return time.monotonic() - self.start_time
 
 # ---------------------------------------------------------------------------
@@ -335,7 +355,6 @@ def draw_mine(display, x, y, size, exploded=False):
     # Skip diagonals, simple cross mine is clean enough.
 
 def draw_digit(display, val, x, y, size):
-    display.set_font(FONT_LARGE)
     sval = str(val)
     # Center text roughly
     display.text(x + size//4, y + 2, sval, color=C_NUMS[val])
@@ -414,14 +433,18 @@ def main():
     touch = TouchInput(i2c)
     joy = JoystickInput(i2c)
 
+    # Fill background on both buffers
+    display.fill_color(C_BG)
+    display.swap_buffers(copy=True)
+
     try:
         game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
 
         last_draw = 0
-        needs_redraw_grid = True
         needs_redraw_ui = True
 
         cursor_vis = False # Hide cursor until joystick used
+        prev_cursor = [game.cursor[0], game.cursor[1]]
         joy_last_move = 0
         joy_btn_pressed = False
         joy_press_start = 0
@@ -443,7 +466,7 @@ def main():
                     # Handle Game Over Restart
                     if game.game_over:
                         game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
-                        needs_redraw_grid = True
+                        prev_cursor = [game.cursor[0], game.cursor[1]]
                         needs_redraw_ui = True
                         # Debounce slightly
                         time.sleep(0.2)
@@ -463,17 +486,16 @@ def main():
                         joy_btn_pressed = False
 
                         if is_long:
-                            game.reveal(gx, gy) # Long press = Reveal (User request)
+                            game.reveal(gx, gy) # Long press = Reveal
                         else:
                             game.flag(gx, gy)   # Short press = Flag
 
-                        needs_redraw_grid = True
                         needs_redraw_ui = True
 
                     # Check Face reset
                     if ty < 50 and tx > WIDTH//2 - 50 and tx < WIDTH//2 + 50:
                         game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
-                        needs_redraw_grid = True
+                        prev_cursor = [game.cursor[0], game.cursor[1]]
                         needs_redraw_ui = True
 
             # Joystick Handling
@@ -494,8 +516,12 @@ def main():
 
                 if moved:
                     joy_last_move = now
-                    needs_redraw_grid = True
-                    cursor_vis = True # Show cursor on joystick move
+                    cursor_vis = True
+                    # Mark old and new cursor tiles dirty
+                    game.dirty[prev_cursor[1]][prev_cursor[0]] = True
+                    game.dirty[game.cursor[1]][game.cursor[0]] = True
+                    game._needs_draw = True
+                    prev_cursor = [game.cursor[0], game.cursor[1]]
 
             # Joystick Button
             if j_state['center']:
@@ -510,7 +536,7 @@ def main():
                     # Handle Game Over Restart
                     if game.game_over:
                         game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
-                        needs_redraw_grid = True
+                        prev_cursor = [game.cursor[0], game.cursor[1]]
                         needs_redraw_ui = True
                         continue
 
@@ -522,26 +548,28 @@ def main():
                     else:
                         game.flag(cx, cy)   # Short press = Flag
 
-                    needs_redraw_grid = True
                     needs_redraw_ui = True
 
             # Draw
+            ui_drawn = False
             if needs_redraw_ui or (now - last_draw > 1.0): # Update time every sec
                 draw_ui(display, game)
                 last_draw = now
                 needs_redraw_ui = False
+                ui_drawn = True
 
-            if needs_redraw_grid:
+            if game._needs_draw:
+                display.set_font(FONT_LARGE)
                 for r in range(ROWS):
                     for c in range(COLS):
+                        if not game.dirty[r][c]:
+                            continue
+                        game.dirty[r][c] = False
                         xx = OFFSET_X + c * TILE_SIZE
                         yy = OFFSET_Y + r * TILE_SIZE
 
-                        # Optimization: Only draw forced or changed tiles?
-                        # For simplicity redraw whole grid if flag set
                         force_rev = game.game_over and (game.data[r][c] == -1)
                         draw_tile(display, game, c, r, xx, yy, TILE_SIZE, force_reveal=force_rev)
-
 
                         # Cursor Highlight
                         if cursor_vis and c == game.cursor[0] and r == game.cursor[1]:
@@ -554,10 +582,12 @@ def main():
                      col = rgb565(50, 255, 50) if game.won else rgb565(255, 50, 50)
                      draw_overlay(display, msg, "TAP TO RESTART", col)
 
-                display.swap_buffers()
-                needs_redraw_grid = False
-
+                display.swap_buffers(copy=True)
+                game._needs_draw = False
                 time.sleep(0.01)
+
+            elif ui_drawn:
+                display.swap_buffers(copy=True)
 
     except KeyboardInterrupt:
         print("\nGame interrupted by user")
