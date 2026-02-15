@@ -218,6 +218,7 @@ def main():
     pacman_button = Button(col2_x, y1, btn_w, btn_h, "PAC-MAN")
     sokoban_button = Button(col2_x, y2, btn_w, btn_h, "SOKOBAN")
     robbo_button = Button(col2_x, y3, btn_w, btn_h, "ROBBO")
+    galaxian_button = Button(col2_x, y4, btn_w, btn_h, "GALAXIAN")
 
     # Exit (Centered)
     exit_button = Button((display.width - 300) // 2, y_exit, 300, btn_h, "EXIT")
@@ -230,6 +231,7 @@ def main():
         minesweeper_button,
         robbo_button,
         frogger_button,
+        galaxian_button,
         exit_button,
     ]
 
@@ -267,6 +269,8 @@ def main():
                             selected = "robbo"
                         elif btn == frogger_button:
                             selected = "frogger"
+                        elif btn == galaxian_button:
+                            selected = "galaxian"
                         elif btn == exit_button:
                             selected = "exit"
                         elif btn == flight_button:
@@ -336,6 +340,13 @@ def main():
         try:
             from games import game_frogger
             game_frogger.main()
+        except Exception as e:
+            print(f"Error: {e}")
+    elif selected == "galaxian":
+        print("\nStarting Galaxian...\n")
+        try:
+            from games import game_galaxian
+            game_galaxian.main()
         except Exception as e:
             print(f"Error: {e}")
     else:
