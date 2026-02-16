@@ -67,6 +67,7 @@ ALIEN_SPRITE_H = 16
 
 # Stars
 STAR_COUNT = 30
+MAX_PARTICLES = 35
 
 # Colors
 BLACK = 0x0000
@@ -341,8 +342,16 @@ class Game:
             sp = random.choice((1, 2, 3))
             self.stars.append([sx, sy, sp])
 
-        # Explosions
-        self.particles = []
+        # Explosions (pre-allocated pool — zero runtime alloc)
+        self.particles = [Particle(0, 0, 0, 0, 0) for _ in range(MAX_PARTICLES)]
+        self.particle_count = 0
+
+        # Alive tracking
+        self.alive_count = 0
+
+        # RNG pool (avoid per-frame random.random() in hot loop)
+        self._rng_pool = [random.random() for _ in range(64)]
+        self._rng_idx = 0
 
         # Profiler
         self.prof_frame = 0
@@ -402,9 +411,10 @@ class Game:
         self.enemy_fire_chance = cfg[3]
         self.dive_timer = self.dive_interval
 
+        self.alive_count = len(self.aliens)
         self.enemy_bullets = []
         self.bullet_active = False
-        self.particles = []
+        self.particle_count = 0
 
     def start_game(self):
         self.score = 0
@@ -483,8 +493,10 @@ class Game:
                 # Continue straight down
                 a.y += 5
 
-            # Enemy fire while diving
-            if random.random() < self.enemy_fire_chance * 0.1:
+            # Enemy fire while diving (RNG pool lookup)
+            idx = self._rng_idx
+            self._rng_idx = (idx + 1) & 63
+            if self._rng_pool[idx] < self.enemy_fire_chance * 0.1:
                 if len(self.enemy_bullets) < MAX_ENEMY_BULLETS:
                     self.enemy_bullets.append([
                         int(a.x) + ALIEN_SPRITE_W // 2,
@@ -514,14 +526,19 @@ class Game:
             if self.bullet_y < 0:
                 self.bullet_active = False
 
-        # Enemy bullets
-        i = len(self.enemy_bullets) - 1
-        while i >= 0:
-            b = self.enemy_bullets[i]
+        # Enemy bullets (swap-and-pop: O(1) removal)
+        eb = self.enemy_bullets
+        i = 0
+        n = len(eb)
+        while i < n:
+            b = eb[i]
             b[1] += b[2]
             if b[1] > SCREEN_H:
-                self.enemy_bullets.pop(i)
-            i -= 1
+                n -= 1
+                eb[i] = eb[n]
+                eb.pop()
+            else:
+                i += 1
 
     # --- Collision ---
     def check_collisions(self):
@@ -538,6 +555,7 @@ class Game:
                         by + BULLET_H > ay and by < ay + ALIEN_SPRITE_H):
                     # Hit!
                     a.alive = False
+                    self.alive_count -= 1
                     self.bullet_active = False
 
                     # Score
@@ -570,15 +588,15 @@ class Game:
         # Enemy bullets vs player
         px = self.player_x
         py = PLAYER_Y
-        i = len(self.enemy_bullets) - 1
-        while i >= 0:
-            b = self.enemy_bullets[i]
+        eb = self.enemy_bullets
+        for i in range(len(eb)):
+            b = eb[i]
             if (b[0] + 2 > px and b[0] < px + PLAYER_W and
                     b[1] + 4 > py and b[1] < py + PLAYER_H):
-                self.enemy_bullets.pop(i)
+                eb[i] = eb[-1]
+                eb.pop()
                 self._player_hit()
                 break
-            i -= 1
 
         # Diving aliens vs player (body collision)
         for a in self.aliens:
@@ -588,6 +606,7 @@ class Game:
                 if (ax + ALIEN_SPRITE_W > px and ax < px + PLAYER_W and
                         ay + ALIEN_SPRITE_H > py and ay < py + PLAYER_H):
                     a.alive = False
+                    self.alive_count -= 1
                     self._spawn_explosion(ax + ALIEN_SPRITE_W // 2,
                                           ay + ALIEN_SPRITE_H // 2, a.alien_type)
                     self._player_hit()
@@ -606,19 +625,35 @@ class Game:
         c = EXPLOSION_COLORS[alien_type]
         _randint = random.randint
         _particles = self.particles
+        _count = self.particle_count
         for _ in range(7):
-            _particles.append(Particle(cx, cy, _randint(-4, 4), _randint(-4, 4), c))
+            if _count >= MAX_PARTICLES:
+                break
+            p = _particles[_count]
+            p.x = cx
+            p.y = cy
+            p.dx = _randint(-4, 4)
+            p.dy = _randint(-4, 4)
+            p.life = 15
+            p.color = c
+            _count += 1
+        self.particle_count = _count
 
     def update_particles(self):
-        i = len(self.particles) - 1
-        while i >= 0:
-            p = self.particles[i]
+        _particles = self.particles
+        i = 0
+        n = self.particle_count
+        while i < n:
+            p = _particles[i]
             p.x += p.dx
             p.y += p.dy
             p.life -= 1
             if p.life <= 0:
-                self.particles.pop(i)
-            i -= 1
+                n -= 1
+                _particles[i], _particles[n] = _particles[n], _particles[i]
+            else:
+                i += 1
+        self.particle_count = n
 
     # --- Stars ---
     def update_stars(self):
@@ -693,7 +728,7 @@ class Game:
             self.dive_timer = self.dive_interval
 
         # Check wave clear
-        if not any(a.alive for a in self.aliens):
+        if self.alive_count <= 0:
             self.state = 2  # WAVE_CLEAR
             self.state_timer = 45
 
@@ -735,7 +770,9 @@ class Game:
             _blit(ax, ay, _ASW, _ASH, cache[a.alien_type][af])
 
         # Particles
-        for p in self.particles:
+        _parts = self.particles
+        for _pi in range(self.particle_count):
+            p = _parts[_pi]
             _fill_rect(int(p.x), int(p.y), 3, 3, p.color)
 
         t3 = _mono()
