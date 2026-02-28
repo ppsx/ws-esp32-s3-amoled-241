@@ -44,6 +44,9 @@ CONFIG = {
 
 CHUNK_SIZE = 1024 * 1024  # read in 128 KB chunks by default
 
+canvas = None
+display = None
+
 # =============================================================================
 # Utility Functions
 # =============================================================================
@@ -103,11 +106,8 @@ def get_memory_info():
 
 
 def show_black_screen(display, canvas):
-    """Clear display and optionally show message."""
-    display.fill_color(rm690b0.BLACK)
-    display.swap_buffers()
-    if message:
-        print(f"\n>>> {message} <<<")
+    """Clear display"""
+    canvas.fill(0)
 
 
 def get_bmp_parameters(data):
@@ -382,6 +382,7 @@ def benchmark_display(display, canvas, bitmap, info, iterations=5):
 
 def _init_display():
     """Common display initialization."""
+    global display, canvas
     print("Initializing display...")
     displayio.release_displays()
     bus = create_qspi_bus(board)
@@ -779,3 +780,8 @@ if __name__ == "__main__":
         run()
     except KeyboardInterrupt:
         print("\n\nExiting...")
+    finally:
+        # Clean up
+        canvas.fill(0)
+        display.refresh()
+        displayio.release_displays()

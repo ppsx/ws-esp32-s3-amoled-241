@@ -6,13 +6,6 @@ Text Rendering Benchmark - displayio version
 
 Measures the performance of text rendering using adafruit_display_text Labels
 with terminalio.FONT at different scales (simulating different font sizes).
-
-Tested scenarios:
-1. Scale 1 (~6x12) - short string
-2. Scale 1 (~6x12) - long string
-3. Scale 2 (~12x24) - short string
-4. Scale 4 (~24x48) - short string
-5. Menu simulation (5 labels per frame)
 """
 
 import gc
