@@ -1,6 +1,6 @@
 # Firmware for Waveshare ESP32-S3 Touch AMOLED 2.41
 
-Pre-built CircuitPython 10.0.3 firmware with RM690B0 display driver support.
+Pre-built CircuitPython 10.1.3 firmware with RM690B0 display driver support.
 
 ## Available Firmware Versions
 
@@ -460,7 +460,7 @@ esptool.py --chip esp32s3 -p /dev/ttyACM0 \
 
 ### Firmware Build Information
 
-**Base:** CircuitPython 10.0.3  
+**Base:** CircuitPython 10.1.3  
 **Board:** Waveshare ESP32-S3 Touch AMOLED 2.41  
 **Chip:** ESP32-S3 (Dual-core Xtensa LX7)  
 **Flash:** 16 MB  
@@ -518,7 +518,7 @@ For issues or questions:
 
 ## License
 
-Firmware based on CircuitPython 10.0.3 (MIT License)  
+Firmware based on CircuitPython 10.1.3 (MIT License)  
 RM690B0 driver and LVGL integration: MIT License
 
 See [../README.md](../README.md) for complete license information.

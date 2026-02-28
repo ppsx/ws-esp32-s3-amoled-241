@@ -129,7 +129,7 @@ The **RM690B0 driver** is a high-performance, standalone display driver for the 
 
 ### Software Requirements
 
-- **CircuitPython**: 10.0.0 or later
+- **CircuitPython**: 10.1.3
 - **Build**: Custom build with RM690B0 support
 - **Module**: `rm690b0` (built-in)
 

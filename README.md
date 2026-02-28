@@ -2,10 +2,10 @@
 
 CircuitPython display driver and LVGL integration for the **Waveshare ESP32-S3 Touch AMOLED 2.41** board.
 
-**Based on official CircuitPython 10.0.3** with custom RM690B0 display driver and LVGL integration.
+**Based on official CircuitPython 10.1.3** with custom RM690B0 display driver and LVGL integration.
 
 ![Board](https://img.shields.io/badge/Board-Waveshare%20ESP32--S3%20Touch%20AMOLED%202.41-blue)
-![CircuitPython](https://img.shields.io/badge/CircuitPython-10.0.3-purple)
+![CircuitPython](https://img.shields.io/badge/CircuitPython-10.1.3-purple)
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-green)
 
 ---
@@ -378,7 +378,7 @@ Contributions welcome! Please:
 
 **MIT License**
 
-Based on CircuitPython 10.0.3 (MIT License)  
+Based on CircuitPython 10.1.3 (MIT License)  
 Built-in fonts use Liberation fonts (SIL OFL 1.1)
 
 See full license in source code.
@@ -408,7 +408,7 @@ See full license in source code.
 ## Credits
 
 **Developed by:** Przemyslaw Patrick Socha and AI agents
-**Based on:** CircuitPython 10.0.3, LVGL 8.x, ESP-IDF  
+**Based on:** CircuitPython 10.1.3, LVGL 8.x, ESP-IDF  
 **Hardware:** Waveshare ESP32-S3 Touch AMOLED 2.41
 
 ---
