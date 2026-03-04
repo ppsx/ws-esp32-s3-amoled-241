@@ -9,7 +9,7 @@ import rm690b0
 import time
 import gc
 
-DOUBLE_BUFF = False  # Set to True to test with double-buffering enabled
+DOUBLE_BUFF = True  # Draw to back-buffer (RAM) to match displayio bitmap-write behavior
 
 
 class BenchmarkResult:
@@ -45,14 +45,15 @@ class BenchmarkRunner:
 
         for _ in range(iterations):
             test_func()
+
+        elapsed_ms = (time.monotonic_ns() - start_ns) / 1_000_000
+
+        # Flush to display AFTER timing (matches displayio which refreshes after timing)
         if self.double_buff:
             self.display.swap_buffers()
-    
-        elapsed_ms = (time.monotonic_ns() - start_ns) / 1_000_000
 
         result = BenchmarkResult(name, category, iterations, elapsed_ms)
         self.results.append(result)
-
 
         return result
 
