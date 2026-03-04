@@ -152,7 +152,13 @@ def pre_render_ball_sprite(radius):
 
 
 class HighFPSBall:
-    """High performance bouncing ball using pre-rendered sprite with transparency"""
+    """High performance bouncing ball using pre-rendered sprite with transparency.
+
+    With double-buffering and copy=False, each back-buffer retains content from
+    two frames ago.  We must track the previous ball position PER BUFFER so that
+    clear_previous erases the correct ghost for whichever buffer is currently the
+    back-buffer.  buf_idx alternates 0/1 via on_swap() after each swap_buffers().
+    """
 
     def __init__(self, x, y, vx, vy, radius, display_width, display_height, sprite_data, sprite_w, sprite_h, offset_x, offset_y):
         # Float positions for precise motion (prevents cumulative rounding errors)
@@ -174,16 +180,13 @@ class HighFPSBall:
         self.offset_x = offset_x  # Ball center offset within sprite
         self.offset_y = offset_y
 
-        # Track previous position for efficient clearing
-        self.prev_x = x
-        self.prev_y = y
+        # Track previous position PER BUFFER for double-buffering coherence
+        self.buf_idx = 0
+        self.prev_x = [x, x]
+        self.prev_y = [y, y]
 
     def update(self):
         """Update ball position and handle edge bouncing"""
-        # Store previous position BEFORE updating (original structure)
-        self.prev_x = self.x
-        self.prev_y = self.y
-
         # Update position using float for precision
         self.fx += self.vx
         self.fy += self.vy
@@ -214,13 +217,17 @@ class HighFPSBall:
             self.vy = -abs(self.vy)
 
     def clear_previous(self, display):
-        """Clear previous sprite position with black, protecting border"""
-        # Calculate sprite top-left corner at previous position
-        sprite_x = int(self.prev_x) - self.offset_x
-        sprite_y = int(self.prev_y) - self.offset_y
+        """Clear previous sprite position for CURRENT back buffer"""
+        bi = self.buf_idx
+        px = self.prev_x[bi]
+        py = self.prev_y[bi]
+
+        # Calculate sprite top-left corner at previous position for this buffer
+        sprite_x = px - self.offset_x
+        sprite_y = py - self.offset_y
 
         # Calculate clear region, clamped to avoid touching border (2px margin)
-        x1 = max(2, sprite_x)  # Leave 2px margin for border
+        x1 = max(2, sprite_x)
         y1 = max(2, sprite_y)
         x2 = min(self.display_width - 3, sprite_x + self.sprite_w - 1)
         y2 = min(self.display_height - 3, sprite_y + self.sprite_h - 1)
@@ -230,23 +237,30 @@ class HighFPSBall:
         h = y2 - y1 + 1
 
         if w > 0 and h > 0:
-            # Fast clear with fill_rect (native rm690b0, much faster!)
             display.fill_rect(x1, y1, w, h, rm690b0.BLACK)
 
     def draw(self, display):
         """Blit pre-rendered sprite with transparency at current position"""
+        # Save current position for THIS buffer
+        bi = self.buf_idx
+        self.prev_x[bi] = self.x
+        self.prev_y[bi] = self.y
+
         # Calculate sprite top-left corner (ball center - offset)
         sprite_x = int(self.x) - self.offset_x
         sprite_y = int(self.y) - self.offset_y
 
         # Blit sprite with black (0x0000) as transparent color
-        # This skips all black pixels, only drawing the ball
         display.blit_buffer(
             sprite_x, sprite_y,
             self.sprite_w, self.sprite_h,
             self.sprite_data,
-            transparent_color=0x0000  # Skip black background
+            transparent_color=0x0000
         )
+
+    def on_swap(self):
+        """Call after swap_buffers to toggle buffer index"""
+        self.buf_idx ^= 1
 
 
 def main():
@@ -270,11 +284,13 @@ def main():
     width = display.width
     height = display.height
 
-    # Draw static border once
+    # Draw static border on BOTH buffers (required for copy=False coherence)
     print("Drawing static border...")
     display.fill_color(rm690b0.BLACK)
     display.rect(0, 0, width, height, 0x4208)  # Dark gray border
     display.swap_buffers()
+    display.fill_color(rm690b0.BLACK)
+    display.rect(0, 0, width, height, 0x4208)
     print("Border ready\n")
 
     # Random starting position
@@ -327,18 +343,18 @@ def main():
     while time.monotonic() - start_time < DURATION:
         frame_start = time.monotonic()
 
-        # Clear old ball position (protecting border with 1px margin)
+        # Clear old ball position for CURRENT back buffer (per-buffer tracking)
         ball.clear_previous(display)
 
         # Update physics
         ball.update()
 
-        # Draw ball at NEW position
+        # Draw ball at NEW position (saves pos for this buffer)
         ball.draw(display)
 
-        # CRITICAL: use copy=False since we're doing incremental updates
-        # This avoids 27ms memcpy overhead
+        # Swap and toggle buffer index
         display.swap_buffers(copy=False)
+        ball.on_swap()
 
         frame_count += 1
 

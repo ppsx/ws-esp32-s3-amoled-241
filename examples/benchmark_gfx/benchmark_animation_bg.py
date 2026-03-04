@@ -23,8 +23,6 @@ import rm690b0
 
 DURATION = 15  # Animation duration in seconds
 SPEED = 8.0  # Ball speed (pixels per frame)
-TARGET_FPS = 100  # Target frame rate
-LOCK_FPS = False
 BALL_RADIUS = 20  # Ball radius in pixels
 BACKGROUND_PATH = "/gfx/cerber.raw"  # Background image path
 WIDTH = 600
@@ -299,10 +297,11 @@ def main():
     # Load background
     background = load_background(BACKGROUND_PATH)
 
-    # Display background
+    # Display background on BOTH buffers (required for copy=False coherence)
     print("Displaying background...")
     display.blit_buffer(0, 0, WIDTH, HEIGHT, background)
     display.swap_buffers()
+    display.blit_buffer(0, 0, WIDTH, HEIGHT, background)
     print("✓ Background displayed\n")
 
     # Random starting position
@@ -328,7 +327,6 @@ def main():
     print(f"  Ball radius: {BALL_RADIUS}px")
     print(f"  Starting position: ({start_x}, {start_y})")
     print(f"  Initial velocity: ({vx:.2f}, {vy:.2f})")
-    print(f"  Target FPS: {TARGET_FPS}")
     print(f"  Duration: {DURATION} seconds")
     print(f"  Rendering: Pre-rendered sprite with transparency\n")
 
@@ -341,7 +339,6 @@ def main():
     # Animation loop
     start_time = time.monotonic()
     frame_count = 0
-    target_frame_time = 1.0 / TARGET_FPS
     fps_update_interval = 30
 
     # For FPS calculation
@@ -382,11 +379,7 @@ def main():
             last_fps_time = current_time
             last_fps_frame = frame_count
 
-        # Frame pacing — cap at TARGET_FPS for consistent motion
-        if LOCK_FPS:
-          elapsed = time.monotonic() - frame_start
-          if elapsed < target_frame_time:
-              time.sleep(target_frame_time - elapsed)
+        # NO THROTTLING - let it run as fast as possible!
 
     # Animation complete
     total_time = time.monotonic() - start_time
@@ -401,8 +394,6 @@ def main():
     print(f"  Total frames: {frame_count}")
     print(f"  Total time: {total_time:.2f}s")
     print(f"  Average FPS: {actual_fps:.2f}")
-    print(f"  Target FPS: {TARGET_FPS}")
-    print(f"  Achievement: {(actual_fps / TARGET_FPS * 100):.1f}%")
     print(f"\n  Expected performance gain: 5-10× faster than primitive rendering")
 
     # Clean up
