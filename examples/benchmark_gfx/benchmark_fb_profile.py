@@ -30,6 +30,8 @@ OVERWRITE_OUTPUT = True
 
 SAMPLE_INTERVAL_S = 2.0
 WARMUP_S = 1.0
+PERCENTILE_BIN_MS = 0.25
+PERCENTILE_MAX_MS = 128.0
 
 # Scenario durations (seconds)
 DURATION_FULL_REDRAW_S = 12
@@ -139,6 +141,64 @@ def write_csv_header(f):
     )
 
 
+def compute_window_metrics(window_frames, frame_ms_values, draw_ms_values, swap_ms_values):
+    if window_frames > 0 and frame_ms_values:
+        window_time_s = sum(frame_ms_values) / 1000.0
+        window_fps = window_frames / window_time_s if window_time_s > 0 else 0.0
+        avg_frame_ms = sum(frame_ms_values) / window_frames
+        p95_frame_ms = percentile(frame_ms_values, 0.95)
+        max_frame_ms = max(frame_ms_values)
+        avg_draw_ms = sum(draw_ms_values) / window_frames
+        avg_swap_ms = sum(swap_ms_values) / window_frames
+    else:
+        window_fps = 0.0
+        avg_frame_ms = 0.0
+        p95_frame_ms = 0.0
+        max_frame_ms = 0.0
+        avg_draw_ms = 0.0
+        avg_swap_ms = 0.0
+
+    return (
+        window_fps,
+        avg_frame_ms,
+        p95_frame_ms,
+        max_frame_ms,
+        avg_draw_ms,
+        avg_swap_ms,
+    )
+
+
+def make_frame_histogram():
+    bins = int(PERCENTILE_MAX_MS / PERCENTILE_BIN_MS) + 1
+    return [0] * bins
+
+
+def add_frame_histogram_sample(histogram, frame_ms):
+    idx = int(frame_ms / PERCENTILE_BIN_MS)
+    if idx < 0:
+        idx = 0
+    elif idx >= len(histogram):
+        idx = len(histogram) - 1
+    histogram[idx] += 1
+
+
+def histogram_percentile(histogram, total_count, p):
+    if total_count <= 0:
+        return 0.0
+
+    threshold = int(total_count * p)
+    if threshold <= 0:
+        threshold = 1
+
+    seen = 0
+    for idx, count in enumerate(histogram):
+        seen += count
+        if seen >= threshold:
+            return idx * PERCENTILE_BIN_MS
+
+    return (len(histogram) - 1) * PERCENTILE_BIN_MS
+
+
 def write_sample_row(
     f,
     mode_name,
@@ -155,6 +215,7 @@ def write_sample_row(
     slow_40,
     event,
     error,
+    metrics_override=None,
 ):
     mem_free = gc.mem_free()
     mem_alloc = gc.mem_alloc()
@@ -162,21 +223,22 @@ def write_sample_row(
     mem_free_post_gc = gc.mem_free()
     mem_alloc_post_gc = gc.mem_alloc()
 
-    if window_frames > 0 and frame_ms_values:
-        window_time_s = sum(frame_ms_values) / 1000.0
-        window_fps = window_frames / window_time_s if window_time_s > 0 else 0.0
-        avg_frame_ms = sum(frame_ms_values) / window_frames
-        p95_frame_ms = percentile(frame_ms_values, 0.95)
-        max_frame_ms = max(frame_ms_values)
-        avg_draw_ms = sum(draw_ms_values) / window_frames
-        avg_swap_ms = sum(swap_ms_values) / window_frames
+    if metrics_override is not None:
+        window_fps = metrics_override["window_fps"]
+        avg_frame_ms = metrics_override["avg_frame_ms"]
+        p95_frame_ms = metrics_override["p95_frame_ms"]
+        max_frame_ms = metrics_override["max_frame_ms"]
+        avg_draw_ms = metrics_override["avg_draw_ms"]
+        avg_swap_ms = metrics_override["avg_swap_ms"]
     else:
-        window_fps = 0.0
-        avg_frame_ms = 0.0
-        p95_frame_ms = 0.0
-        max_frame_ms = 0.0
-        avg_draw_ms = 0.0
-        avg_swap_ms = 0.0
+        (
+            window_fps,
+            avg_frame_ms,
+            p95_frame_ms,
+            max_frame_ms,
+            avg_draw_ms,
+            avg_swap_ms,
+        ) = compute_window_metrics(window_frames, frame_ms_values, draw_ms_values, swap_ms_values)
 
     row = [
         mode_name,
@@ -476,6 +538,13 @@ def run_scenario(display, f, mode_cfg, scenario):
     swap_ms_values = []
     slow_25 = 0
     slow_40 = 0
+    scenario_frame_sum_ms = 0.0
+    scenario_draw_sum_ms = 0.0
+    scenario_swap_sum_ms = 0.0
+    scenario_max_frame_ms = 0.0
+    scenario_slow_25 = 0
+    scenario_slow_40 = 0
+    scenario_histogram = make_frame_histogram()
 
     while monotonic_ns() < end_ns:
         frame_start_ns = monotonic_ns()
@@ -532,10 +601,18 @@ def run_scenario(display, f, mode_cfg, scenario):
         frame_ms_values.append(frame_ms)
         draw_ms_values.append(draw_ms)
         swap_ms_values.append(swap_ms)
+        scenario_frame_sum_ms += frame_ms
+        scenario_draw_sum_ms += draw_ms
+        scenario_swap_sum_ms += swap_ms
+        if frame_ms > scenario_max_frame_ms:
+            scenario_max_frame_ms = frame_ms
+        add_frame_histogram_sample(scenario_histogram, frame_ms)
         if frame_ms > 25.0:
             slow_25 += 1
+            scenario_slow_25 += 1
         if frame_ms > 40.0:
             slow_40 += 1
+            scenario_slow_40 += 1
 
         frames_total += 1
         window_frames += 1
@@ -571,6 +648,25 @@ def run_scenario(display, f, mode_cfg, scenario):
 
     final_ns = monotonic_ns()
     elapsed_s = (final_ns - start_ns) / 1_000_000_000.0
+    if frames_total > 0:
+        scenario_time_s = scenario_frame_sum_ms / 1000.0
+        scenario_metrics = {
+            "window_fps": (frames_total / scenario_time_s) if scenario_time_s > 0 else 0.0,
+            "avg_frame_ms": scenario_frame_sum_ms / frames_total,
+            "p95_frame_ms": histogram_percentile(scenario_histogram, frames_total, 0.95),
+            "max_frame_ms": scenario_max_frame_ms,
+            "avg_draw_ms": scenario_draw_sum_ms / frames_total,
+            "avg_swap_ms": scenario_swap_sum_ms / frames_total,
+        }
+    else:
+        scenario_metrics = {
+            "window_fps": 0.0,
+            "avg_frame_ms": 0.0,
+            "p95_frame_ms": 0.0,
+            "max_frame_ms": 0.0,
+            "avg_draw_ms": 0.0,
+            "avg_swap_ms": 0.0,
+        }
     write_sample_row(
         f,
         mode_name,
@@ -579,14 +675,15 @@ def run_scenario(display, f, mode_cfg, scenario):
         scenario_name,
         elapsed_s,
         frames_total,
-        window_frames,
+        frames_total,
         frame_ms_values,
         draw_ms_values,
         swap_ms_values,
-        slow_25,
-        slow_40,
+        scenario_slow_25,
+        scenario_slow_40,
         "scenario_end",
         "",
+        metrics_override=scenario_metrics,
     )
 
     return True
