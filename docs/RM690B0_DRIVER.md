@@ -1,8 +1,24 @@
 # RM690B0 Display Driver - Complete Guide
 
-> **⚠️ DEPRECATED (v2.0):**
-> This document describes the legacy standalone `rm690b0` module removed in Phase 4.
-> For current architecture (`displayio + qspibus`), see [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) and [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md).
+> **Status (2026-03-06, branch `display-list`):**
+> This document is current for the standalone `rm690b0` driver.
+> Driver supports both `FRAMEBUFFER` and `DISPLAY_LIST` render backends with runtime switching (`render_mode`).
+
+### DISPLAY_LIST Backend Status (2026-03-06)
+
+- DL hardening is closed for the current v1 baseline.
+- Final defaults: `GLYPH_ATLAS_SLOTS=40`, `AUTO_COMPACT_EVERY_N_FRAMES=24`, `MIN_COMMANDS=64`, `GUARD_COMMANDS=3400`, `GUARD_PAYLOAD_BYTES=512 KiB`.
+- `BUFFER_SINGLE` is the recommended default for DL.
+- The driver still tries to allocate a second static DMA chunk buffer in single mode (best-effort), enabling ping-pong overlap when memory allows.
+- Mixed drawing (`FRAMEBUFFER` + `DISPLAY_LIST` in one frame) remains intentionally unsupported.
+- LVGL uses a dedicated path (`rm690b0_lvgl`), not rm690b0 DISPLAY_LIST replay.
+
+### FRAMEBUFFER Backend Status (2026-03-06)
+
+- `swap_buffers(copy=True)` dirty-copy baseline is stable and remains enabled.
+- Accepted in latest tuning loop: unswapped BLIT span helper optimization in `blit_buffer` (FB path).
+- Reverted after measured regression: aggressive dirty coalescing policy variant in `RM690B0.c` (drop in retained BLIT scenario).
+- Current benchmark script `benchmark_fb_profile.py` no longer raises EOF `NameError` (stray token removed).
 
 ---
 
@@ -226,8 +242,9 @@ Creates a new RM690B0 display instance. Only one instance should exist at a time
     first `swap_buffers()` call; provides tear-free animation via pointer swap.
   - `rm690b0.BUFFER_SINGLE` — uses only one framebuffer (540 KB); the front buffer is **never**
     allocated, saving ~540 KB of SPIRAM. `swap_buffers()` flushes dirty regions tracked since the
-    last call, or the full screen if no dirty regions are recorded. Recommended for static
-    UI / dashboard applications.
+    last call, or the full screen if no dirty regions are recorded. Drawing calls in this mode
+    update only the framebuffer/dirty map; visible refresh happens on `swap_buffers()`.
+    Recommended for static UI / dashboard applications.
 
 **Example:**
 
@@ -345,13 +362,16 @@ display.swap_buffers(copy=True)
 
 **Behavior:**
 
-- **With `copy=True`**: New back buffer contains previous frame (for incremental updates)
-- **With `copy=False`**: New back buffer is undefined (for full redraws)
+- **BUFFER_DOUBLE + `copy=True`**: Pointer swap + dirty-copy front→back (incremental updates).
+- **BUFFER_DOUBLE + `copy=False`**: Pointer swap without copy (best for full redraw loops).
+- **BUFFER_SINGLE**: No front/back pointer swap. `swap_buffers()` flushes accumulated dirty regions
+  (or full screen when no dirty rects are present). `copy` has no practical effect in this mode.
 
 **Performance:**
 
-- Buffer swap itself is instant (pointer swap)
-- Copy operation takes ~3-5 ms if enabled
+- `BUFFER_DOUBLE`: swap path is dominated by display DMA and optional copy cost.
+- `BUFFER_SINGLE`: draw calls are cheap (deferred flush), and frame cost moves to `swap_buffers()`.
+  Batch drawing work, then call one `swap_buffers()` per frame/tick.
 
 **Example:**
 
@@ -1323,6 +1343,20 @@ def lighten(color):
 - Adds two extra rectangle tests (full width × 64 rows, narrow 64‑px column) to cover the optimized fill loops.
 - Includes circle/fill_circle runs to monitor the new span cache and clipping paths.
 
+**Automated FB regression gate (`examples/benchmark_gfx/compare_fb_profile.py`):**
+
+- Checks 3 key scenarios against fixed thresholds:
+  - `fb_single_rebuild / primitive_stress`
+  - `fb_double_rebuild / full_redraw_control`
+  - `fb_double_retained / retained_blit_transparent`
+- Handles incomplete `scenario_end` windows by falling back to the last `sample` row.
+- Returns non-zero exit code on regression (`FAIL`), so it can be used in CI/hooks.
+
+```bash
+python examples/benchmark_gfx/compare_fb_profile.py \
+  --csv examples/benchmark_gfx/fb_profile.csv
+```
+
 ### Optimization Tips
 
 **1. Use `swap_buffers(copy=False)` for Full Redraws:**
@@ -2003,3 +2037,17 @@ See `TECHNICAL_NOTES.md` for detailed memory architecture analysis and DMA alloc
 - Reference `flappy_bird_clone.py` and `snake_game.py` for real-world usage
 
 ---
+
+---
+
+## Glyph Atlas Benchmark (Update 2026-03-05)
+
+Benchmark script was moved to:
+
+- `../examples/benchmark_gfx_displaylist/benchmark_glyph_atlas.py`
+
+Current tuning model:
+
+- glyph atlas size is controlled in C by `RM690B0_DL_GLYPH_ATLAS_SLOTS`
+- recommended value from latest measurements: `40`
+- runtime constructor override is intentionally removed to keep setup simpler
