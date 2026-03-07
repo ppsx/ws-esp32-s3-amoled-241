@@ -157,12 +157,56 @@ class Button:
         draw_text(display, self.text, text_x, text_y, TEXT_COLOR)
 
 
+class IconButton(Button):
+    """Button with a custom icon instead of text."""
+
+    def draw(self, display, color=BUTTON_COLOR):
+        # Draw background and border using parent method
+        # Temporarily clear text to avoid drawing it, or override draw completely
+        # Overriding draw completely to allow mixing or just icon
+        # Use super implementation for box
+
+        # Fill button background
+        display.fill_rect(self.x, self.y, self.width, self.height, color)
+
+        # Draw border
+        display.fill_rect(self.x, self.y, self.width, 2, BORDER_COLOR)  # Top
+        display.fill_rect(
+            self.x, self.y + self.height - 2, self.width, 2, BORDER_COLOR
+        )  # Bottom
+        display.fill_rect(self.x, self.y, 2, self.height, BORDER_COLOR)  # Left
+        display.fill_rect(
+            self.x + self.width - 2, self.y, 2, self.height, BORDER_COLOR
+        )  # Right
+
+        # Draw Plane Icon (Simple geometry) with shadow
+        cx = self.x + self.width // 2
+        cy = self.y + self.height // 2
+        c = TEXT_COLOR
+        shadow = rgb565(0, 0, 0)
+        sx = 2
+        sy = 2
+
+        # Shadow
+        display.fill_rect(cx - 14 + sx, cy - 3 + sy, 28, 6, shadow)
+        display.fill_rect(cx - 4 + sx, cy - 14 + sy, 6, 28, shadow)
+        display.fill_rect(cx - 14 + sx, cy - 8 + sy, 4, 8, shadow)
+
+        # Simplified top-down plane
+        # Fuselage (Horizontal)
+        display.fill_rect(cx - 14, cy - 3, 28, 6, c)
+        # Wing (Vertical)
+        display.fill_rect(cx - 4, cy - 14, 6, 28, c)
+        # Tail (Vertical small)
+        display.fill_rect(cx - 14, cy - 8, 4, 8, c)
+
+
 def draw_menu(display, buttons):
     """Draw the main menu."""
     display.fill_color(BG_COLOR)
 
     # Draw title
-    title = "SELECT AN OPTION"
+    title = "SELECT GAME"
     title_width = text_pixel_width(title)
     title_x = (display.width - title_width) // 2
     draw_text(display, title, title_x, 40, TEXT_COLOR)
@@ -234,6 +278,10 @@ def main():
         galaxian_button,
         exit_button,
     ]
+
+    # Flight Button (Bottom Right)
+    flight_button = IconButton(505, y_exit, 70, btn_h, "")
+    buttons.append(flight_button)
 
     # Draw initial menu
     draw_menu(display, buttons)
@@ -347,6 +395,13 @@ def main():
         try:
             from games import game_galaxian
             game_galaxian.main()
+        except Exception as e:
+            print(f"Error: {e}")
+    elif selected == "flight":
+        print("\nStarting Flight Test...\n")
+        try:
+            import gy91.flight_test
+            gy91.flight_test.main()
         except Exception as e:
             print(f"Error: {e}")
     else:

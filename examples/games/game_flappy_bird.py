@@ -366,38 +366,23 @@ def draw_game_over(display, score, best, width, height):
 
 def draw_start_screen(display, best):
     width = display.width
-    height = display.height
-    ground_y = height - GROUND_HEIGHT
-
-    display.fill_color(SKY_COLOR)
-
-    for offset in range(CLOUD_COUNT):
-        cx = int((width / CLOUD_COUNT) * offset + width * 0.1)
-        cy = int(40 + (offset % 3) * 30)
-        draw_cloud(display, cx % width, cy)
-
-    display.fill_rect(0, ground_y, width, GROUND_HEIGHT, GROUND_COLOR)
-    display.fill_rect(0, ground_y, width, 6, GROUND_DARK)
-
     title = "FLAPPY BIRD"
-    subtitle = "TAP TO PLAY"
-    title_x = (width - text_pixel_width(title, FONT_TITLE)) // 2
-    subtitle_x = (width - text_pixel_width(subtitle, FONT_HUD)) // 2
-    draw_text(
-        display, title, title_x, ground_y // 2 - 12, HUD_COLOR, font_id=FONT_TITLE
-    )
-    draw_text(
-        display, subtitle, subtitle_x, ground_y // 2 + 18, HUD_COLOR, font_id=FONT_HUD
-    )
+    prompt = "Tap to start"
+    title_x = (width - len(title) * 24) // 2
+    prompt_x = (width - len(prompt) * 16) // 2
+
+    display.fill_color(rm690b0.BLACK)
+    display.set_font(4)
+    display.text(title_x, 160, title, 0x07E0)
+    display.set_font(2)
+    display.text(prompt_x, 220, prompt, HUD_COLOR)
 
     if best > 0:
         best_text = f"BEST {best}"
-        best_x = (width - text_pixel_width(best_text, FONT_HUD)) // 2
-        draw_text(
-            display, best_text, best_x, ground_y // 2 + 46, HUD_COLOR, font_id=FONT_HUD
-        )
+        best_x = (width - len(best_text) * 16) // 2
+        display.text(best_x, 260, best_text, HUD_COLOR)
 
-    display.swap_buffers()
+    display.swap_buffers(copy=True)
 
 
 def draw_scene(display, clouds, pipes, bird, ground_y, score, best):
@@ -420,17 +405,14 @@ def wait_for_tap(touch):
         time.sleep(WAIT_POLL_INTERVAL)
 
 
-def play_round(display, touch, best_score):
+def play_round(display, touch, best_score, sprite_cache):
     width = display.width
     height = display.height
     ground_y = height - GROUND_HEIGHT
     bird = Bird(int(width * BIRD_X_OFFSET), height // 2)
 
-    # Pre-render sprites (one-time cost)
-    print("Pre-rendering sprites...")
-    bird_spr, bird_sw, bird_sh, bird_ox, bird_oy = pre_render_bird()
-    cloud_spr, cloud_sw, cloud_sh, cloud_ox, cloud_oy = pre_render_cloud()
-    print(f"  Bird: {bird_sw}x{bird_sh}, Cloud: {cloud_sw}x{cloud_sh}")
+    bird_spr, bird_sw, bird_sh, bird_ox, bird_oy = sprite_cache[0]
+    cloud_spr, cloud_sw, cloud_sh, cloud_ox, cloud_oy = sprite_cache[1]
 
     # Difficulty
     current_pipe_gap = BASE_PIPE_GAP
@@ -476,7 +458,8 @@ def play_round(display, touch, best_score):
     _PW = PIPE_WIDTH
     _PCH = PIPE_CAP_HEIGHT
     _PE = PIPE_EDGE
-    _HC = rm690b0.BLACK
+    _HC = HUD_COLOR
+    _HS = rm690b0.BLACK
     _HM = HUD_MARGIN
     _BR = BIRD_RADIUS
     _CS = CLOUD_SPEED
@@ -597,14 +580,19 @@ def play_round(display, touch, best_score):
               bird_sw, bird_sh, bird_spr,
               transparent_color=_TRANS)
 
-        # HUD (no shadows — saves ~50% of text calls)
+        # HUD labels and values with simple drop shadow
         _set_font(FONT_HUD)
+        _text(_HM + 1, _HM + 1, "SCORE", color=_HS)
         _text(_HM, _HM, "SCORE", color=_HC)
-        _text(_HM, _HM + 22, str(score), color=_HC)
+        score_str = str(score)
+        _text(_HM + 1, _HM + 23, score_str, color=_HS)
+        _text(_HM, _HM + 22, score_str, color=_HC)
         best_str = str(local_best)
         best_w = max(4, len(best_str)) * CHAR_WIDTH_HUD
         _best_x = width - _HM - best_w
+        _text(_best_x + 1, _HM + 1, "BEST", color=_HS)
         _text(_best_x, _HM, "BEST", color=_HC)
+        _text(_best_x + 1, _HM + 23, best_str, color=_HS)
         _text(_best_x, _HM + 22, best_str, color=_HC)
 
         _swap(copy=False)
@@ -646,12 +634,18 @@ def main():
     touch = TouchInput()
     best_score = 0
 
+    print("Pre-rendering sprites...")
+    bird_sprite = pre_render_bird()
+    cloud_sprite = pre_render_cloud()
+    print(f"  Bird: {bird_sprite[1]}x{bird_sprite[2]}, Cloud: {cloud_sprite[1]}x{cloud_sprite[2]}")
+    sprite_cache = (bird_sprite, cloud_sprite)
+
     try:
         while True:
             draw_start_screen(display, best_score)
             wait_for_tap(touch)
 
-            score, best_score = play_round(display, touch, best_score)
+            score, best_score = play_round(display, touch, best_score, sprite_cache)
             print(f"\nRound finished. Score: {score}, Best: {best_score}")
 
             draw_game_over(display, score, best_score, display.width, display.height)

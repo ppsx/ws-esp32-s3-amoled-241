@@ -12,7 +12,6 @@ import time
 import board
 import busio
 import rm690b0
-import math
 
 try:
     import adafruit_focaltouch
@@ -51,8 +50,8 @@ FONT_SMALL = rm690b0.FONT_16x16
 FONT_LARGE = rm690b0.FONT_24x24
 
 # Modern/Arcade Palette
-BG_COLOR = rgb565(20, 20, 28)       # Deep Dark Blue
-FLOOR_COLOR = rgb565(45, 45, 55)    # Slate floor
+BG_COLOR = 0x0000                  # Black
+FLOOR_COLOR = 0x0000                 # Black floor
 
 # Wall: Brick Red/Brown style
 WALL_FACE = rgb565(160, 80, 60)
@@ -73,7 +72,7 @@ CRATE_GOAL_DARK = rgb565(50, 150, 50)
 PLAYER_BODY = rgb565(0, 150, 255)
 GOAL_COLOR = rgb565(255, 60, 60)
 TEXT_COLOR = rm690b0.WHITE
-FLOOR_DOT = rgb565(60, 60, 70)
+FLOOR_DOT = 0x0000
 MENU_SHADOW = rgb565(10, 10, 10)
 MENU_BG = rgb565(30, 30, 40)
 MENU_SEL = rgb565(60, 60, 80)
@@ -411,84 +410,182 @@ def draw_player(display, x, y, size, ticks=0):
         display.fill_circle(cx - eye_off, cy - size//6, p_r, rm690b0.BLACK)
         display.fill_circle(cx + eye_off, cy - size//6, p_r, rm690b0.BLACK)
 
+def goal_radius(cell_size):
+    return max(2, cell_size // 5 + 1)
+
+
 def draw_cell(display, game, x, y, offset_x, offset_y, cell_size, ticks=0):
     pos = (x, y)
     px = offset_x + x * cell_size
     py = offset_y + y * cell_size
-    
-    # Background for cell (Floor or Wall base)
+
     if pos in game.walls:
         draw_wall(display, px, py, cell_size)
-        return # Walls obscure everything
-    else:
-        display.fill_rect(px, py, cell_size, cell_size, FLOOR_COLOR)
-        # Floor detail? dot in corners?
-        display.fill_rect(px, py, 1, 1, FLOOR_DOT)
-    
-    # Goal
+        return
+
+    display.fill_rect(px, py, cell_size, cell_size, FLOOR_COLOR)
+
     if pos in game.goals and pos not in game.crates and pos != game.player:
-         cx = px + cell_size//2
-         cy = py + cell_size//2
-         # Pulse logic
-         pulse = (math.sin(ticks * 5) + 1) / 2 # 0..1
-         r_base = cell_size // 5
-         r = r_base + int(pulse * 2)
-         
-         # X mark for goal
-         display.fill_circle(cx, cy, r, GOAL_COLOR)
-         display.fill_circle(cx, cy, r-2, FLOOR_COLOR) # Ring effect
-         display.fill_circle(cx, cy, 2, GOAL_COLOR) # Center dot
-         
-    # Crate
+        cx = px + cell_size // 2
+        cy = py + cell_size // 2
+        r = goal_radius(cell_size)
+        display.fill_circle(cx, cy, r, GOAL_COLOR)
+        display.fill_circle(cx, cy, max(0, r - 2), FLOOR_COLOR)
+        display.fill_circle(cx, cy, 2, GOAL_COLOR)
+
     if pos in game.crates:
-        # If animating push, skip drawing the crate at its starting position (we draw it moving)
-        if game.anim and game.anim['type'] == 'push' and pos == game.anim['c_from']:
-            pass
-        else:
+        if not (game.anim and game.anim['type'] == 'push' and pos == game.anim['c_from']):
             draw_crate(display, px, py, cell_size, pos in game.goals)
-        
-    # Player
-    if pos == game.player:
-        # If animating, skip drawing static player
-        if game.anim:
-            pass 
-        else:
-            draw_player(display, px, py, cell_size, ticks)
+
+    if pos == game.player and not game.anim:
+        draw_player(display, px, py, cell_size, ticks)
+
+
+def draw_cells(display, game, cells, offset_x, offset_y, cell_size, ticks=0):
+    for c, r in cells:
+        if 0 <= c < game.cols and 0 <= r < game.rows:
+            draw_cell(display, game, c, r, offset_x, offset_y, cell_size, ticks)
+
+
+def draw_anim_entities(display, game, offset_x, offset_y, cell_size, ticks=0):
+    if not game.anim:
+        return
+
+    anim = game.anim
+    progress = anim['progress']
+
+    def get_px(pos_from, pos_to):
+        x = pos_from[0] + (pos_to[0] - pos_from[0]) * progress
+        y = pos_from[1] + (pos_to[1] - pos_from[1]) * progress
+        return int(offset_x + x * cell_size), int(offset_y + y * cell_size)
+
+    if anim['type'] == 'push':
+        cx, cy = get_px(anim['c_from'], anim['c_to'])
+        draw_crate(display, cx, cy, cell_size, anim['c_to'] in game.goals)
+
+    px, py = get_px(anim['p_from'], anim['p_to'])
+    draw_player(display, px, py, cell_size, ticks)
+
 
 def draw_game(display, game, offset_x, offset_y, cell_size, ticks=0):
-    
-    # Draw centered grid background
-    width_px = game.cols * cell_size
-    height_px = game.rows * cell_size
-    
-    # Draw all cells
-    for r in range(game.rows):
-        for c in range(game.cols):
-            draw_cell(display, game, c, r, offset_x, offset_y, cell_size, ticks)
-            
-    # Draw animated entities on top
-    if game.anim:
-        anim = game.anim
-        progress = anim['progress']
-        # Helper interp
-        def get_px(pos_from, pos_to):
-            x = pos_from[0] + (pos_to[0] - pos_from[0]) * progress
-            y = pos_from[1] + (pos_to[1] - pos_from[1]) * progress
-            return int(offset_x + x * cell_size), int(offset_y + y * cell_size)
-            
-        # Draw Crate if pushing
-        if anim['type'] == 'push':
-            cx, cy = get_px(anim['c_from'], anim['c_to'])
-            # Determine if target is a goal for color? 
-            # It's tricky because visual transition logic. 
-            # We use goal status of TARGET if progress > 0.5? Or simply checking if 'c_to' is goal?
-            # Let's keep it simple: check if c_to is goal
-            on_goal = anim['c_to'] in game.goals
-            draw_crate(display, cx, cy, cell_size, on_goal)
-            
-        # Draw Player
-        px, py = get_px(anim['p_from'], anim['p_to'])
-        draw_player(display, px, py, cell_size, ticks)
+    all_cells = ((c, r) for r in range(game.rows) for c in range(game.cols))
+    draw_cells(display, game, all_cells, offset_x, offset_y, cell_size, ticks)
+    draw_anim_entities(display, game, offset_x, offset_y, cell_size, ticks)
+
+
+def get_anim_cells(game):
+    if not game.anim:
+        return set()
+    cells = {game.anim['p_from'], game.anim['p_to']}
+    if game.anim['type'] == 'push':
+        cells.add(game.anim['c_from'])
+        cells.add(game.anim['c_to'])
+    return cells
+
+
+def compute_layout(display, game):
+    max_w = display.width - 20
+    max_h = display.height - 20
+    scale_w = max_w // game.cols
+    scale_h = max_h // game.rows
+    cell_size = min(scale_w, scale_h)
+    if cell_size > 40:
+        cell_size = 40
+    offset_x = (display.width - game.cols * cell_size) // 2
+    offset_y = (display.height - game.rows * cell_size) // 2
+    return cell_size, offset_x, offset_y
+
+
+def draw_hud(display, level_idx, total_levels, moves, pushes):
+    display.set_font(FONT_SMALL)
+    display.fill_rect(0, 8, display.width, 22, BG_COLOR)
+    display.text(10, 10,
+                 f"Level {level_idx+1}/{total_levels}   Moves: {moves}   Pushes: {pushes}",
+                 color=TEXT_COLOR)
+
+
+def draw_solved_banner(display):
+    banner_w = 240
+    banner_h = 54
+    bx = (display.width - banner_w) // 2
+    by = (display.height - banner_h) // 2 - 6
+    display.fill_rect(bx + 4, by + 4, banner_w, banner_h, MENU_SHADOW)
+    display.fill_rect(bx, by, banner_w, banner_h, MENU_BG)
+    display.rect(bx, by, banner_w, banner_h, rm690b0.GREEN)
+    display.rect(bx + 2, by + 2, banner_w - 4, banner_h - 4, rm690b0.WHITE)
+    display.set_font(FONT_LARGE)
+    display.text(bx + 44, by + 15, "SOLVED!", color=rm690b0.GREEN)
+
+
+def draw_start_screen(display):
+    title = "SOKOBAN"
+    prompt = "Press any key"
+    title_x = (display.width - len(title) * 24) // 2
+    prompt_x = (display.width - len(prompt) * 16) // 2
+
+    display.fill_color(BG_COLOR)
+    display.set_font(4)
+    display.text(title_x, 160, title, 0x07E0)
+    display.set_font(2)
+    display.text(prompt_x, 220, prompt, 0xFFFF)
+    display.swap_buffers(copy=True)
+
+
+def any_start_input(joystick, touch):
+    if joystick:
+        try:
+            if any(joystick.read_switches().values()):
+                return True
+        except Exception:
+            pass
+    if touch:
+        try:
+            return bool(touch.touch.touched)
+        except Exception:
+            pass
+    return False
+
+
+def wait_for_start(joystick, touch):
+    released_since = 0.0
+    while True:
+        active = any_start_input(joystick, touch)
+        now = time.monotonic()
+        if not active:
+            if released_since == 0.0:
+                released_since = now
+            elif now - released_since >= 0.15:
+                break
+        else:
+            released_since = 0.0
+        time.sleep(0.01)
+
+    pressed_since = 0.0
+    while True:
+        active = any_start_input(joystick, touch)
+        now = time.monotonic()
+        if active:
+            if pressed_since == 0.0:
+                pressed_since = now
+            elif now - pressed_since >= 0.06:
+                break
+        else:
+            pressed_since = 0.0
+        time.sleep(0.01)
+
+    released_since = 0.0
+    while True:
+        active = any_start_input(joystick, touch)
+        now = time.monotonic()
+        if not active:
+            if released_since == 0.0:
+                released_since = now
+            elif now - released_since >= 0.10:
+                return
+        else:
+            released_since = 0.0
+        time.sleep(0.01)
+
 
 def draw_menu(display, items, selected_idx):
     w, h = display.width, display.height
@@ -507,12 +604,8 @@ def draw_menu(display, items, selected_idx):
     # Background
     display.fill_rect(mx, my, menu_w, menu_h, MENU_BG)
 
-    # Border (Double)
+    # Border
     display.rect(mx, my, menu_w, menu_h, rm690b0.WHITE)
-    display.rect(mx+2, my+2, menu_w-4, menu_h-4, rm690b0.WHITE)
-
-    # Title or Separator
-    display.hline(mx, my + 10, menu_w, rm690b0.WHITE)
 
     for i, item in enumerate(items):
         y = my + 20 + i * item_h
@@ -538,6 +631,7 @@ def main():
     display = rm690b0.RM690B0()
     display.init_display()
     display.brightness = 1.0
+    draw_start_screen(display)
 
     i2c = busio.I2C(board.TP_SCL, board.TP_SDA, frequency=400000)
     joystick = None
@@ -553,123 +647,175 @@ def main():
     except Exception as e:
         print(f"Touch init error: {e}")
 
+    wait_for_start(joystick, touch)
+
     level_idx = 0
     game = None
 
     def load_level(idx):
-        if idx < 0: idx = len(LEVELS) - 1
-        if idx >= len(LEVELS): idx = 0
+        if idx < 0:
+            idx = len(LEVELS) - 1
+        if idx >= len(LEVELS):
+            idx = 0
         return idx, SokobanGame(LEVELS[idx])
 
     level_idx, game = load_level(level_idx)
 
     try:
-        cell_size = 20  # Base size, maybe scale?
-        # Max dims: 450x600 (portrait) or 600x450 (landscape)
-        # Most levels are small, some are large.
-        # Map 62 is 27x19. 600/27 = 22px.
-        # Let's verify screen orientation. Snake uses 600 width logic.
-        width = display.width # 600?
-        height = display.height # 450?
-
         menu_items = ["RESUME", "UNDO", "RESET", "NEXT LEVEL", "PREV LEVEL", "EXIT"]
         menu_open = False
         menu_sel = 0
 
         last_act_time = 0
-        act_delay = 0.15 # Repeat rate
+        act_delay = 0.15
         solved_timestamp = None
-        needs_redraw = True
+        full_redraw = True
         bg_dirty = True
+        hud_dirty = True
+        dirty_cells = set()
+        center_down_since = 0.0
+        center_armed = True
+        center_debounce = 0.06
+        last_solved = game.is_solved()
+        cell_size, offset_x, offset_y = compute_layout(display, game)
 
         while True:
-            # Animation update
             was_animating = game.anim is not None
+            dirty_cells.update(get_anim_cells(game))
             animating = game.update()
+            dirty_cells.update(get_anim_cells(game))
             if animating or was_animating:
-                needs_redraw = True
+                full_redraw = False
+            if was_animating and not animating:
+                hud_dirty = True
 
-            # Calculate scaling
-            max_w = display.width - 20
-            max_h = display.height - 20
-            scale_w = max_w // game.cols
-            scale_h = max_h // game.rows
-            cell_size = min(scale_w, scale_h)
-            if cell_size > 40: cell_size = 40
+            is_solved = game.is_solved()
+            if is_solved != last_solved:
+                last_solved = is_solved
+                full_redraw = True
+                bg_dirty = True
+                hud_dirty = True
+                dirty_cells.clear()
 
-            offset_x = (display.width - game.cols * cell_size) // 2
-            offset_y = (display.height - game.rows * cell_size) // 2
-
-            # Drawing (only when needed)
-            if needs_redraw:
+            if bg_dirty or full_redraw or dirty_cells or hud_dirty:
+                ticks = time.monotonic()
                 if bg_dirty:
                     display.fill_color(BG_COLOR)
                     bg_dirty = False
+                    full_redraw = True
+
                 if menu_open:
                     draw_menu(display, menu_items, menu_sel)
                 else:
-                    draw_game(display, game, offset_x, offset_y, cell_size, time.monotonic())
-                    display.set_font(FONT_SMALL)
-                    display.fill_rect(10, 10, 400, 36, BG_COLOR)
-                    display.text(10, 10, f"Level {level_idx+1}/{len(LEVELS)}", color=TEXT_COLOR)
-                    display.text(10, 30, f"Moves: {game.moves} Pushes: {game.pushes}", color=TEXT_COLOR)
-                    if game.is_solved():
-                        display.set_font(FONT_LARGE)
-                        display.text(display.width // 2 - 60, display.height // 2, "SOLVED!", color=rm690b0.GREEN)
-                display.swap_buffers(copy=True)
-                needs_redraw = False
-            else:
-                time.sleep(0.01)
+                    if full_redraw:
+                        draw_game(display, game, offset_x, offset_y, cell_size, ticks)
+                    else:
+                        draw_cells(display, game, dirty_cells, offset_x, offset_y, cell_size, ticks)
+                        draw_anim_entities(display, game, offset_x, offset_y, cell_size, ticks)
 
-            # Input Handling
+                    if hud_dirty or full_redraw:
+                        draw_hud(display, level_idx, len(LEVELS), game.moves, game.pushes)
+                        hud_dirty = False
+
+                    if is_solved:
+                        draw_solved_banner(display)
+
+                display.swap_buffers(copy=True)
+                dirty_cells.clear()
+                full_redraw = False
+            else:
+                time.sleep(0.001)
+
             d = None
-            center = False
+            center_down = False
 
             if joystick:
                 d = joystick.get_action()
                 if joystick.is_center_pressed():
-                    center = True
+                    center_down = True
 
-            if not d and not center and touch:
+            if not d and not center_down and touch:
                 d = touch.get_action()
                 if touch.is_center_pressed():
-                    center = True
+                    center_down = True
 
             now = time.monotonic()
+            if center_down:
+                if center_down_since == 0.0:
+                    center_down_since = now
+                center = center_armed and (now - center_down_since) >= center_debounce
+            else:
+                center_down_since = 0.0
+                center_armed = True
+                center = False
+
             if now - last_act_time < act_delay:
                 continue
 
             if center:
+                center_armed = False
                 last_act_time = now
-                needs_redraw = True
                 if game.is_solved() and not menu_open:
                     level_idx, game = load_level(level_idx + 1)
+                    cell_size, offset_x, offset_y = compute_layout(display, game)
+                    menu_open = False
                     bg_dirty = True
+                    full_redraw = True
+                    hud_dirty = True
+                    dirty_cells.clear()
                     solved_timestamp = None
+                    last_solved = game.is_solved()
                 elif not menu_open:
                     menu_open = True
                     menu_sel = 0
+                    full_redraw = True
+                    bg_dirty = True
+                    dirty_cells.clear()
                 else:
                     item = menu_items[menu_sel]
                     if item == "RESUME":
                         menu_open = False
                         bg_dirty = True
+                        full_redraw = True
+                        dirty_cells.clear()
                     elif item == "UNDO":
                         game.undo()
                         menu_open = False
                         bg_dirty = True
+                        full_redraw = True
+                        hud_dirty = True
+                        dirty_cells.clear()
+                        last_solved = game.is_solved()
                     elif item == "RESET":
                         _, game = load_level(level_idx)
+                        cell_size, offset_x, offset_y = compute_layout(display, game)
                         menu_open = False
                         bg_dirty = True
+                        full_redraw = True
+                        hud_dirty = True
+                        dirty_cells.clear()
+                        solved_timestamp = None
+                        last_solved = game.is_solved()
                     elif item == "NEXT LEVEL":
                         level_idx, game = load_level(level_idx + 1)
+                        cell_size, offset_x, offset_y = compute_layout(display, game)
                         menu_open = False
                         bg_dirty = True
+                        full_redraw = True
+                        hud_dirty = True
+                        dirty_cells.clear()
+                        solved_timestamp = None
+                        last_solved = game.is_solved()
                     elif item == "PREV LEVEL":
                         level_idx, game = load_level(level_idx - 1)
+                        cell_size, offset_x, offset_y = compute_layout(display, game)
                         menu_open = False
                         bg_dirty = True
+                        full_redraw = True
+                        hud_dirty = True
+                        dirty_cells.clear()
+                        solved_timestamp = None
+                        last_solved = game.is_solved()
                     elif item == "EXIT":
                         break
 
@@ -677,11 +823,13 @@ def main():
                 if d == DIR_UP:
                     menu_sel = (menu_sel - 1) % len(menu_items)
                     last_act_time = now
-                    needs_redraw = True
+                    full_redraw = True
+                    bg_dirty = True
                 elif d == DIR_DOWN:
                     menu_sel = (menu_sel + 1) % len(menu_items)
                     last_act_time = now
-                    needs_redraw = True
+                    full_redraw = True
+                    bg_dirty = True
 
             elif game.is_solved():
                 pass
@@ -689,16 +837,21 @@ def main():
             elif d:
                 if game.move(d):
                     last_act_time = now
+                    dirty_cells.update(get_anim_cells(game))
+                    hud_dirty = True
 
-            # Auto-advance logic
             if game.is_solved():
                 if solved_timestamp is None:
                     solved_timestamp = time.monotonic()
                 elif time.monotonic() - solved_timestamp > 2.0:
                     level_idx, game = load_level(level_idx + 1)
-                    needs_redraw = True
+                    cell_size, offset_x, offset_y = compute_layout(display, game)
                     bg_dirty = True
+                    full_redraw = True
+                    hud_dirty = True
+                    dirty_cells.clear()
                     solved_timestamp = None
+                    last_solved = game.is_solved()
             else:
                 solved_timestamp = None
 

@@ -1858,9 +1858,9 @@ def main():
 
     # Loading screen
     display.fill_color(C_BLACK)
-    display.set_font(4)  # 16x32
+    display.set_font(4)  # 24x32
     display.text(216, 170, "FROGGER", 0x07E0)
-    display.set_font(2)  # 16x16
+    display.set_font(2)  # 16x24
     display.text(232, 220, "Loading...", 0xFFFF)
     # Bar outline
     bar_x, bar_y, bar_max = 100, 260, 400

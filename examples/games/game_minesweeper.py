@@ -49,6 +49,7 @@ OFFSET_X = (WIDTH - GRID_W) // 2
 OFFSET_Y = 60 # Leave space for top bar
 
 MINES_COUNT = 25
+MINE_VALUE = 9
 
 # ---------------------------------------------------------------------------
 # Colors (RGB565 Helper)
@@ -58,6 +59,7 @@ def rgb565(r, g, b):
 
 # Palette
 C_BG            = rgb565(20, 20, 25)
+C_SPLASH_BG     = 0x0000
 C_BAR_BG        = rgb565(30, 30, 40)
 C_TEXT          = rgb565(240, 240, 240)
 
@@ -204,9 +206,10 @@ class MinesweeperGame:
         self.cols = cols
         self.rows = rows
         self.mines_count = mines
-        self.data = [[0]*cols for _ in range(rows)] # -1 = Mine, 0-8 = Neighbors
-        self.state = [[0]*cols for _ in range(rows)] # 0=Hidden, 1=Revealed, 2=Flagged
-        self.dirty = [[True]*cols for _ in range(rows)]
+        self.cell_count = cols * rows
+        self.data = bytearray(self.cell_count)  # 0-8, MINE_VALUE=mine
+        self.state = bytearray(self.cell_count)  # 0=Hidden, 1=Revealed, 2=Flagged
+        self.dirty = bytearray([1]) * self.cell_count
         self._needs_draw = True
         self.first_click = True
         self.game_over = False
@@ -215,53 +218,65 @@ class MinesweeperGame:
         self.end_time = 0
         self.flags_placed = 0
         self.cursor = [cols//2, rows//2]
-    
+
+    def idx(self, x, y):
+        return y * self.cols + x
+
     def place_mines(self, safe_x, safe_y):
         placed = 0
         while placed < self.mines_count:
             x = random.randint(0, self.cols-1)
             y = random.randint(0, self.rows-1)
+            idx = self.idx(x, y)
             # Ensure not on safe spot and neighbors
-            if self.data[y][x] == -1: continue
-            if abs(x - safe_x) <= 1 and abs(y - safe_y) <= 1: continue
-            
-            self.data[y][x] = -1
+            if self.data[idx] == MINE_VALUE:
+                continue
+            if abs(x - safe_x) <= 1 and abs(y - safe_y) <= 1:
+                continue
+
+            self.data[idx] = MINE_VALUE
             placed += 1
-            
+
         # Calc numbers
         for r in range(self.rows):
             for c in range(self.cols):
-                if self.data[r][c] == -1: continue
+                idx = self.idx(c, r)
+                if self.data[idx] == MINE_VALUE:
+                    continue
                 cnt = 0
                 for dy in [-1,0,1]:
                     for dx in [-1,0,1]:
-                        if dx==0 and dy==0: continue
+                        if dx==0 and dy==0:
+                            continue
                         nx, ny = c+dx, r+dy
-                        if 0<=nx<self.cols and 0<=ny<self.rows and self.data[ny][nx] == -1:
-                            cnt+=1
-                self.data[r][c] = cnt
+                        if 0<=nx<self.cols and 0<=ny<self.rows and self.data[self.idx(nx, ny)] == MINE_VALUE:
+                            cnt += 1
+                self.data[idx] = cnt
 
     def reveal(self, x, y):
-        if self.state[y][x] != 0: return # Already revealed or flagged
-        if self.game_over: return
+        idx = self.idx(x, y)
+        if self.state[idx] != 0:
+            return # Already revealed or flagged
+        if self.game_over:
+            return
 
         if self.first_click:
             self.place_mines(x, y)
             self.first_click = False
             self.start_time = time.monotonic()
 
-        self.state[y][x] = 1 # Reveal
-        self.dirty[y][x] = True
+        self.state[idx] = 1 # Reveal
+        self.dirty[idx] = 1
         self._needs_draw = True
 
-        if self.data[y][x] == -1:
+        if self.data[idx] == MINE_VALUE:
             self.game_over = True
             self.won = False
             self.end_time = time.monotonic()
             self.mark_all_dirty()
             return
 
-        if self.data[y][x] == 0:
+        if self.data[idx] == 0:
             # Flood fill
             stack = [(x,y)]
             while stack:
@@ -270,31 +285,37 @@ class MinesweeperGame:
                     for dx in [-1,0,1]:
                         nx, ny = cx+dx, cy+dy
                         if 0<=nx<self.cols and 0<=ny<self.rows:
-                            if self.state[ny][nx] == 0:
-                                self.state[ny][nx] = 1
-                                self.dirty[ny][nx] = True
-                                if self.data[ny][nx] == 0:
+                            nidx = self.idx(nx, ny)
+                            if self.state[nidx] == 0:
+                                self.state[nidx] = 1
+                                self.dirty[nidx] = 1
+                                if self.data[nidx] == 0:
                                     stack.append((nx, ny))
 
         self.check_win()
 
     def flag(self, x, y):
-        if self.game_over: return
+        if self.game_over:
+            return
+        idx = self.idx(x, y)
         # Toggle flag
-        st = self.state[y][x]
+        st = self.state[idx]
         if st == 0:
-            self.state[y][x] = 2
+            self.state[idx] = 2
             self.flags_placed += 1
-            self.dirty[y][x] = True
+            self.dirty[idx] = 1
             self._needs_draw = True
         elif st == 2:
-            self.state[y][x] = 0
+            self.state[idx] = 0
             self.flags_placed -= 1
-            self.dirty[y][x] = True
+            self.dirty[idx] = 1
             self._needs_draw = True
-            
+
     def check_win(self):
-        hidden_cnt = sum(row.count(0) + row.count(2) for row in self.state)
+        hidden_cnt = 0
+        for st in self.state:
+            if st == 0 or st == 2:
+                hidden_cnt += 1
         if hidden_cnt == self.mines_count:
             self.game_over = True
             self.won = True
@@ -302,9 +323,7 @@ class MinesweeperGame:
             self.mark_all_dirty()
 
     def mark_all_dirty(self):
-        for r in range(self.rows):
-            for c in range(self.cols):
-                self.dirty[r][c] = True
+        self.dirty[:] = b'' * self.cell_count
         self._needs_draw = True
 
     def get_time(self):
@@ -360,8 +379,9 @@ def draw_digit(display, val, x, y, size):
     display.text(x + size//4, y + 2, sval, color=C_NUMS[val])
     
 def draw_tile(display, game, c, r, x, y, size, force_reveal=False):
-    st = game.state[r][c]
-    val = game.data[r][c]
+    idx = game.idx(c, r)
+    st = game.state[idx]
+    val = game.data[idx]
     
     # 0=Hidden, 1=Revealed, 2=Flagged
     if st == 0 and not force_reveal:
@@ -372,12 +392,12 @@ def draw_tile(display, game, c, r, x, y, size, force_reveal=False):
     elif st == 1 or force_reveal:
         # Revealed
         bg = C_TILE_REV_BG
-        if val == -1 and st == 1: bg = C_EXPLOSION # Exploded mine logic handled inside draw_mine call usually
+        if val == MINE_VALUE and st == 1: bg = C_EXPLOSION # Exploded mine logic handled inside draw_mine call usually
         
         display.fill_rect(x, y, size, size, bg)
         display.rect(x, y, size, size, rgb565(30,30,40)) # Subtle border
         
-        if val == -1:
+        if val == MINE_VALUE:
             draw_mine(display, x, y, size, exploded=(st==1))
         elif val > 0:
             draw_digit(display, val, x, y, size)
@@ -423,6 +443,61 @@ def draw_overlay(display, text, subtext, color):
     display.set_font(FONT_SMALL)
     display.text(x + 40, y + 60, subtext, color=C_TEXT)
 
+
+def draw_start_screen(display):
+    title = "MINESWEEPER"
+    prompt = "Press any key"
+    title_x = (WIDTH - len(title) * 24) // 2
+    prompt_x = (WIDTH - len(prompt) * 16) // 2
+
+    display.fill_color(C_SPLASH_BG)
+    display.set_font(FONT_LARGE)
+    display.text(title_x, 160, title, color=0x07E0)
+    display.set_font(FONT_SMALL)
+    display.text(prompt_x, 220, prompt, color=C_TEXT)
+    display.swap_buffers(copy=True)
+
+
+def wait_for_start(joy, touch):
+    idle_since = None
+    press_since = None
+    idle_required = 0.12
+    press_required = 0.06
+
+    def pressed():
+        j = joy.get_state()
+        if j['up'] or j['down'] or j['left'] or j['right'] or j['center']:
+            return True
+        if touch.tp.touched:
+            return True
+        return False
+
+    while True:
+        now = time.monotonic()
+        if not pressed():
+            if idle_since is None:
+                idle_since = now
+            elif now - idle_since >= idle_required:
+                break
+        else:
+            idle_since = None
+        time.sleep(0.01)
+
+    while True:
+        now = time.monotonic()
+        if pressed():
+            if press_since is None:
+                press_since = now
+            elif now - press_since >= press_required:
+                break
+        else:
+            press_since = None
+        time.sleep(0.01)
+
+    while pressed():
+        time.sleep(0.01)
+
+
 def main():
     print("Minesweeper Clone Starting...")
     display = rm690b0.RM690B0()
@@ -437,6 +512,9 @@ def main():
     display.fill_color(C_BG)
     display.swap_buffers(copy=True)
 
+    draw_start_screen(display)
+    wait_for_start(joy, touch)
+
     try:
         game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
 
@@ -445,9 +523,12 @@ def main():
 
         cursor_vis = False # Hide cursor until joystick used
         prev_cursor = [game.cursor[0], game.cursor[1]]
-        joy_last_move = 0
         joy_btn_pressed = False
         joy_press_start = 0
+        joy_dir_active = None
+        joy_repeat_at = 0
+        joy_repeat_initial = 0.22
+        joy_repeat_interval = 0.12
 
         # Stabilize sensors
         time.sleep(0.5)
@@ -499,29 +580,47 @@ def main():
                         needs_redraw_ui = True
 
             # Joystick Handling
-            if now - joy_last_move > 0.1:
-                moved = False
-                if j_state['right']:
-                    game.cursor[0] = min(game.cols-1, game.cursor[0]+1)
-                    moved = True
-                if j_state['left']:
-                    game.cursor[0] = max(0, game.cursor[0]-1)
-                    moved = True
-                if j_state['down']:
-                    game.cursor[1] = min(game.rows-1, game.cursor[1]+1)
-                    moved = True
-                if j_state['up']:
-                    game.cursor[1] = max(0, game.cursor[1]-1)
+            move_dir = None
+            if j_state['right']:
+                move_dir = 'right'
+            elif j_state['left']:
+                move_dir = 'left'
+            elif j_state['down']:
+                move_dir = 'down'
+            elif j_state['up']:
+                move_dir = 'up'
+
+            moved = False
+            if move_dir is None:
+                joy_dir_active = None
+            else:
+                should_move = False
+                if move_dir != joy_dir_active:
+                    joy_dir_active = move_dir
+                    joy_repeat_at = now + joy_repeat_initial
+                    should_move = True
+                elif now >= joy_repeat_at:
+                    joy_repeat_at = now + joy_repeat_interval
+                    should_move = True
+
+                if should_move:
+                    if move_dir == 'right':
+                        game.cursor[0] = min(game.cols-1, game.cursor[0]+1)
+                    elif move_dir == 'left':
+                        game.cursor[0] = max(0, game.cursor[0]-1)
+                    elif move_dir == 'down':
+                        game.cursor[1] = min(game.rows-1, game.cursor[1]+1)
+                    elif move_dir == 'up':
+                        game.cursor[1] = max(0, game.cursor[1]-1)
                     moved = True
 
-                if moved:
-                    joy_last_move = now
-                    cursor_vis = True
-                    # Mark old and new cursor tiles dirty
-                    game.dirty[prev_cursor[1]][prev_cursor[0]] = True
-                    game.dirty[game.cursor[1]][game.cursor[0]] = True
-                    game._needs_draw = True
-                    prev_cursor = [game.cursor[0], game.cursor[1]]
+            if moved:
+                cursor_vis = True
+                # Mark old and new cursor tiles dirty
+                game.dirty[game.idx(prev_cursor[0], prev_cursor[1])] = 1
+                game.dirty[game.idx(game.cursor[0], game.cursor[1])] = 1
+                game._needs_draw = True
+                prev_cursor = [game.cursor[0], game.cursor[1]]
 
             # Joystick Button
             if j_state['center']:
@@ -562,13 +661,14 @@ def main():
                 display.set_font(FONT_LARGE)
                 for r in range(ROWS):
                     for c in range(COLS):
-                        if not game.dirty[r][c]:
+                        idx = game.idx(c, r)
+                        if not game.dirty[idx]:
                             continue
-                        game.dirty[r][c] = False
+                        game.dirty[idx] = 0
                         xx = OFFSET_X + c * TILE_SIZE
                         yy = OFFSET_Y + r * TILE_SIZE
 
-                        force_rev = game.game_over and (game.data[r][c] == -1)
+                        force_rev = game.game_over and (game.data[idx] == MINE_VALUE)
                         draw_tile(display, game, c, r, xx, yy, TILE_SIZE, force_reveal=force_rev)
 
                         # Cursor Highlight
@@ -584,7 +684,6 @@ def main():
 
                 display.swap_buffers(copy=True)
                 game._needs_draw = False
-                time.sleep(0.01)
 
             elif ui_drawn:
                 display.swap_buffers(copy=True)

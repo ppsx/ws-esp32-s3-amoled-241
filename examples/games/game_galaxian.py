@@ -39,6 +39,7 @@ except ImportError:
 SCREEN_W = 600
 SCREEN_H = 450
 TARGET_FPS = 30
+HUD_HEIGHT = 24
 
 # Formation layout
 FORM_COLS = 10
@@ -338,7 +339,7 @@ class Game:
         self.stars = []
         for _ in range(STAR_COUNT):
             sx = random.randint(0, SCREEN_W - 1)
-            sy = random.randint(0, SCREEN_H - 1)
+            sy = random.randint(HUD_HEIGHT, SCREEN_H - 1)
             sp = random.choice((1, 2, 3))
             self.stars.append([sx, sy, sp])
 
@@ -363,6 +364,7 @@ class Game:
         self._hi_str = "0"
         self._prev_score = -1
         self._prev_hi = -1
+        self._prev_lives = -1
 
         # Sprite lookup tables (avoid dict lookups in hot loop)
         self._spr_cache = []
@@ -383,6 +385,7 @@ class Game:
         self._d_swap = display.swap_buffers
 
     def init_wave(self):
+        gc.collect()
         self.aliens = []
         # Row 0: Flagship — cols 4,5 (2 units, centered)
         for c in range(4, 6):
@@ -417,11 +420,15 @@ class Game:
         self.particle_count = 0
 
     def start_game(self):
+        gc.collect()
         self.score = 0
         self.lives = 3
         self.wave = 1
         self.player_x = SCREEN_W // 2 - PLAYER_W // 2
         self.hit_flash = 0
+        self._prev_score = -1
+        self._prev_hi = -1
+        self._prev_lives = -1
         self.state = 1
         self.init_wave()
 
@@ -618,6 +625,7 @@ class Game:
         self.bullet_active = False
         self.enemy_bullets.clear()
         if self.lives <= 0:
+            gc.collect()
             self.state = 3  # GAME_OVER
             self.state_timer = 90
 
@@ -660,7 +668,7 @@ class Game:
         for s in self.stars:
             s[1] += s[2]
             if s[1] >= SCREEN_H:
-                s[1] = 0
+                s[1] = HUD_HEIGHT
                 s[0] = random.randint(0, SCREEN_W - 1)
 
     # --- Main update ---
@@ -676,6 +684,7 @@ class Game:
             self.state_timer -= 1
             if self.state_timer <= 0:
                 if inp != DIR_NONE:
+                    gc.collect()
                     self.state = 0
             return
 
@@ -738,6 +747,7 @@ class Game:
         _blit = self._d_blit
         _fill_rect = self._d_fill_rect
         _fill_color = self._d_fill_color
+        _hud_h = HUD_HEIGHT
         _pixel = self._d_pixel
         _set_font = self._d_set_font
         _text = self._d_text
@@ -746,7 +756,7 @@ class Game:
         t0 = _mono()
 
         # 1. Clear
-        _fill_color(BLACK)
+        _fill_rect(0, _hud_h, SCREEN_W, SCREEN_H - _hud_h, BLACK)
         t1 = _mono()
 
         # 2. Stars
@@ -791,21 +801,23 @@ class Game:
 
         t4 = _mono()
 
-        # 6. HUD (cached score strings)
+        # 6. HUD
         if self.score != self._prev_score:
             self._score_str = str(self.score)
             self._prev_score = self.score
         if self.hi_score != self._prev_hi:
             self._hi_str = str(self.hi_score)
             self._prev_hi = self.hi_score
+        if self.lives != self._prev_lives:
+            self._prev_lives = self.lives
 
+        _fill_rect(0, 0, SCREEN_W, _hud_h, BLACK)
         _set_font(FONT_HUD)
         _text(10, 4, "1UP", color=RED)
         _text(60, 4, self._score_str, color=HUD_COLOR)
         _text(260, 4, "HI", color=RED)
         _text(300, 4, self._hi_str, color=HUD_COLOR)
 
-        # Lives
         _lc = LIVES_COLOR
         for i in range(self.lives):
             _fill_rect(540 + i * 18, 6, 12, 12, _lc)
@@ -842,33 +854,27 @@ class Game:
             self.prof_frame = 0
             self.prof_accum = [0.0] * 6
             self.prof_total = 0.0
-            gc.collect()
 
     def draw_title(self):
         d = self.display
         d.fill_color(BLACK)
 
-        # Stars
-        for s in self.stars:
-            d.pixel(s[0], s[1], STAR_COLORS[s[2] - 1])
-
-        d.set_font(FONT_TITLE)
-        # Center: "GALAXIAN"
         txt = "GALAXIAN"
-        tx = (SCREEN_W - len(txt) * CHAR_W_TITLE) // 2
-        d.text(tx, 160, txt, color=YELLOW)
+        sub = "Press any key"
+        tx = (SCREEN_W - len(txt) * 24) // 2
+        sx = (SCREEN_W - len(sub) * 16) // 2
 
-        d.set_font(FONT_HUD)
-        sub = "PRESS FIRE TO START"
-        sx = (SCREEN_W - len(sub) * CHAR_W_HUD) // 2
+        d.set_font(4)
+        d.text(tx, 160, txt, color=0x07E0)
+        d.set_font(2)
         d.text(sx, 220, sub, color=WHITE)
 
         if self.hi_score > 0:
-            hi = f"HI SCORE  {self.hi_score}"
-            hx = (SCREEN_W - len(hi) * CHAR_W_HUD) // 2
-            d.text(hx, 280, hi, color=GRAY_COLOR)
+            hi = f"BEST {self.hi_score}"
+            hx = (SCREEN_W - len(hi) * 16) // 2
+            d.text(hx, 260, hi, color=WHITE)
 
-        d.swap_buffers()
+        d.swap_buffers(copy=True)
 
     def draw_game_over(self):
         d = self.display

@@ -55,7 +55,7 @@ GRID_ROWS = 28  # Number of rows (reduced from 30 to make room for HUD bar)
 INITIAL_SPEED = 8  # Initial moves per second
 SPEED_INCREMENT = 0.5  # Speed increase per food eaten
 MAX_SPEED = 20  # Maximum speed
-SCORE_PER_FOOD = 10
+SCORE_PER_FOOD = 1
 
 # Font configuration
 FONT_HUD = rm690b0.FONT_16x16  # 16×16 Liberation Sans
@@ -428,31 +428,23 @@ def draw_hud(display, score, best, width):
 def draw_start_screen(display, best):
     """Draw start screen."""
     width = display.width
-    height = display.height
+    title = "SNAKE"
+    prompt = "Press any key"
+    title_x = (width - len(title) * 24) // 2
+    prompt_x = (width - len(prompt) * 16) // 2
 
-    display.fill_color(BG_COLOR)
-
-    title = "SNAKE GAME"
-    subtitle = "CENTER TO PLAY"
-    title_x = (width - text_pixel_width(title, FONT_TITLE)) // 2
-    subtitle_x = (width - text_pixel_width(subtitle, FONT_HUD)) // 2
-    draw_text(display, title, title_x, height // 2 - 30, HUD_COLOR, font_id=FONT_TITLE)
-    draw_text(
-        display, subtitle, subtitle_x, height // 2 + 6, HUD_COLOR, font_id=FONT_HUD
-    )
+    display.fill_color(rm690b0.BLACK)
+    display.set_font(4)
+    display.text(title_x, 160, title, 0x07E0)
+    display.set_font(2)
+    display.text(prompt_x, 220, prompt, HUD_COLOR)
 
     if best > 0:
         best_text = f"BEST {best}"
-        best_x = (width - text_pixel_width(best_text, FONT_HUD)) // 2
-        draw_text(
-            display, best_text, best_x, height // 2 + 34, HUD_COLOR, font_id=FONT_HUD
-        )
+        best_x = (width - len(best_text) * 16) // 2
+        display.text(best_x, 260, best_text, HUD_COLOR)
 
-    controls = "USE JOYSTICK TO MOVE"
-    controls_x = (width - text_pixel_width(controls, FONT_HUD)) // 2
-    draw_text(display, controls, controls_x, height - 60, HUD_COLOR, font_id=FONT_HUD)
-
-    display.swap_buffers()
+    display.swap_buffers(copy=True)
 
 
 def draw_game_over(display, score, best, width, height):

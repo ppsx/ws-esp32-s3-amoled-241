@@ -512,7 +512,6 @@ class Game:
         self.scatter_chase_phase = 0  # Track which phase we're in (0-6)
         self.ghosts_eaten_combo = 0  # Track consecutive ghost eats for bonus
         self.walls_drawn = False  # Track if static walls are drawn
-        self._gc_counter = 0
         self._last_drawn_score = -1
         self._last_drawn_lives = -1
 
@@ -1159,8 +1158,7 @@ class Game:
     def soft_reset(self):
         # Clear old entity positions before reset
         entities = [self.pacman] + self.ghosts
-        for e in entities:
-            self.clear_entity_area(e)
+        self.restore_entity_tiles(entities)
 
         # Force full redraw after reset to clean up any remaining artifacts
         self.walls_drawn = False
@@ -1230,56 +1228,72 @@ class Game:
         level_name = map_names[self.current_map_index]
         draw_text(self.display, level_name, ui_x, ui_y + 180, COLOR_PACMAN)
 
-    def clear_entity_area(self, entity):
-        """Clear area where entity was in pixels, then restore background tiles"""
-        # Entity radius is 7 pixels, add margin for safety
-        radius = 9
+    def draw_map_tile(self, gx, gy):
+        char = self.grid[gy][gx]
+        px = int(gx * TILE_SIZE + MAP_OFFSET_X)
+        py = int(gy * TILE_SIZE + MAP_OFFSET_Y)
 
-        # Calculate pixel coordinates
-        prev_px = int(entity.prev_x * TILE_SIZE + MAP_OFFSET_X + TILE_SIZE / 2)
-        prev_py = int(entity.prev_y * TILE_SIZE + MAP_OFFSET_Y + TILE_SIZE / 2)
+        # Always clear the full tile first. Pellets, power pellets and doors
+        # do not cover the entire tile area, so without this stale entity
+        # pixels remain visible after restore.
+        self.display.fill_rect(px, py, TILE_SIZE, TILE_SIZE, COLOR_BLACK)
 
-        # Clear circular area in pixels
-        clear_x = prev_px - radius
-        clear_y = prev_py - radius
-        clear_size = radius * 2
+        if char == CHAR_WALL:
+            self.display.fill_rect(px, py, TILE_SIZE, TILE_SIZE, COLOR_WALL)
+            self.display.fill_rect(
+                px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6, COLOR_BLACK
+            )
+        elif char == CHAR_DOOR:
+            self.display.fill_rect(px, py + 6, TILE_SIZE, 2, COLOR_GHOST_PINK)
+        elif char == CHAR_PELLET:
+            self.display.fill_rect(px + 6, py + 6, 2, 2, COLOR_PELLET)
+        elif char == CHAR_POWER:
+            self.display.fill_circle(px + 7, py + 7, 5, COLOR_POWER)
 
-        # Clear the rectangular area containing the circle
-        self.display.fill_rect(clear_x, clear_y, clear_size, clear_size, COLOR_BLACK)
+    def restore_entity_tiles(self, entities):
+        dirty_tiles = set()
+        tunnel_clear_rects = []
+        map_left = MAP_OFFSET_X
+        map_right = MAP_OFFSET_X + self.width * TILE_SIZE
 
-        # Now restore any tiles that overlap with this area
-        min_gx = max(0, int(entity.prev_x - 1.0))
-        max_gx = min(self.width - 1, int(entity.prev_x + 1.0))
-        min_gy = max(0, int(entity.prev_y - 1.0))
-        max_gy = min(self.height - 1, int(entity.prev_y + 1.0))
+        for entity in entities:
+            radius = entity.radius
+            for ex, ey in ((entity.prev_x, entity.prev_y), (entity.x, entity.y)):
+                px = int(ex * TILE_SIZE + MAP_OFFSET_X + TILE_SIZE / 2)
+                py = int(ey * TILE_SIZE + MAP_OFFSET_Y + TILE_SIZE / 2)
 
-        for gy in range(min_gy, max_gy + 1):
-            for gx in range(min_gx, max_gx + 1):
-                char = self.grid[gy][gx]
-                px = int(gx * TILE_SIZE + MAP_OFFSET_X)
-                py = int(gy * TILE_SIZE + MAP_OFFSET_Y)
+                min_px = px - radius
+                max_px = px + radius
+                min_py = py - radius
+                max_py = py + radius
 
-                # Restore walls/doors (static elements)
-                if char == CHAR_WALL:
-                    self.display.fill_rect(px, py, TILE_SIZE, TILE_SIZE, COLOR_WALL)
-                    self.display.fill_rect(
-                        px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6, COLOR_BLACK
-                    )
-                elif char == CHAR_DOOR:
-                    self.display.fill_rect(px, py + 6, TILE_SIZE, 2, COLOR_GHOST_PINK)
-                # Restore pellets
-                elif char == CHAR_PELLET:
-                    self.display.fill_rect(px + 6, py + 6, 2, 2, COLOR_PELLET)
-                elif char == CHAR_POWER:
-                    self.display.fill_circle(px + 7, py + 7, 5, COLOR_POWER)
+                min_gx = (min_px - MAP_OFFSET_X) // TILE_SIZE
+                max_gx = (max_px - MAP_OFFSET_X) // TILE_SIZE
+                min_gy = max(0, (min_py - MAP_OFFSET_Y) // TILE_SIZE)
+                max_gy = min(self.height - 1, (max_py - MAP_OFFSET_Y) // TILE_SIZE)
+
+                for gy in range(min_gy, max_gy + 1):
+                    for raw_gx in range(min_gx, max_gx + 1):
+                        dirty_tiles.add((raw_gx % self.width, gy))
+
+                if min_px < map_left:
+                    tunnel_clear_rects.append((0, min_py, map_left, max_py - min_py + 1))
+                if max_px >= map_right:
+                    tunnel_clear_rects.append((map_right, min_py, TILE_SIZE, max_py - min_py + 1))
+
+        for gx, gy in dirty_tiles:
+            self.draw_map_tile(gx, gy)
+
+        for x, y, w, h in tunnel_clear_rects:
+            if h <= 0:
+                continue
+            clip_y = max(MAP_OFFSET_Y, y)
+            clip_h = min(MAP_OFFSET_Y + self.height * TILE_SIZE, y + h) - clip_y
+            if clip_h > 0:
+                self.display.fill_rect(x, clip_y, w, clip_h, COLOR_BLACK)
 
     def draw(self):
         """Dirty regions optimization - walls once, entities every frame"""
-        self._gc_counter += 1
-        if self._gc_counter >= 60:
-            gc.collect()
-            self._gc_counter = 0
-
         # First frame - draw everything
         if not self.walls_drawn:
             self.display.fill_color(COLOR_BLACK)
@@ -1287,23 +1301,7 @@ class Game:
             # Draw all tiles
             for y in range(self.height):
                 for x in range(self.width):
-                    char = self.grid[y][x]
-                    px = int(x * TILE_SIZE + MAP_OFFSET_X)
-                    py = int(y * TILE_SIZE + MAP_OFFSET_Y)
-
-                    if char == CHAR_WALL:
-                        self.display.fill_rect(px, py, TILE_SIZE, TILE_SIZE, COLOR_WALL)
-                        self.display.fill_rect(
-                            px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6, COLOR_BLACK
-                        )
-                    elif char == CHAR_DOOR:
-                        self.display.fill_rect(
-                            px, py + 6, TILE_SIZE, 2, COLOR_GHOST_PINK
-                        )
-                    elif char == CHAR_PELLET:
-                        self.display.fill_rect(px + 6, py + 6, 2, 2, COLOR_PELLET)
-                    elif char == CHAR_POWER:
-                        self.display.fill_circle(px + 7, py + 7, 5, COLOR_POWER)
+                    self.draw_map_tile(x, y)
 
             self.draw_ui()
             self._last_drawn_score = self.pacman.score
@@ -1334,10 +1332,8 @@ class Game:
             self.walls_drawn = True
             return
 
-        # Subsequent frames - only clear/redraw entity areas (dirty regions!)
-        self.clear_entity_area(self.pacman)
-        for g in self.ghosts:
-            self.clear_entity_area(g)
+        # Subsequent frames - restore each overlapping tile only once
+        self.restore_entity_tiles([self.pacman] + self.ghosts)
 
         # Redraw UI only when score or lives changed
         if (self.pacman.score != self._last_drawn_score or
@@ -1368,19 +1364,17 @@ class Game:
         self.display.swap_buffers()
 
     def draw_welcome(self):
-        self.display.fill_color(COLOR_BLACK)
-        w = self.display.width
-        h = self.display.height
-
         title = "PAC-MAN"
-        t_w = text_width(title)
-        draw_text(self.display, title, (w - t_w) // 2, h // 2 - 40, COLOR_PACMAN)
+        prompt = "Press any key"
+        title_x = (self.display.width - len(title) * 24) // 2
+        prompt_x = (self.display.width - len(prompt) * 16) // 2
 
-        sub = "CLICK OR SWIPE TO PLAY"
-        s_w = text_width(sub)
-        draw_text(self.display, sub, (w - s_w) // 2, h // 2 + 20, COLOR_WHITE)
-
-        self.display.swap_buffers()
+        self.display.fill_color(COLOR_BLACK)
+        self.display.set_font(4)
+        self.display.text(title_x, 160, title, 0x07E0)
+        self.display.set_font(2)
+        self.display.text(prompt_x, 220, prompt, COLOR_WHITE)
+        self.display.swap_buffers(copy=True)
 
     def draw_game_over(self):
         # Clear entire screen to remove all previous content
