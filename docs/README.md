@@ -1,11 +1,17 @@
 # RM690B0 Documentation Index
 
-This directory tracks the standalone `rm690b0` driver workstream (branch: `display-list`) for Waveshare ESP32-S3 AMOLED 2.41.
+This directory tracks the standalone `rm690b0` driver documentation for Waveshare ESP32-S3 AMOLED 2.41.
 
-## Current Status (2026-03-06)
+## Start Here
+
+- Human-oriented status and decisions: [project_status_summary.md](project_status_summary.md)
+- AI/bootstrap context: [project_summary.yaml](project_summary.yaml)
+
+## Current Status (2026-03-07)
 
 - `FRAMEBUFFER` and `DISPLAY_LIST` backends co-exist and are runtime-switchable (`render_mode`).
 - DISPLAY_LIST performance hardening is closed for the current v1 baseline.
+- FRAMEBUFFER tuning is also closed for the current baseline; the remaining work is optional (`rotation != 0` specialization) rather than required performance recovery.
 - Final DL runtime defaults in firmware:
   - `RM690B0_DL_GLYPH_ATLAS_SLOTS = 40`
   - `RM690B0_DL_AUTO_COMPACT_EVERY_N_FRAMES = 24`
@@ -15,9 +21,10 @@ This directory tracks the standalone `rm690b0` driver workstream (branch: `displ
 - `BUFFER_SINGLE` is recommended default for DL. The driver still tries to allocate a second static DMA chunk buffer (best-effort), so ping-pong can still be used when memory allows.
 - Mixed `FRAMEBUFFER` + `DISPLAY_LIST` drawing in one frame remains intentionally blocked.
 - Latest FB tuning loop outcome:
-  - kept: unswapped BLIT span helper optimization (`blit_buffer`, transparent run-copy path),
-  - reverted: aggressive dirty coalescing policy variant (measured regression in retained BLIT workload).
-- `benchmark_fb_profile.py` runtime `NameError` (stray token at EOF) was fixed.
+  - kept: FB text dirty batching, adaptive dirty flush planning, transparent BLIT run-copy/span helper, partial flush row-copy fast path, and copy-back rect coalescing for `swap_buffers(copy=True)`,
+  - reverted: aggressive dirty coalescing policy variant and narrow-partial chunk heuristic after measured retained-BLIT regression.
+- `benchmark_fb_profile.py` fixes are in place: stray EOF token removed, `scenario_end` metrics now reflect the whole scenario, and `compare_fb_profile.py` baseline matches the canonical FB profile gate.
+- Pre-built firmware artifacts are available in `../firmware/` for both variants (`firmware-rm690b0` and `firmware-rm690b0-lvgl`), each as `.bin` and `.uf2`. Use `.bin` with `esptool.py`; keep `.uf2` as a distribution artifact for UF2-aware tooling.
 
 ## Runtime Guidance
 
@@ -37,14 +44,14 @@ This directory tracks the standalone `rm690b0` driver workstream (branch: `displ
 - [project_status_summary.md](project_status_summary.md)
   - Executive status and immediate priorities.
 - [project_summary.yaml](project_summary.yaml)
-  - Machine-readable project snapshot.
-- [snapshot.txt](snapshot.txt)
-  - Compact status dump for tooling/automation.
+  - Short machine-readable bootstrap context for AI/tools.
 - [RM690B0_LVGL.md](RM690B0_LVGL.md)
   - LVGL integration reference (maintained separately).
+- [../firmware/README.md](../firmware/README.md)
+  - Pre-built firmware artifact matrix and flashing instructions.
 - `examples/benchmark_gfx/benchmark_fb_profile.py`
   - Full FB profile benchmark (CSV generator).
 - `examples/benchmark_gfx/compare_fb_profile.py`
   - FB profile regression gate (PASS/FAIL for key scenarios).
 
-Last updated: `2026-03-06`
+Last updated: `2026-03-07`

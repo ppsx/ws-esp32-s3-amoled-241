@@ -1,12 +1,17 @@
 # Copyright (c) 2025 Przemyslaw Patrick Socha
 
 """
-Bouncing Ball with Background Image (Pre-rendered Sprite with Transparency)
-============================================================================
+High FPS Bouncing Ball Animation (Pre-rendered Sprite with Transparency)
+=========================================================================
 
 Demonstrates high-performance sprite rendering using pre-rendered sprites
 with transparency. The ball sprite is rendered ONCE at startup, then blitted
 with transparent_color=0x0000 for maximum performance.
+
+Instead of clearing the full screen each frame (12.8ms), this version:
+1. Clears only the OLD ball position with black fill_rect
+2. Blits pre-rendered sprite at NEW position with transparency
+3. swap_buffers() flushes only dirty regions
 
 This approach is 5-10× faster than drawing primitives every frame.
 """
@@ -24,12 +29,9 @@ import rm690b0
 DURATION = 15  # Animation duration in seconds
 SPEED = 8.0  # Ball speed (pixels per frame)
 BALL_RADIUS = 20  # Ball radius in pixels
-BACKGROUND_PATH = "/gfx/cerber.raw"  # Background image path
-WIDTH = 600
-HEIGHT = 450
 
 
-def pre_render_ball_sprite(display, radius):
+def pre_render_ball_sprite(radius):
     """
     Pre-render ball sprite ONCE with all effects.
 
@@ -50,7 +52,7 @@ def pre_render_ball_sprite(display, radius):
 
     print(f"Pre-rendering ball sprite ({sprite_w}×{sprite_h})...")
 
-    # Create temporary off-screen buffer (black background)
+    # Create sprite buffer (black background for transparency)
     sprite_data = bytearray(sprite_w * sprite_h * 2)
 
     # Helper: set pixel in sprite buffer (RGB565 little-endian)
@@ -150,13 +152,19 @@ def pre_render_ball_sprite(display, radius):
 
 
 class HighFPSBall:
-    """High performance bouncing ball using pre-rendered sprite with transparency"""
+    """High performance bouncing ball using pre-rendered sprite with transparency optimized for DISPLAY_LIST.
 
-    def __init__(self, x, y, vx, vy, radius, display_width, display_height, background, sprite_data, sprite_w, sprite_h, offset_x, offset_y):
+    In DISPLAY_LIST mode with copy=False, the command list is cleared every frame.
+    To correctly update the screen without full redraw, we compute the AABB of the
+    old and new ball positions. We draw a black rect over the AABB, and then the new ball.
+    The DL engine will only rasterize and update this minimal AABB.
+    """
+
+    def __init__(self, x, y, vx, vy, radius, display_width, display_height, sprite_data, sprite_w, sprite_h, offset_x, offset_y):
         # Float positions for precise motion (prevents cumulative rounding errors)
         self.fx = float(x)
         self.fy = float(y)
-        # Int positions (aligned) for rendering
+        # Int positions for rendering
         self.x = x
         self.y = y
         self.vx = vx
@@ -164,7 +172,6 @@ class HighFPSBall:
         self.radius = radius
         self.display_width = display_width
         self.display_height = display_height
-        self.background = background
 
         # Pre-rendered sprite data
         self.sprite_data = sprite_data
@@ -173,11 +180,9 @@ class HighFPSBall:
         self.offset_x = offset_x  # Ball center offset within sprite
         self.offset_y = offset_y
 
-        # Track previous position PER BUFFER for double-buffering coherence
-        # buf_idx alternates 0/1 with each swap
-        self.buf_idx = 0
-        self.prev_x = [x, x]  # per-buffer previous X
-        self.prev_y = [y, y]  # per-buffer previous Y
+        # Only one previous position needed for DISPLAY_LIST (no double-buffer tracking)
+        self.prev_x = x
+        self.prev_y = y
 
     def update(self):
         """Update ball position and handle edge bouncing"""
@@ -187,119 +192,101 @@ class HighFPSBall:
         self.x = int(self.fx)
         self.y = int(self.fy)
 
-        # Bounce off edges (keep float and int synchronized)
-        if self.x - self.radius <= 0:
-            self.x = self.radius
-            self.fx = float(self.radius)
+        # Bounce off edges with border margin (keep float and int synchronized)
+        # Increase border margin to keep aligned AABB completely clear of the border
+        border_margin = 10
+
+        if self.x - self.radius <= border_margin:
+            self.x = self.radius + border_margin
+            self.fx = float(self.radius + border_margin)
             self.vx = abs(self.vx)
-        elif self.x + self.radius >= self.display_width:
-            self.x = self.display_width - self.radius
-            self.fx = float(self.display_width - self.radius)
+        elif self.x + self.radius >= self.display_width - 1 - border_margin:
+            self.x = self.display_width - 1 - self.radius - border_margin
+            self.fx = float(self.display_width - 1 - self.radius - border_margin)
             self.vx = -abs(self.vx)
 
-        if self.y - self.radius <= 0:
-            self.y = self.radius
-            self.fy = float(self.radius)
+        if self.y - self.radius <= border_margin:
+            self.y = self.radius + border_margin
+            self.fy = float(self.radius + border_margin)
             self.vy = abs(self.vy)
-        elif self.y + self.radius >= self.display_height:
-            self.y = self.display_height - self.radius
-            self.fy = float(self.display_height - self.radius)
+        elif self.y + self.radius >= self.display_height - 1 - border_margin:
+            self.y = self.display_height - 1 - self.radius - border_margin
+            self.fy = float(self.display_height - 1 - self.radius - border_margin)
             self.vy = -abs(self.vy)
 
-    def clear_previous(self, display):
-        """Restore background at previous ball position for CURRENT back buffer"""
-        bi = self.buf_idx
-        px = self.prev_x[bi]
-        py = self.prev_y[bi]
+    def update_display(self, display):
+        """Update display by computing AABB, erasing it, and drawing new ball"""
+        # 1. Compute AABB (Axis-Aligned Bounding Box) of old and new sprite positions
+        prev_sx = int(self.prev_x) - self.offset_x
+        prev_sy = int(self.prev_y) - self.offset_y
+        curr_sx = int(self.x) - self.offset_x
+        curr_sy = int(self.y) - self.offset_y
 
-        # Calculate sprite top-left corner at previous position for this buffer
-        sprite_x = px - self.offset_x
-        sprite_y = py - self.offset_y
+        # Compute combined AABB
+        x1 = max(0, min(prev_sx, curr_sx))
+        y1 = max(0, min(prev_sy, curr_sy))
+        x2 = min(self.display_width, max(prev_sx + self.sprite_w, curr_sx + self.sprite_w))
+        y2 = min(self.display_height, max(prev_sy + self.sprite_h, curr_sy + self.sprite_h))
 
-        # Calculate the region to restore (sprite bounding box)
-        x1 = max(0, sprite_x)
-        y1 = max(0, sprite_y)
-        x2 = min(self.display_width, sprite_x + self.sprite_w)
-        y2 = min(self.display_height, sprite_y + self.sprite_h)
+        # Align AABB to 4-pixel boundaries to perfectly match C driver dirty tracking
+        x1 = x1 & ~3
+        y1 = y1 & ~3
+        x2 = min(self.display_width, (x2 + 3) & ~3)
+        y2 = min(self.display_height, (y2 + 3) & ~3)
+
         w = x2 - x1
         h = y2 - y1
 
         if w > 0 and h > 0:
-            # Blit the background region directly using native C slicing 
-            # (zero Python memory allocations or loops)
-            display.blit_buffer(
-                x1, y1,
-                self.display_width, self.display_height,
-                self.background,
-                src_x1=x1, src_y1=y1, src_x2=x2, src_y2=y2
-            )
+            # Submit AABB clear (this clears the old ball AND sets black background for whole dirty area)
+            display.fill_rect(x1, y1, w, h, rm690b0.BLACK)
 
-    def draw(self, display):
-        """Blit pre-rendered sprite with transparency at current position"""
-        # Save current position for THIS buffer (will be cleared next time this buffer is back)
-        bi = self.buf_idx
-        self.prev_x[bi] = self.x
-        self.prev_y[bi] = self.y
-
-        # Calculate sprite top-left corner (ball center - offset)
-        sprite_x = self.x - self.offset_x
-        sprite_y = self.y - self.offset_y
-
-        # Blit sprite with black (0x0000) as transparent color
+        # 2. Draw new ball sprite with transparency
         display.blit_buffer(
-            sprite_x, sprite_y,
+            curr_sx, curr_sy,
             self.sprite_w, self.sprite_h,
             self.sprite_data,
             transparent_color=0x0000
         )
 
-    def on_swap(self):
-        """Call after swap_buffers to toggle buffer index"""
-        self.buf_idx ^= 1
-
-
-def load_background(path):
-    """Load background image from RAW RGB565 file"""
-    print(f"Loading background from {path}...")
-    fb = bytearray(WIDTH * HEIGHT * 2)
-    with open(path, "rb") as f:
-        read = f.readinto(fb)
-        if read != len(fb):
-            raise RuntimeError("Background file is the wrong size")
-    print("Background loaded")
-    return fb
+        # 3. Update previous position
+        self.prev_x = self.x
+        self.prev_y = self.y
 
 
 def main():
-    """Main animation loop with background"""
+    """Main high FPS animation loop"""
     print("\n" + "=" * 70)
-    print("  BOUNCING BALL WITH BACKGROUND IMAGE")
+    print("  HIGH FPS BOUNCING BALL ANIMATION")
     print("=" * 70)
 
     # Initialize display
     print("\nInitializing display...")
-    display = rm690b0.RM690B0()
+    display = rm690b0.RM690B0(render_mode=rm690b0.RENDER_DISPLAY_LIST)
     display.init_display()
     display.brightness = 1.0
 
-    # Enable double-buffering
-    print("Enabling double-buffering...")
+    # Enable double-buffering for dirty region optimization
+    print("Enabling double-buffering with dirty regions...")
     display.swap_buffers()
-    print("✓ Display ready\n")
+    print("Display ready for high FPS animation\n")
 
-    # Load background
-    background = load_background(BACKGROUND_PATH)
+    # Display dimensions
+    width = display.width
+    height = display.height
 
-    # Display background on BOTH buffers (required for copy=False coherence)
-    print("Displaying background...")
-    display.blit_buffer(0, 0, WIDTH, HEIGHT, background)
+    # Draw static border on BOTH buffers (required for copy=False coherence)
+    print("Drawing static border...")
+    display.fill_color(rm690b0.BLACK)
+    display.rect(0, 0, width, height, 0x4208)  # Dark gray border
     display.swap_buffers()
-    display.blit_buffer(0, 0, WIDTH, HEIGHT, background)
-    print("✓ Background displayed\n")
+    display.fill_color(rm690b0.BLACK)
+    display.rect(0, 0, width, height, 0x4208)
+    print("Border ready\n")
 
     # Random starting position
-    start_x = random.randint(BALL_RADIUS + 20, WIDTH - BALL_RADIUS - 20)
-    start_y = random.randint(BALL_RADIUS + 20, HEIGHT - BALL_RADIUS - 20)
+    start_x = random.randint(BALL_RADIUS + 20, width - BALL_RADIUS - 20)
+    start_y = random.randint(BALL_RADIUS + 20, height - BALL_RADIUS - 20)
 
     # Random velocity
     vx = SPEED * (random.random() * 2 - 1)
@@ -313,7 +300,7 @@ def main():
 
     # Pre-render ball sprite ONCE (major performance optimization!)
     print("Pre-rendering ball sprite...")
-    sprite_data, sprite_w, sprite_h, offset_x, offset_y = pre_render_ball_sprite(display, BALL_RADIUS)
+    sprite_data, sprite_w, sprite_h, offset_x, offset_y = pre_render_ball_sprite(BALL_RADIUS)
     print(f"✓ Sprite size: {sprite_w}×{sprite_h}, center offset: ({offset_x}, {offset_y})\n")
 
     print(f"Configuration:")
@@ -322,17 +309,21 @@ def main():
     print(f"  Initial velocity: ({vx:.2f}, {vy:.2f})")
     print(f"  Duration: {DURATION} seconds")
     print(f"  Rendering: Pre-rendered sprite with transparency\n")
+    print(f"\nHIGH FPS MODE: Using dirty region optimization + sprite blitting!")
+    print(f"   • Only clearing old sprite position (not full screen)")
+    print(f"   • Using pre-rendered sprite with transparency")
+    print(f"   • Only flushing changed regions")
 
     # Create ball with pre-rendered sprite
     ball = HighFPSBall(
-        start_x, start_y, vx, vy, BALL_RADIUS, WIDTH, HEIGHT, background,
+        start_x, start_y, vx, vy, BALL_RADIUS, width, height,
         sprite_data, sprite_w, sprite_h, offset_x, offset_y
     )
 
     # Animation loop
     start_time = time.monotonic()
     frame_count = 0
-    fps_update_interval = 30
+    fps_update_interval = 30  # Update FPS display every 30 frames
 
     # For FPS calculation
     last_fps_time = start_time
@@ -343,18 +334,14 @@ def main():
     while time.monotonic() - start_time < DURATION:
         frame_start = time.monotonic()
 
-        # Restore background at old ball position (per-buffer tracking)
-        ball.clear_previous(display)
-
         # Update physics
         ball.update()
 
-        # Draw ball at new position (saves pos for this buffer)
-        ball.draw(display)
+        # Update display (clears AABB and draws new ball)
+        ball.update_display(display)
 
-        # Swap buffers and toggle buffer index
+        # Swap and clear list
         display.swap_buffers(copy=False)
-        ball.on_swap()
 
         frame_count += 1
 
@@ -364,6 +351,7 @@ def main():
             elapsed = current_time - last_fps_time
             frames_rendered = frame_count - last_fps_frame
             current_fps = frames_rendered / elapsed if elapsed > 0 else 0
+
             remaining = DURATION - (current_time - start_time)
             print(
                 f"Frame {frame_count:4d} | FPS: {current_fps:6.1f} | Remaining: {remaining:4.1f}s"
@@ -394,7 +382,7 @@ def main():
     display.swap_buffers()
     display.deinit()
 
-    print("\n Animation finished!\n")
+    print("\nAnimation finished!\n")
 
 
 if __name__ == "__main__":

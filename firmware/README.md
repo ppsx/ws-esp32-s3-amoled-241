@@ -2,9 +2,28 @@
 
 Pre-built CircuitPython 10.1.3 firmware with RM690B0 display driver support.
 
-## Available Firmware Versions
+The repository publishes two firmware variants and each variant is stored in two file formats:
 
-### 1. `firmware-rm690b0.bin` (Stable - Recommended)
+- `.bin` — canonical image for `esptool.py` flashing
+- `.uf2` — matching packaged image for UF2-aware tooling / distribution
+
+If you are flashing manually from the shell, use the `.bin` files.
+
+## Available Firmware Artifacts
+
+| Variant | Status | `.bin` | `.uf2` |
+| ------- | ------ | ------ | ------ |
+| Stable standalone | Recommended | `firmware-rm690b0.bin` (`1900432` bytes) | `firmware-rm690b0.uf2` (`3670016` bytes) |
+| LVGL build | Functional with known issues | `firmware-rm690b0-lvgl.bin` (`2124640` bytes) | `firmware-rm690b0-lvgl.uf2` (`4118528` bytes) |
+
+**Rule of thumb:**
+
+- Use `.bin` with `esptool.py`
+- Use `.uf2` only when your flashing workflow/tool explicitly expects UF2
+
+## Firmware Variants
+
+### 1. Stable standalone build (`firmware-rm690b0.bin` / `firmware-rm690b0.uf2`)
 
 **Status:** ✅ Production Ready
 
@@ -26,11 +45,11 @@ Pre-built CircuitPython 10.1.3 firmware with RM690B0 display driver support.
 - Simple UIs
 - Fast performance requirements
 
-**Size:** ~2-3 MB
+**Published artifacts:** `firmware-rm690b0.bin` (`1900432` bytes), `firmware-rm690b0.uf2` (`3670016` bytes)
 
 ---
 
-### 2. `firmware-rm690b0-lvgl.bin` (Beta)
+### 2. LVGL build (`firmware-rm690b0-lvgl.bin` / `firmware-rm690b0-lvgl.uf2`)
 
 **Status:** ⚠️ Functional with Known Issues
 
@@ -59,7 +78,7 @@ Pre-built CircuitPython 10.1.3 firmware with RM690B0 display driver support.
 - Load TTF fonts once at startup
 - Minimize large heap allocations during interaction
 
-**Size:** ~3-4 MB
+**Published artifacts:** `firmware-rm690b0-lvgl.bin` (`2124640` bytes), `firmware-rm690b0-lvgl.uf2` (`4118528` bytes)
 
 ---
 
@@ -85,6 +104,8 @@ Pre-built CircuitPython 10.1.3 firmware with RM690B0 display driver support.
 ---
 
 ### Method 1: Quick Flash (Recommended)
+
+Use the `.bin` artifacts below. They are the canonical images for `esptool.py`.
 
 **Linux/macOS:**
 
@@ -156,7 +177,7 @@ esptool.py --chip esp32s3 -p COM3 erase_flash
 
 #### Step 3: Flash Firmware
 
-Choose your firmware version:
+Choose your firmware variant. For command-line flashing, use the `.bin` artifact that matches the variant you want:
 
 **Option A: Stable (rm690b0 only):**
 
@@ -368,6 +389,15 @@ Board will automatically run this on reset.
 
 ---
 
+## Choosing the Right Artifact
+
+- `firmware-rm690b0.bin`: stable standalone image for `esptool.py`
+- `firmware-rm690b0.uf2`: same stable image packaged as UF2
+- `firmware-rm690b0-lvgl.bin`: LVGL-enabled image for `esptool.py`
+- `firmware-rm690b0-lvgl.uf2`: same LVGL image packaged as UF2
+
+If you do not have a specific UF2-based flashing flow, pick the `.bin` file.
+
 ## Switching Between Versions
 
 You can switch between firmware versions at any time:
@@ -479,7 +509,7 @@ esptool.py --chip esp32s3 -p /dev/ttyACM0 \
 
 ### Modules Included
 
-**firmware-rm690b0.bin:**
+**Stable standalone variant (`firmware-rm690b0.bin` / `firmware-rm690b0.uf2`):**
 
 - `rm690b0` - Display driver
 - `board` - Pin definitions
@@ -495,7 +525,7 @@ esptool.py --chip esp32s3 -p /dev/ttyACM0 \
 - `sdioio` - SD card support (1-bit mode)
 - Standard CircuitPython libraries
 
-**firmware-rm690b0-lvgl.bin:**
+**LVGL variant (`firmware-rm690b0-lvgl.bin` / `firmware-rm690b0-lvgl.uf2`):**
 
 - All modules from `firmware-rm690b0.bin`
 - `rm690b0_lvgl` - LVGL integration

@@ -9,7 +9,7 @@ import rm690b0
 import time
 import gc
 
-DOUBLE_BUFF = False  # Draw to back-buffer (RAM) to match displayio bitmap-write behavior
+DOUBLE_BUFF = True  # Draw to back-buffer (RAM) to match displayio bitmap-write behavior
 
 
 class BenchmarkResult:
@@ -140,7 +140,7 @@ def main():
 
     # Initialize display
     print("\nInitializing display...")
-    display = rm690b0.RM690B0()
+    display = rm690b0.RM690B0(render_mode=rm690b0.RENDER_DISPLAY_LIST)
     display.init_display()
     display.brightness = 1.0
 
@@ -169,21 +169,21 @@ def main():
         "hline - short (50px)",
         "Lines",
         lambda: display.hline(100, 100, 50, 0xFFFF),
-        iterations=1000,
+        iterations=100,
     )
 
     runner.run_test(
         "hline - medium (200px)",
         "Lines",
         lambda: display.hline(100, 100, 200, 0xFFFF),
-        iterations=500,
+        iterations=100,
     )
 
     runner.run_test(
         "hline - long (500px)",
         "Lines",
         lambda: display.hline(50, 100, 500, 0xFFFF),
-        iterations=200,
+        iterations=100,
     )
 
     # TEST 3: VERTICAL LINES
@@ -192,21 +192,21 @@ def main():
         "vline - short (50px)",
         "Lines",
         lambda: display.vline(100, 100, 50, 0xFFFF),
-        iterations=1000,
+        iterations=100,
     )
 
     runner.run_test(
         "vline - medium (200px)",
         "Lines",
         lambda: display.vline(100, 100, 200, 0xFFFF),
-        iterations=500,
+        iterations=100,
     )
 
     runner.run_test(
         "vline - long (400px)",
         "Lines",
         lambda: display.vline(100, 25, 400, 0xFFFF),
-        iterations=200,
+        iterations=100,
     )
 
     # TEST 4: DIAGONAL LINES
@@ -215,14 +215,14 @@ def main():
         "line - short diagonal (50px)",
         "Lines",
         lambda: display.line(100, 100, 150, 150, 0xFFFF),
-        iterations=500,
+        iterations=100,
     )
 
     runner.run_test(
         "line - medium diagonal (200px)",
         "Lines",
         lambda: display.line(100, 100, 300, 300, 0xFFFF),
-        iterations=200,
+        iterations=100,
     )
 
     runner.run_test(
@@ -238,21 +238,21 @@ def main():
         "fill_rect - tiny (10x10)",
         "Rectangles",
         lambda: display.fill_rect(100, 100, 10, 10, 0x07E0),
-        iterations=1000,
+        iterations=100,
     )
 
     runner.run_test(
         "fill_rect - small (50x50)",
         "Rectangles",
         lambda: display.fill_rect(100, 100, 50, 50, 0x07E0),
-        iterations=500,
+        iterations=100,
     )
 
     runner.run_test(
         "fill_rect - medium (100x100)",
         "Rectangles",
         lambda: display.fill_rect(100, 100, 100, 100, 0x07E0),
-        iterations=200,
+        iterations=100,
     )
 
     runner.run_test(
@@ -282,21 +282,21 @@ def main():
         "rect - small (50x50)",
         "Outlines",
         lambda: display.rect(100, 100, 50, 50, 0x001F),
-        iterations=500,
+        iterations=100,
     )
 
     runner.run_test(
         "rect - medium (100x100)",
         "Outlines",
         lambda: display.rect(100, 100, 100, 100, 0x001F),
-        iterations=300,
+        iterations=100,
     )
 
     runner.run_test(
         "rect - large (200x200)",
         "Outlines",
         lambda: display.rect(100, 100, 200, 200, 0x001F),
-        iterations=200,
+        iterations=100,
     )
 
     runner.run_test(
@@ -319,14 +319,14 @@ def main():
         "circle - small (r=10)",
         "Circles",
         lambda: display.circle(300, 225, 10, 0xFFE0),
-        iterations=500,
+        iterations=100,
     )
 
     runner.run_test(
         "circle - medium (r=50)",
         "Circles",
         lambda: display.circle(300, 225, 50, 0xFFE0),
-        iterations=200,
+        iterations=100,
     )
 
     runner.run_test(
@@ -362,7 +362,7 @@ def main():
         "fill_circle - small (r=10)",
         "Circles",
         lambda: display.fill_circle(300, 225, 10, 0xF81F),
-        iterations=200,
+        iterations=100,
     )
 
     runner.run_test(
@@ -392,7 +392,7 @@ def main():
         "pixel - single draw",
         "Pixels",
         lambda: display.pixel(100, 100, 0xFFFF),
-        iterations=1000,
+        iterations=100,
     )
 
     # PRINT RESULTS TABLE

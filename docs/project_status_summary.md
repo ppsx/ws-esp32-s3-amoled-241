@@ -1,11 +1,16 @@
 # RM690B0 Driver — Project Status
 
-## Overall Readiness (2026-03-06)
+## Overall Readiness (2026-03-07)
+
+## Documentation Roles
+
+- `docs/project_status_summary.md` is the human-oriented status document and should carry the current narrative state, decisions, and risks.
+- `docs/project_summary.yaml` is the compact bootstrap context for AI/tools and should remain short, factual, and easy to ingest.
 
 - Standalone `rm690b0` backend is active and maintained.
 - Rendering backends are dual-path and runtime-switchable: `FRAMEBUFFER` / `DISPLAY_LIST`.
 - DISPLAY_LIST hardening is complete for current v1 baseline.
-- FRAMEBUFFER optimization loop is active; regression gate is in place and used after each iteration.
+- FRAMEBUFFER tuning is closed for the current baseline; regression gate remains in place for future changes.
 
 ## FRAMEBUFFER Path (Current Baseline)
 
@@ -16,17 +21,17 @@ Implemented and validated:
 - Full-frame copy fallback: DMA-assisted copy with automatic CPU `memcpy` fallback if DMA path is unavailable.
 - Safety ordering: post-swap copy starts only after in-flight display DMA transfer completes.
 
-Latest tuning loop (2026-03-06):
+Latest tuning loop (2026-03-07, closed baseline):
 
-- Kept: `blit_buffer` unswapped span helper optimization in FB (`rm690b0_draw.c`) including transparent-run path.
-- Reverted: dirty coalescing policy experiment (`RM690B0.c`) due retained BLIT regression.
-- Fixed benchmark script runtime issue: removed stray token causing `NameError` in `benchmark_fb_profile.py`.
+- Kept: FB text dirty batching, adaptive dirty flush planning/coalescing, transparent-run BLIT helper, partial flush row-copy fast path, and copy-back rect coalescing for `swap_buffers(copy=True)`.
+- Reverted: dirty coalescing policy experiment and narrow-partial chunk heuristic after retained-BLIT regression.
+- Fixed benchmark tooling: removed stray EOF token from `benchmark_fb_profile.py`, corrected `scenario_end` aggregation, and refreshed `compare_fb_profile.py` to the canonical FB baseline.
 
-Observed profile snapshot after revert/fix:
+Observed profile snapshot after final baseline refresh:
 
-- `fb_single_rebuild/primitive_stress`: ~34.5 FPS.
-- `fb_double_rebuild/full_redraw_control`: ~25.0 FPS.
-- `fb_double_retained/retained_blit_transparent`: ~1159 FPS (gate PASS).
+- `fb_single_rebuild/primitive_stress`: ~35.5 FPS.
+- `fb_double_rebuild/full_redraw_control`: ~25.1 FPS.
+- `fb_double_retained/retained_blit_transparent`: ~568-574 FPS (gate PASS).
 
 ## DISPLAY_LIST Path (Current Baseline)
 
@@ -42,6 +47,17 @@ Final DL defaults in firmware:
 - `AUTO_COMPACT_MIN_COMMANDS=64`
 - `AUTO_COMPACT_GUARD_COMMANDS=3400`
 - `AUTO_COMPACT_GUARD_PAYLOAD_BYTES=512 KiB`
+
+## Firmware Artifacts (2026-03-07)
+
+- Stable standalone build artifacts:
+  - `firmware/firmware-rm690b0.bin` (`1900432` bytes)
+  - `firmware/firmware-rm690b0.uf2` (`3670016` bytes)
+- LVGL build artifacts:
+  - `firmware/firmware-rm690b0-lvgl.bin` (`2124640` bytes)
+  - `firmware/firmware-rm690b0-lvgl.uf2` (`4118528` bytes)
+- Operational rule: use `.bin` as the canonical artifact for `esptool.py` flashing; keep `.uf2` as the matching packaged image for UF2-aware distribution flows.
+- Current state: both variants are present in the repository and the LVGL image fits again after font-storage deduplication in the driver.
 
 ## FB Regression Gate
 
@@ -70,13 +86,13 @@ Exit code contract:
 ## Operational Recommendation
 
 - Keep DL internals frozen at current baseline unless new, reproducible regressions appear.
-- Continue FB workstream with copy-phase optimization in `swap(copy=True)` as the next priority.
+- Keep FB internals frozen at the current baseline as well, unless a concrete regression appears or a rotation-focused workload justifies `rotation != 0` tuning.
 
 ## Open Risks
 
 - LVGL integration remains a separate stream with known GC-pressure touch stability caveats.
-- Transparent BLIT optimization ROI depends on workload transparency ratio.
-- `copy=True` retained scenarios still spend notable time in `swap_ms`, suggesting room in copy-phase tuning.
+- Geometry paths for `rotation != 0` remain mostly untuned and would need dedicated benchmarking before optimization.
+- `copy=True` retained scenarios still spend notable time in `swap_ms`, but the low-risk copy-phase workstream has been exhausted for now.
 
 ## Reference Files
 

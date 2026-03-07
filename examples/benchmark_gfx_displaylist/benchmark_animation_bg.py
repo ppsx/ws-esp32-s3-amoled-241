@@ -150,7 +150,7 @@ def pre_render_ball_sprite(display, radius):
 
 
 class HighFPSBall:
-    """High performance bouncing ball using pre-rendered sprite with transparency"""
+    """High performance bouncing ball using pre-rendered sprite with transparency optimized for DISPLAY_LIST"""
 
     def __init__(self, x, y, vx, vy, radius, display_width, display_height, background, sprite_data, sprite_w, sprite_h, offset_x, offset_y):
         # Float positions for precise motion (prevents cumulative rounding errors)
@@ -173,11 +173,9 @@ class HighFPSBall:
         self.offset_x = offset_x  # Ball center offset within sprite
         self.offset_y = offset_y
 
-        # Track previous position PER BUFFER for double-buffering coherence
-        # buf_idx alternates 0/1 with each swap
-        self.buf_idx = 0
-        self.prev_x = [x, x]  # per-buffer previous X
-        self.prev_y = [y, y]  # per-buffer previous Y
+        # Only one previous position needed for DISPLAY_LIST (no double-buffer tracking)
+        self.prev_x = x
+        self.prev_y = y
 
     def update(self):
         """Update ball position and handle edge bouncing"""
@@ -206,27 +204,34 @@ class HighFPSBall:
             self.fy = float(self.display_height - self.radius)
             self.vy = -abs(self.vy)
 
-    def clear_previous(self, display):
-        """Restore background at previous ball position for CURRENT back buffer"""
-        bi = self.buf_idx
-        px = self.prev_x[bi]
-        py = self.prev_y[bi]
+    def update_display(self, display):
+        """Update display by computing AABB, restoring background, and drawing new ball"""
+        # 1. Compute AABB (Axis-Aligned Bounding Box) of old and new sprite positions
+        prev_sx = int(self.prev_x) - self.offset_x
+        prev_sy = int(self.prev_y) - self.offset_y
+        curr_sx = int(self.x) - self.offset_x
+        curr_sy = int(self.y) - self.offset_y
 
-        # Calculate sprite top-left corner at previous position for this buffer
-        sprite_x = px - self.offset_x
-        sprite_y = py - self.offset_y
+        # Clamp AABB to display bounds
+        x1 = max(0, min(prev_sx, curr_sx))
+        y1 = max(0, min(prev_sy, curr_sy))
+        x2 = min(self.display_width, max(prev_sx + self.sprite_w, curr_sx + self.sprite_w))
+        y2 = min(self.display_height, max(prev_sy + self.sprite_h, curr_sy + self.sprite_h))
 
-        # Calculate the region to restore (sprite bounding box)
-        x1 = max(0, sprite_x)
-        y1 = max(0, sprite_y)
-        x2 = min(self.display_width, sprite_x + self.sprite_w)
-        y2 = min(self.display_height, sprite_y + self.sprite_h)
+        # Align AABB to 4-pixel boundaries to perfectly match C driver dirty tracking
+        # This prevents the driver from exposing the black clear_color on the edges.
+        x1 = x1 & ~3
+        y1 = y1 & ~3
+        x2 = min(self.display_width, (x2 + 3) & ~3)
+        y2 = min(self.display_height, (y2 + 3) & ~3)
+
         w = x2 - x1
         h = y2 - y1
 
         if w > 0 and h > 0:
-            # Blit the background region directly using native C slicing 
-            # (zero Python memory allocations or loops)
+            # Submit AABB background patch directly from the full background buffer.
+            # We use the C driver's native src_x1/y1 slicing for maximum performance 
+            # (zero Python allocations or loops).
             display.blit_buffer(
                 x1, y1,
                 self.display_width, self.display_height,
@@ -234,28 +239,17 @@ class HighFPSBall:
                 src_x1=x1, src_y1=y1, src_x2=x2, src_y2=y2
             )
 
-    def draw(self, display):
-        """Blit pre-rendered sprite with transparency at current position"""
-        # Save current position for THIS buffer (will be cleared next time this buffer is back)
-        bi = self.buf_idx
-        self.prev_x[bi] = self.x
-        self.prev_y[bi] = self.y
-
-        # Calculate sprite top-left corner (ball center - offset)
-        sprite_x = self.x - self.offset_x
-        sprite_y = self.y - self.offset_y
-
-        # Blit sprite with black (0x0000) as transparent color
+        # 2. Draw new ball sprite with transparency
         display.blit_buffer(
-            sprite_x, sprite_y,
+            curr_sx, curr_sy,
             self.sprite_w, self.sprite_h,
             self.sprite_data,
             transparent_color=0x0000
         )
 
-    def on_swap(self):
-        """Call after swap_buffers to toggle buffer index"""
-        self.buf_idx ^= 1
+        # 3. Update previous position
+        self.prev_x = self.x
+        self.prev_y = self.y
 
 
 def load_background(path):
@@ -278,7 +272,7 @@ def main():
 
     # Initialize display
     print("\nInitializing display...")
-    display = rm690b0.RM690B0()
+    display = rm690b0.RM690B0(render_mode=rm690b0.RENDER_DISPLAY_LIST)
     display.init_display()
     display.brightness = 1.0
 
@@ -343,18 +337,14 @@ def main():
     while time.monotonic() - start_time < DURATION:
         frame_start = time.monotonic()
 
-        # Restore background at old ball position (per-buffer tracking)
-        ball.clear_previous(display)
-
         # Update physics
         ball.update()
 
-        # Draw ball at new position (saves pos for this buffer)
-        ball.draw(display)
+        # Update display (draws background patch and new ball)
+        ball.update_display(display)
 
-        # Swap buffers and toggle buffer index
+        # Swap buffers to render the display list (copy=False clears the list)
         display.swap_buffers(copy=False)
-        ball.on_swap()
 
         frame_count += 1
 

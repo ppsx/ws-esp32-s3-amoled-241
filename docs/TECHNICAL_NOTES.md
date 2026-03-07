@@ -1,7 +1,7 @@
 # RM690B0 Driver - Technical Notes
 
-> **Architecture Note (2026-03-06):**
-> On branch `display-list`, standalone `rm690b0` is active and maintained.
+> **Architecture Note (2026-03-07):**
+> Standalone `rm690b0` is active and maintained.
 > Both render backends are supported: `FRAMEBUFFER` and `DISPLAY_LIST`.
 > DISPLAY_LIST performance hardening is closed for the current v1 baseline.
 > Historical `qspibus + displayio` notes remain in this file for reference.
@@ -11,7 +11,7 @@
 ## Table of Contents
 
 - [Overview](#overview)
-- [Current Runtime Guidance (2026-03-06)](#current-runtime-guidance-2026-03-06)
+- [Current Runtime Guidance (2026-03-07)](#current-runtime-guidance-2026-03-07)
 - [Phase 2: QSPIBus Validation (2026-02-06)](#phase-2-qspibus-validation-2026-02-06)
 - [Phase 3: DisplayIO Integration (2026-02-06)](#phase-3-displayio-integration-2026-02-06)
 - [Phase 4: Standalone Module Removal (2026-02-06)](#phase-4-standalone-module-removal-2026-02-06)
@@ -35,7 +35,7 @@ This document consolidates technical notes and findings from the RM690B0 driver 
 
 ---
 
-## Current Runtime Guidance (2026-03-06)
+## Current Runtime Guidance (2026-03-07)
 
 ### FRAMEBUFFER `copy=True` (completed)
 
@@ -45,11 +45,11 @@ This document consolidates technical notes and findings from the RM690B0 driver 
 - `BUFFER_SINGLE` uses deferred flush policy: drawing operations update framebuffer + dirty map only;
   the actual display flush happens on `swap_buffers()` (one batch flush per frame).
 
-### FRAMEBUFFER tuning update (2026-03-06, iterative)
+### FRAMEBUFFER tuning update (2026-03-07, closed baseline)
 
-- Kept: unswapped BLIT span helper optimization in `rm690b0_draw.c` (small but repeatable gain in retained transparent BLIT).
-- Reverted: relaxed dirty coalescing policy experiment in `RM690B0.c` (regression in `fb_double_retained/retained_blit_transparent`).
-- Benchmark script fix: removed stray EOF token in `benchmark_fb_profile.py` that caused `NameError` after run completion.
+- Kept: FB text dirty batching, adaptive dirty flush planning/coalescing, transparent BLIT run-copy/span helper, `rm690b0_flush_region()` row-copy fast path, and copy-back rect coalescing for `swap_buffers(copy=True)`.
+- Reverted: aggressive dirty coalescing policy experiment in `RM690B0.c` and a narrow-partial chunk-size heuristic after retained-BLIT regression.
+- Benchmark script fixes: removed stray EOF token in `benchmark_fb_profile.py`, corrected `scenario_end` aggregation to report whole-scenario metrics, and refreshed `compare_fb_profile.py` thresholds to the canonical FB profile baseline.
 
 ### DISPLAY_LIST closure summary (v1 baseline)
 
@@ -80,8 +80,9 @@ python examples/benchmark_gfx/compare_fb_profile.py \
 
 ### Benchmark Snapshot
 
+- Canonical FB regression gate (`benchmark_fb_profile.py` + `compare_fb_profile.py`): `primitive_stress ~35.5 FPS`, `full_redraw_control ~25.1 FPS`, `retained_blit_transparent ~568-574 FPS` (PASS baseline).
 - `benchmark_simple_flush.py`: no measurable regression (~16.9-17.0 ms).
-- `benchmark_animation_bg.py` (FRAMEBUFFER): `copy=False` ~1009.93 FPS, `copy=True` ~498.33 FPS after dirty-copy (historically ~32 FPS for `copy=True` before this change).
+- `benchmark_animation_bg.py` (FRAMEBUFFER): `copy=False` ~1009.93 FPS, `copy=True` ~498.33 FPS after dirty-copy. This is an animation-focused benchmark and should not be compared 1:1 with `fb_profile` retained-BLIT numbers.
 - `benchmark_dl_profile.py` short baseline (`1s` warmup, `60/60/45/45/45` durations):
   - `retained_text`: ~5.1k frames / 60s
   - `retained_blit_churn`: ~6.7k frames / 60s

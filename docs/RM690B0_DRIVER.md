@@ -1,10 +1,10 @@
 # RM690B0 Display Driver - Complete Guide
 
-> **Status (2026-03-06, branch `display-list`):**
+> **Status (2026-03-07):**
 > This document is current for the standalone `rm690b0` driver.
 > Driver supports both `FRAMEBUFFER` and `DISPLAY_LIST` render backends with runtime switching (`render_mode`).
 
-### DISPLAY_LIST Backend Status (2026-03-06)
+### DISPLAY_LIST Backend Status (2026-03-07)
 
 - DL hardening is closed for the current v1 baseline.
 - Final defaults: `GLYPH_ATLAS_SLOTS=40`, `AUTO_COMPACT_EVERY_N_FRAMES=24`, `MIN_COMMANDS=64`, `GUARD_COMMANDS=3400`, `GUARD_PAYLOAD_BYTES=512 KiB`.
@@ -13,12 +13,13 @@
 - Mixed drawing (`FRAMEBUFFER` + `DISPLAY_LIST` in one frame) remains intentionally unsupported.
 - LVGL uses a dedicated path (`rm690b0_lvgl`), not rm690b0 DISPLAY_LIST replay.
 
-### FRAMEBUFFER Backend Status (2026-03-06)
+### FRAMEBUFFER Backend Status (2026-03-07)
 
 - `swap_buffers(copy=True)` dirty-copy baseline is stable and remains enabled.
-- Accepted in latest tuning loop: unswapped BLIT span helper optimization in `blit_buffer` (FB path).
-- Reverted after measured regression: aggressive dirty coalescing policy variant in `RM690B0.c` (drop in retained BLIT scenario).
-- Current benchmark script `benchmark_fb_profile.py` no longer raises EOF `NameError` (stray token removed).
+- FRAMEBUFFER tuning loop is closed for the current baseline; remaining work is optional and workload-specific (`rotation != 0`).
+- Kept in the final baseline: FB text dirty batching, adaptive dirty flush planning/coalescing, transparent BLIT run-copy/span helper, partial flush row-copy fast path in `rm690b0_flush_region()`, and copy-back rect coalescing for `swap_buffers(copy=True)`.
+- Reverted after measured regression: aggressive dirty coalescing policy variant in `RM690B0.c` and a narrow-partial chunk-size heuristic.
+- Current benchmark toolchain is canonical: `benchmark_fb_profile.py` no longer raises EOF `NameError`, `scenario_end` metrics aggregate the full scenario, and `compare_fb_profile.py` uses the refreshed FB baseline (`primitive_stress ~35.5 FPS`, `full_redraw_control ~25.1 FPS`, `retained_blit_transparent ~574 FPS`).
 
 ---
 

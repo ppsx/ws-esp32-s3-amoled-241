@@ -1,222 +1,135 @@
-board:
-  name: Waveshare ESP32-S3 Touch AMOLED 2.41
+project:
+  name: Waveshare ESP32-S3 AMOLED 2.41 display stack
+  scope: Standalone CircuitPython `rm690b0` driver plus separate `rm690b0_lvgl` integration
+  updated_on: 2026-03-07
+  intended_use: Bootstrap context for AI/tools before reading full documentation
+
+hardware:
+  board: Waveshare ESP32-S3 Touch AMOLED 2.41
   mcu: ESP32-S3
-  flash: 16MB
-  psram: 8MB
-  display_controller: RM690B0
-  display_interface: QSPI (32-bit command mode)
-  display_resolution: 600x450
-  circuitpython_version: 10.0.3
-
-pins:
-  display_qspi:
-    cs: GPIO9
-    sck: GPIO10
-    d0: GPIO11
-    d1: GPIO12
-    d2: GPIO13
-    d3: GPIO14
-    reset: GPIO21
-  power:
-    display_power: GPIO16 # Critical for display operation
-    battery_control: GPIO16
-    battery_key: GPIO15
-  i2c:
-    sda: GPIO47
-    scl: GPIO48
-  spi_sd:
-    cs: GPIO2
-    sck: GPIO4
-    mosi: GPIO5
-    miso: GPIO6
+  flash_mb: 16
+  psram_mb: 8
+  display:
+    controller: RM690B0
+    interface: QSPI (32-bit command mode)
+    resolution: 600x450
   touch:
-    sda: GPIO47 # Shared with I2C
-    scl: GPIO48 # Shared with I2C
-    reset: GPIO3
-    interrupt: EXIO2
-  other:
-    battery_adc: GPIO17
-    uart_tx: GPIO43
-    uart_rx: GPIO44
-    boot_button: GPIO0
+    controller: FT6336U
+    interface: I2C
+    address: 0x38
 
-i2c_devices:
-  - { name: Touch FT6336U, addr: 0x38, status: working }
-  - { name: RTC PCF85063, addr: 0x51, status: working }
-  - { name: IMU QMI8658C, addr: 0x6B, status: working }
-  - { name: IO Expander PCA9554, addr: 0x20, status: working }
+firmware:
+  circuitpython_version: 10.1.2
+  standalone_driver_status: production-ready
+  lvgl_status: feature-complete but not production-ready due to GC/touch instability under memory pressure
 
-current_status:
-  display_driver: Production-ready for standalone rendering with native text support (rm690b0)
-  native_text: ✅ COMPLETE - 7 built-in bitmap fonts (8x8 to 32x48), set_font(id) + text(x,y,str,color,bg) API, TTF conversion toolchain
-  lvgl_integration: Feature-complete, but NOT production-ready - known critical bug - LVGL + touch can become unresponsive under GC pressure (frequent gc.collect() / large heap allocations like TTF). Supports dynamic theme switching (Light/Dark) with pure black AMOLED background.
-  sd_card: ✅ SOLVED - optimized `sdcardio` module provides reliable SD card access (~645KB/s) utilizing native ESP-IDF drivers via VFS
-  esp_modules: espnow enabled, espcamera disabled, espulp available, espidf enabled, espsdcard removed
-  next_milestone: Phase 6 - Documentation, Stability & Widget Hardware Validation
+firmware_artifacts:
+  stable:
+    bin:
+      path: firmware/firmware-rm690b0.bin
+      size_bytes: 1900432
+      updated_on: 2026-03-07
+    uf2:
+      path: firmware/firmware-rm690b0.uf2
+      size_bytes: 3670016
+      updated_on: 2026-03-07
+  lvgl:
+    bin:
+      path: firmware/firmware-rm690b0-lvgl.bin
+      size_bytes: 2124640
+      updated_on: 2026-03-07
+    uf2:
+      path: firmware/firmware-rm690b0-lvgl.uf2
+      size_bytes: 4118528
+      updated_on: 2026-03-07
+  flashing_guidance:
+    canonical_esptool_format: .bin
+    alternate_distribution_format: .uf2
+    note: Both stable and LVGL variants are published in both formats.
 
-major_task:
-  goal: Expand Python widget library and create comprehensive documentation for both rm690b0 and rm690b0_lvgl modules.
-  current_state: LVGL v8.x fully integrated with Python widget API (Widget, Label, Button). Display driver renders at 100+ FPS with native text support (7 built-in fonts), touch input working with coordinate transformation, event system with Python callbacks functional.
-  approach: Create Getting Started guides for rm690b0 and rm690b0_lvgl modules, build widget gallery example, implement additional widgets (Slider, Checkbox, Switch, Arc, Bar, Image, Textarea, Dropdown, Roller) following existing pattern. Native text rendering complete with TTF conversion toolchain.
-
-implementation_plan_summary:
-  - ✅ ESP-IDF vendor panel (`esp_lcd_rm690b0.c`) mirrored into the board support package with QSPI command wrapping and MADCTL handling.
-  - ✅ `common-hal/rm690b0` driver allocates DMA-safe frame buffers with double-buffering support, proxies `esp_lcd_panel_draw_bitmap`, and exposes fill/line/rect primitives plus rotation and brightness control.
-  - ✅ `shared-bindings/rm690b0` module surfaces the Python API for drawing primitives, rotation, and brightness control.
-  - ✅ SD card support: Optimized `sdcardio` module achieves ~645 KB/s parity with native drivers by using 64KB transfer chunks and 20MHz clock. `espsdcard` module removed.
-  - ✅ LVGL v8.x library compiled and integrated into CircuitPython firmware.
-  - ✅ LVGL display driver with flush callback using existing RM690B0 DMA paths, rendering at 100+ FPS with zero artifacts.
-  - ✅ LVGL touch input driver with automatic portrait→landscape coordinate transformation for FT6336U.
-  - ✅ Python widget API created: Widget (base), Label (text display), Button (clickable with callbacks).
-  - ✅ Event system with Python callbacks for button clicks and widget interactions.
-  - ✅ Property system with MP_TYPE_FLAG_HAS_SPECIAL_ACCESSORS for read/write properties (x, y, width, height).
-  - ✅ Widget inheritance system: Label and Button inherit Widget properties correctly.
-  - ✅ Interactive GUI examples tested on hardware (counter app, multi-button controls, settings panels).
-  - ✅ Build system integration: All widget files added to circuitpy_defns.mk (SRC_BINDINGS_ENUMS and SRC_COMMON_HAL_ALL).
-  - ✅ Phase 6 Tasks: All 25 widgets implemented. Remaining: Getting Started guides, hardware validation of all widgets, stability testing.
-
-issues_solved:
-  - {
-      name: 32-bit QSPI command framing,
-      id: qspi_cmd_width,
-      solution: Uses `esp_lcd_panel_io_spi` with `lcd_cmd_bits=32` and quad mode,
-    }
-  - {
-      name: Initialization timing,
-      id: init_sequence,
-      solution: Ported proven RM690B0 command table with per-step delays,
-    }
-  - {
-      name: Column/row offsets,
-      id: address_windows,
-      solution: Adds configurable X/Y gap tracking inside the panel driver,
-    }
-  - {
-      name: BGR color swap,
-      id: color_swap,
-      solution: Adjusts MADCTL and swaps green/blue channels before transfers,
-    }
-  - {
-      name: Even-pixel DMA requirement,
-      id: dma_alignment,
-      solution: PSRAM framebuffer with aligned flushes preserves odd-pixel updates while satisfying DMA,
-    }
-  - {
-      name: Sparse line rendering artifacts,
-      id: padding_artifacts,
-      solution: Modified vertical and horizontal padding to read from framebuffer at expanded coordinates instead of duplicating edge pixels,
-    }
-  - {
-      name: Right edge artifacts,
-      id: bounds_checking,
-      solution: Added bounds checking to horizontal padding loops to prevent out-of-bounds framebuffer access,
-    }
-  - {
-      name: Hardware timing artifacts,
-      id: timing_delay,
-      solution: Implemented adaptive delay formula (pixels_transferred / 36,
-      minimum 50µs) that scales with transfer size to prevent color mixing,
-    }
-
-working_features:
-  rm690b0_module:
-    - "RM690B0 driver constructs successfully and toggles reset/power GPIOs."
-    - "`init_display()` issues the full RM690B0 command table and exits sleep."
-    - Drawing helpers (`fill_color`, `fill_rect`, `hline`, `vline`, `pixel`, `line`, `circle`, `fill_circle`, `rect`) render via DMA-backed QSPI transfers.
-    - Module exposes RGB565 convenience constants (`BLACK`, `WHITE`, `RED`, `GREEN`, `BLUE`, `YELLOW`, `MAGENTA`, `CYAN`, `ORANGE`, `GRAY`) for quick sketching.
-    - Software coordinate remap keeps 0/90/180/270 rotations working without relying on panel-specific MADCTL quirks.
-    - Brightness API (`set_brightness`, `get_brightness`, and the `brightness` property) drives WRDISBV/WRCTRLD and caches the active level for reads.
-    - API now exposes runtime getters for rotation, size, and brightness, enabling external validation scripts without baked-in tests.
-    - PSRAM-backed framebuffer mirrors the panel so odd-pixel drawing and bitmap uploads preserve neighbours while still aligning DMA writes.
-    - Single-pixel precision rendering at any coordinate (odd or even) without artifacts.
-    - Image conversion via `convert_bmp` (C optimized) and `jpegio` (hardware accelerated), supporting direct byte-swapped output.
-    - Double-buffering with `swap_buffers()` enables flicker-free updates and smooth animations.
-    - Adaptive hardware timing delay ensures clean rendering at all operation sizes (50µs for small operations, 500µs for large bitmaps).
-    - "Native text rendering: `set_font(id)` selects from 7 built-in fonts (0=8x8, 1=16x16, 2=16x24, 3=24x24, 4=24x32, 5=32x32, 6=32x48)."
-    - "Text API: `text(x, y, str, color, background)` draws UTF-8 text with transparent (background=None) or solid background."
-    - 7 embedded bitmap fonts totaling ~538 KB in flash; ASCII 0x20-0x7E (95 characters); row-based format (MSB-first horizontal).
-    - Font sources: Liberation Sans 16x16, Liberation Mono Bold 16x24, plus 8x8/24x24/24x32/32x32/32x48 variants.
-    - Text rendering performance: 0.3-7.7 ms for "Hello World" depending on font size (10-500× faster than DisplayIO).
-    - "TTF conversion toolchain: `ttf_to_rm690b0.py` converts any TrueType font to bitmap, `test_converted_font.py` validates/previews."
-    - Independent from LVGL: native text works standalone for lightweight labels, debug output, status displays.
-  rm690b0_lvgl_module:
-    - LVGL v8.x library fully compiled and integrated.
-    - Display driver renders at 100+ FPS with zero tearing or artifacts.
-    - Touch input driver with automatic portrait→landscape coordinate transformation.
-    - "25 Python widget classes fully implemented: Widget (base), Label, Button, Arc, Bar, Buttonmatrix, Canvas, Chart (+ChartSeries), Checkbox, Container, Dropdown, Font, Keyboard, Line, List, Msgbox, Roller, Scale, Slider, Spinbox, Spinner, Switch, Table, Tabview, Textarea."
-    - Full property support: x, y, width, height (read/write on all widgets).
-    - Event system: Python callbacks for widget interactions (on_click, on_change, on_value_changed).
-    - Widget inheritance: all widgets inherit Widget base properties and methods.
-    - Memory efficient: 72 KB for LVGL display buffers, ~150-600 bytes per widget.
-    - Interactive GUI examples working: counter app, multi-button controls, settings panels.
-    - Dynamic Theme Switching: "`set_theme_color(primary, secondary, dark)` API supports real-time Light/Dark mode transitions."
-    - AMOLED Optimization: "Dark theme background hardcoded to pure black (0x000000) for power efficiency and infinite contrast."
-    - Build system: All files compiled and linked (Widget.c, Label.c, Button.c, RM690B0_LVGL.c).
-
-limitations:
-  - 25 widgets implemented but not all individually hardware-validated on device.
-  - No Getting Started guides yet; documentation in progress.
-  - "`board.DISPLAY` auto-initialization not implemented (manual initialization required)."
-  - "`blit_buffer()` supports standard RGB565; for best performance with `convert_bmp` or `jpegio`, use `dest_is_swapped=True`."
-  - JPEG decode depends on ESP-IDF's `esp_jpeg` decoder; non-ESP builds currently return `IMG_ERR_UNSUPPORTED`.
-  - Adaptive delay adds minimum 50µs overhead per operation (acceptable for most use cases).
-  - "LVGL + touch stability under GC pressure: frequent `gc.collect()` in the UI loop or heavy heap allocations (e.g. TTF fonts) can cause touch/LVGL to stop responding; known bug in the current port. Workaround: avoid explicit `gc.collect()` in the main loop and load large assets early."
-  - Native text: Fixed-width fonts only (no proportional spacing), no text measurement API yet, no word wrap, ASCII 0x20-0x7E only (extended Unicode planned).
-
-test_suite_features:
-  - Diagnostic helpers were removed from the Python API; future validation should rely on LVGL widget/scene tests that exercise the flush driver.
-  - "`ports/espressif/common-hal/rm690b0/tests/pattern_check.py` exercises single-pixel lines, sparse rows, and edge columns to verify framebuffer flush alignment."
-  - "`test_scripts/quick_test.py` provides 2-minute verification of adaptive delay implementation with performance benchmarks and visual artifact checks."
-  - "`test_scripts/test_adaptive_delay.py` offers comprehensive 10-minute test suite covering all operation sizes, performance comparisons, and stress tests."
-  - "Test scripts are CircuitPython-compatible and use time.monotonic() for timing measurements."
-
-required_libraries:
-  - rm690b0 (built-in module - standalone display driver)
-  - rm690b0_lvgl (built-in module - LVGL integration with Python widget API)
-
-key_files:
-  board_definition: ports/espressif/boards/waveshare_esp32s3_amoled_241/
-  panel_driver: ports/espressif/boards/waveshare_esp32s3_amoled_241/esp_lcd_rm690b0.c
-  common_hal_driver:
-    - ports/espressif/common-hal/rm690b0/RM690B0.c        # Core: lifecycle, DMA, flush, properties
-    - ports/espressif/common-hal/rm690b0/rm690b0_internal.h # Shared header, inline helpers
-    - ports/espressif/common-hal/rm690b0/rm690b0_draw.c    # Drawing primitives
-    - ports/espressif/common-hal/rm690b0/rm690b0_text.c    # Font rendering
-    - ports/espressif/common-hal/rm690b0/rm690b0_image.c   # BMP/JPEG support
-  python_bindings: shared-bindings/rm690b0/RM690B0.c
-  test_scripts: test_scripts/
-  documentation_root: docs/
-  display_driver_plan:
-  lvgl_guide: docs/RM690B0_LVGL.md
-  project_summary: docs/project_summary.yaml
-  project_status: docs/project_status_summary.md
-  next_steps:
+entry_points:
+  for_humans: docs/project_status_summary.md
+  for_ai: docs/project_summary.yaml
+  api_reference: docs/RM690B0_DRIVER.md
   technical_notes: docs/TECHNICAL_NOTES.md
-  doc_update_summary:
-  brief_artifact: knowledge/circuitpython/briefs/rm690b0_lvgl.md
-  diff_tracker: knowledge/circuitpython/diffs/diff-main-rm690b0.diff
-  font_docs: fonts/TTF_CONVERTER_README.md, fonts/QUICK_START_TTF.md, fonts/TTF_CONVERTER_SUMMARY.md
-  font_tools: fonts/ttf_to_rm690b0.py, fonts/test_converted_font.py, fonts/example_ttf_conversion.sh
+  lvgl_reference: docs/RM690B0_LVGL.md
 
-notes:
-  - RM690B0 expects quad-SPI transactions at 80MHz with 32-bit opcodes; command and data phases are strictly separated.
-  - MADCTL manipulation must keep the vendor-provided base value before toggling axis bits to avoid unintended mirroring.
-  - DMA buffers allocated via `heap_caps_malloc(..., MALLOC_CAP_DMA)` should be released on deinit to avoid PSRAM fragmentation.
-  - Driver handles brightness writes by selecting page 0, updating WRDISBV (0x51), and asserting WRCTRLD (0x53) with BCTRL/BL/DD bits.
-  - Direct framebuffer flushes now stream the exact dirty rectangle; hardware even-alignment quirks are handled internally by the LCD driver.
-  - Framebuffer lives in PSRAM; dirty regions are copied into a DMA-capable staging buffer before issuing `esp_lcd_panel_draw_bitmap`.
-  - Adaptive delay formula: delay_us = pixels_transferred / 36 (minimum 50µs) ensures hardware has time to process transfers without unnecessary waiting.
-  - Small operations (single lines): Use 50µs delay for optimal performance (10x faster than fixed 500µs).
-  - Large operations (bitmaps): Automatically scale to 500µs delays for proper hardware processing.
-  - Padding logic reads from framebuffer at expanded coordinates with bounds checking to prevent artifacts and out-of-bounds access.
-  - LVGL integration complete: Display and touch drivers functional, Python widget API (Widget, Label, Button) working.
-  - Widget property system uses MP_TYPE_FLAG_HAS_SPECIAL_ACCESSORS flag for proper MP_PROPERTY_GETSET support.
-  - Widget inheritance: Label and Button explicitly include Widget properties in locals_dict for proper inheritance.
-  - Build system: Widget files added to both SRC_BINDINGS_ENUMS and SRC_COMMON_HAL_ALL in py/circuitpy_defns.mk.
-  - Performance: 100+ FPS rendering, ~72 KB LVGL buffers in PSRAM, ~150-600 bytes per widget.
-  - Documentation consolidated: All LVGL docs merged into comprehensive docs/RM690B0_LVGL.md guide (1100+ lines).
-  - Native text rendering: Section 11 in TECHNICAL_NOTES.md updated with complete architecture, API reference, font format, TTF conversion toolchain.
-  - Font conversion toolchain: 3 documentation files (README, Quick Start, Summary) totaling ~1800 lines covering usage, examples, integration workflow.
-  - snapshot.txt updated with native text API details: 7 fonts, conversion tools, memory usage, performance characteristics.
-  - Phase 5 complete: LVGL integration with Python widget API + native text rendering fully functional and tested on hardware.
-  - Phase 6 planned: Documentation (Getting Started guides) + Widget expansion (9-13 additional widgets).
+architecture:
+  render_backends:
+    - name: FRAMEBUFFER
+      status: stable baseline finalized
+      strengths:
+        - best default for imperative drawing
+        - supports dirty tracking and dirty-copy via `swap_buffers(copy=True)`
+        - `copy=False` is best for full-redraw animation
+        - `copy=True` is best for retained UI and incremental updates
+    - name: DISPLAY_LIST
+      status: stable v1 baseline finalized
+      strengths:
+        - retained command lists and partial presents
+        - runtime-switchable through `render_mode`
+        - recommended deployment mode is `BUFFER_SINGLE`
+  constraints:
+    - mixed `FRAMEBUFFER` and `DISPLAY_LIST` drawing in one frame is intentionally unsupported
+    - LVGL uses a separate integration path and is not DISPLAY_LIST reuse
+
+runtime_defaults:
+  display_list:
+    buffer_mode_recommended: BUFFER_SINGLE
+    glyph_atlas_slots: 40
+    auto_compact_every_n_frames: 24
+    auto_compact_min_commands: 64
+    auto_compact_guard_commands: 3400
+    auto_compact_guard_payload_bytes: 524288
+  framebuffer:
+    current_policy:
+      - text dirty batching enabled
+      - adaptive dirty flush planning enabled
+      - transparent BLIT run-copy/span helper enabled
+      - partial flush row-copy fast path enabled
+      - copy-back rect coalescing for `swap_buffers(copy=True)` enabled
+    reverted_experiments:
+      - aggressive dirty coalescing policy variant
+      - narrow-partial chunk-size heuristic
+
+benchmark_gates:
+  framebuffer_profile_gate:
+    generator: examples/benchmark_gfx/benchmark_fb_profile.py
+    compare_script: examples/benchmark_gfx/compare_fb_profile.py
+    canonical_targets:
+      primitive_stress_fps: 35.511
+      full_redraw_control_fps: 25.107
+      retained_blit_transparent_fps: 573.963
+    acceptance:
+      primitive_stress_min_fps: 33.0
+      full_redraw_control_min_fps: 24.0
+      retained_blit_transparent_min_fps: 520.0
+      retained_blit_transparent_max_avg_ms: 1.90
+      retained_blit_transparent_max_p95_ms: 2.10
+  framebuffer_animation_reference:
+    script: examples/benchmark_gfx/benchmark_animation_bg.py
+    copy_false_fps: 1009.93
+    copy_true_fps: 498.33
+    note: Animation-focused reference, not directly comparable 1:1 with `fb_profile` retained scenarios
+  display_list_profile_reference:
+    script: examples/benchmark_gfx_displaylist/benchmark_dl_profile.py
+    mode: short profile baseline
+    notes: Use as DL regression reference together with current runtime defaults
+
+key_code_paths:
+  driver_core: ports/espressif/common-hal/rm690b0/RM690B0.c
+  driver_internal: ports/espressif/common-hal/rm690b0/rm690b0_internal.h
+  primitives: ports/espressif/common-hal/rm690b0/rm690b0_draw.c
+  text: ports/espressif/common-hal/rm690b0/rm690b0_text.c
+  images: ports/espressif/common-hal/rm690b0/rm690b0_image.c
+  bindings: shared-bindings/rm690b0/RM690B0.c
+
+known_risks:
+  - LVGL + touch can become unresponsive under GC pressure or heavy heap churn
+  - geometry paths for `rotation != 0` are functional but not performance-tuned
+  - `copy=True` retained FB workloads still spend notable time in swap/copy phase, but low-risk tuning is exhausted for now
+
+operator_guidance:
+  - Keep FRAMEBUFFER internals frozen unless a concrete regression appears or rotation-specific tuning becomes necessary
+  - Keep DISPLAY_LIST internals frozen unless a reproducible regression or a new target workload appears
+  - Use `project_status_summary.md` for narrative status; keep this file compact and factual
