@@ -279,10 +279,6 @@ def main():
         exit_button,
     ]
 
-    # Flight Button (Bottom Right)
-    flight_button = IconButton(505, y_exit, 70, btn_h, "")
-    buttons.append(flight_button)
-
     # Draw initial menu
     draw_menu(display, buttons)
 
@@ -321,8 +317,6 @@ def main():
                             selected = "galaxian"
                         elif btn == exit_button:
                             selected = "exit"
-                        elif btn == flight_button:
-                            selected = "flight"
                         break
 
             time.sleep(0.05)
@@ -395,13 +389,6 @@ def main():
         try:
             from games import game_galaxian
             game_galaxian.main()
-        except Exception as e:
-            print(f"Error: {e}")
-    elif selected == "flight":
-        print("\nStarting Flight Test...\n")
-        try:
-            import gy91.flight_test
-            gy91.flight_test.main()
         except Exception as e:
             print(f"Error: {e}")
     else:
