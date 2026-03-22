@@ -94,6 +94,16 @@ Exit code contract:
 - Geometry paths for `rotation != 0` remain mostly untuned and would need dedicated benchmarking before optimization.
 - `copy=True` retained scenarios still spend notable time in `swap_ms`, but the low-risk copy-phase workstream has been exhausted for now.
 
+## Examples & Input Ecosystem (2026-03-22)
+
+- Global settings system added: `examples/settings.py` stores rotation (0/180), joystick type (I2C/GPIO), and GPIO pin assignments. Persisted on flash, read by all games and benchmarks at startup.
+- Touch-based settings UI (`examples/settings_ui.py`) accessible via gear icon button on the main menu.
+- Shared joystick module (`examples/joystick.py`) replaces 7 inline PCA9554 drivers across games. Supports two backends:
+  - I2C: PCA9554 expander at address 0x21 (SparkFun Qwiic Navigation Switch)
+  - GPIO: direct microswitches with internal pull-up, pin-configurable via settings
+- All 8 games and ~30 benchmark files apply `display.rotation` from settings after display init.
+- Main menu (`examples/code.py`) updated with settings button and rotation-aware touch mapping.
+
 ## Reference Files
 
 - `docs/RM690B0_DRIVER.md`

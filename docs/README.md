@@ -7,6 +7,13 @@ This directory tracks the standalone `rm690b0` driver documentation for Waveshar
 - Human-oriented status and decisions: [project_status_summary.md](project_status_summary.md)
 - AI/bootstrap context: [project_summary.yaml](project_summary.yaml)
 
+## Examples & Games Ecosystem (2026-03-22)
+
+- **Global settings system** (`examples/settings.py`) configures screen rotation (0/180) and joystick type (I2C/GPIO) across all examples.
+- **Settings UI** (`examples/settings_ui.py`) provides a touch-based configuration screen accessible from the main menu gear button.
+- **Shared joystick module** (`examples/joystick.py`) supports I2C (PCA9554 at 0x21) and GPIO (digitalio with pull-up) backends, selected via settings. Used by all 7 joystick-enabled games.
+- **Main menu** (`examples/code.py`) launches 8 games, flight test, and settings screen.
+
 ## Current Status (2026-03-07)
 
 - `FRAMEBUFFER` and `DISPLAY_LIST` backends co-exist and are runtime-switchable (`render_mode`).
@@ -53,5 +60,9 @@ This directory tracks the standalone `rm690b0` driver documentation for Waveshar
   - Full FB profile benchmark (CSV generator).
 - `examples/benchmark_gfx/compare_fb_profile.py`
   - FB profile regression gate (PASS/FAIL for key scenarios).
+- `examples/settings.py` / `examples/settings_ui.py`
+  - Global device settings and touch-based configuration UI.
+- `examples/joystick.py`
+  - Shared joystick driver (I2C PCA9554 / GPIO), used by all games.
 
-Last updated: `2026-03-07`
+Last updated: `2026-03-22`

@@ -1,7 +1,7 @@
 project:
   name: Waveshare ESP32-S3 AMOLED 2.41 display stack
   scope: Standalone CircuitPython `rm690b0` driver plus separate `rm690b0_lvgl` integration
-  updated_on: 2026-03-07
+  updated_on: 2026-03-22
   intended_use: Bootstrap context for AI/tools before reading full documentation
 
 hardware:
@@ -17,6 +17,14 @@ hardware:
     controller: FT6336U
     interface: I2C
     address: 0x38
+  joystick:
+    primary: I2C PCA9554 expander (SparkFun Qwiic Navigation Switch)
+    i2c_address: 0x21
+    alternate: GPIO microswitches (configurable pins, active-LOW with pull-up)
+  imu:
+    controller: QMI8658C
+    interface: I2C
+    address: 0x6B
 
 firmware:
   circuitpython_version: 10.1.2
@@ -28,20 +36,20 @@ firmware_artifacts:
     bin:
       path: firmware/firmware-rm690b0.bin
       size_bytes: 1900432
-      updated_on: 2026-03-07
+      updated_on: 2026-03-22
     uf2:
       path: firmware/firmware-rm690b0.uf2
       size_bytes: 3670016
-      updated_on: 2026-03-07
+      updated_on: 2026-03-22
   lvgl:
     bin:
       path: firmware/firmware-rm690b0-lvgl.bin
       size_bytes: 2124640
-      updated_on: 2026-03-07
+      updated_on: 2026-03-22
     uf2:
       path: firmware/firmware-rm690b0-lvgl.uf2
       size_bytes: 4118528
-      updated_on: 2026-03-07
+      updated_on: 2026-03-22
   flashing_guidance:
     canonical_esptool_format: .bin
     alternate_distribution_format: .uf2
@@ -123,6 +131,26 @@ key_code_paths:
   text: ports/espressif/common-hal/rm690b0/rm690b0_text.c
   images: ports/espressif/common-hal/rm690b0/rm690b0_image.c
   bindings: shared-bindings/rm690b0/RM690B0.c
+
+examples_ecosystem:
+  main_menu: examples/code.py
+  settings:
+    config_file: examples/settings.py
+    ui_module: examples/settings_ui.py
+    configurable:
+      - rotation (0 or 180)
+      - joystick_type (i2c or gpio)
+      - gpio_pins (up/down/left/right/center pin numbers)
+  joystick_module: examples/joystick.py
+  games:
+    - game_snake (joystick + touch)
+    - game_pacman (joystick + touch)
+    - game_frogger (joystick + touch)
+    - game_minesweeper (joystick + touch)
+    - game_sokoban (joystick + touch)
+    - game_galaxian (joystick + touch)
+    - game_robbo (joystick via pygame shim)
+    - game_flappy_bird (touch only)
 
 known_risks:
   - LVGL + touch can become unresponsive under GC pressure or heavy heap churn
