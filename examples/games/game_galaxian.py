@@ -138,74 +138,19 @@ ALL_DIVE_PATHS = [DIVE_SWOOP_L, DIVE_SWOOP_R, DIVE_STRAIGHT]
 # ---------------------------------------------------------------------------
 # Hardware Input
 # ---------------------------------------------------------------------------
-PCA9554_ADDR = 0x21
-PIN_UP = 0
-PIN_DOWN = 1
-PIN_RIGHT = 2
-PIN_LEFT = 3
-PIN_CENTER = 4
-
 DIR_NONE = 0
 DIR_LEFT = 1
 DIR_RIGHT = 2
 DIR_FIRE = 3
 
 
-class PCA9554:
-    def __init__(self, i2c, address=PCA9554_ADDR):
-        self._i2c = i2c
-        self._addr = address
-        self._buf = bytearray(2)
-
-    def init(self):
-        self._buf[0] = 3
-        self._buf[1] = 0b00011111
-        while not self._i2c.try_lock():
-            pass
-        try:
-            self._i2c.writeto(self._addr, self._buf)
-        finally:
-            self._i2c.unlock()
-        self._buf[0] = 1
-        self._buf[1] = 0b11100000
-        while not self._i2c.try_lock():
-            pass
-        try:
-            self._i2c.writeto(self._addr, self._buf)
-        finally:
-            self._i2c.unlock()
-
-    def read(self):
-        self._buf[0] = 0
-        while not self._i2c.try_lock():
-            pass
-        try:
-            self._i2c.writeto_then_readfrom(
-                self._addr, self._buf, self._buf, out_end=1, in_end=1)
-            return self._buf[0]
-        finally:
-            self._i2c.unlock()
-
-
-class JoystickInput:
-    def __init__(self, i2c):
-        self.pca = PCA9554(i2c)
-        self.pca.init()
-
-    def poll(self):
-        try:
-            val = self.pca.read()
-        except OSError:
-            return DIR_NONE
-        if val == 0:
-            return DIR_NONE
-        if not (val & (1 << PIN_LEFT)):
-            return DIR_LEFT
-        if not (val & (1 << PIN_RIGHT)):
-            return DIR_RIGHT
-        if not (val & (1 << PIN_CENTER)):
-            return DIR_FIRE
-        return DIR_NONE
+def js_poll(js):
+    """Convert joystick.read() to Galaxian direction."""
+    state = js.read()
+    if state["left"]: return DIR_LEFT
+    if state["right"]: return DIR_RIGHT
+    if state["center"]: return DIR_FIRE
+    return DIR_NONE
 
 
 class TouchInput:
@@ -934,7 +879,8 @@ def main():
     joystick = None
     touch = None
     try:
-        joystick = JoystickInput(i2c)
+        from joystick import Joystick
+        joystick = Joystick(i2c=i2c)
         print("Joystick OK")
     except Exception as e:
         print(f"Joystick fail: {e}")
@@ -959,7 +905,7 @@ def main():
     def get_input():
         d = DIR_NONE
         if joystick:
-            d = joystick.poll()
+            d = js_poll(joystick)
         if d == DIR_NONE and touch:
             d = touch.poll()
         return d
