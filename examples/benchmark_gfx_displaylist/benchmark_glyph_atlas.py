@@ -176,6 +176,11 @@ def main():
         render_mode=rm690b0.RENDER_DISPLAY_LIST,
     )
     display.init_display()
+    try:
+        import settings
+        display.rotation = settings.rotation
+    except ImportError:
+        pass
     display.set_font(rm690b0.FONT_16x24)
 
     uname = os.uname()

@@ -106,6 +106,11 @@ def build_blit_buffer(width, height):
 def run_suite(double_buffer_requested):
     display = rm690b0.RM690B0(render_mode=rm690b0.RENDER_DISPLAY_LIST)
     display.init_display()
+    try:
+        import settings
+        display.rotation = settings.rotation
+    except ImportError:
+        pass
     display.brightness = 1.0
 
     active_double_buffer = False

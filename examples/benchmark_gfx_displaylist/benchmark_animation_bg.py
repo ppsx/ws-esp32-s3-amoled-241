@@ -274,6 +274,11 @@ def main():
     print("\nInitializing display...")
     display = rm690b0.RM690B0(render_mode=rm690b0.RENDER_DISPLAY_LIST)
     display.init_display()
+    try:
+        import settings
+        display.rotation = settings.rotation
+    except ImportError:
+        pass
     display.brightness = 1.0
 
     # Enable double-buffering

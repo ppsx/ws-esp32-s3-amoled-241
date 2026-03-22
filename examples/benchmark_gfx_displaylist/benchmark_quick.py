@@ -395,6 +395,11 @@ def bench_retained_transparent(display, duration_s):
 def open_display(group):
     display = rm690b0.RM690B0(buffer_mode=group["buffer_mode"], render_mode=group["render_mode"])
     display.init_display()
+    try:
+        import settings
+        display.rotation = settings.rotation
+    except ImportError:
+        pass
     display.brightness = 1.0
     if group.get("prime_double", False):
         try:
