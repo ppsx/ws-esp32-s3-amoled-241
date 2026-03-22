@@ -24,9 +24,6 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Hardware & Config
 # ---------------------------------------------------------------------------
-PCA9554_ADDR = 0x21
-PIN_Center = 4
-
 # Display resolution
 WIDTH = 600
 HEIGHT = 450
@@ -97,61 +94,6 @@ FONT_SMALL = rm690b0.FONT_16x16
 # ---------------------------------------------------------------------------
 # Input Handling
 # ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-# Input Handling
-# ---------------------------------------------------------------------------
-class PCA9554:
-    def __init__(self, i2c, address=PCA9554_ADDR):
-        self.i2c = i2c
-        self.address = address
-        try:
-            self._read_reg(0)
-        except:
-            pass
-
-    def _read_reg(self, reg):
-        if not self.i2c.try_lock(): return 0
-        buf = bytearray(1)
-        try:
-            self.i2c.writeto_then_readfrom(self.address, bytes([reg]), buf)
-        except: pass
-        finally: self.i2c.unlock()
-        return buf[0]
-
-    def _write_reg(self, reg, val):
-        if not self.i2c.try_lock(): return
-        try:
-            self.i2c.writeto(self.address, bytes([reg, val]))
-        except: pass
-        finally: self.i2c.unlock()
-
-    def configure_pins(self, config_mask):
-        self._write_reg(3, config_mask) # Register 3 is Configuration
-
-    def write_outputs(self, value):
-        self._write_reg(1, value) # Register 1 is Output Port
-
-    def read_inputs(self):
-        return self._read_reg(0) # Register 0 is Input Port
-
-class JoystickInput:
-    def __init__(self, i2c):
-        self.pca = PCA9554(i2c)
-        # Config 0-4 as inputs (1), others outputs (0). 0x1F = 0001 1111
-        self.pca.configure_pins(0x1F)
-        # Set outputs (LEDs) off (High) -> 1110 0000 = 0xE0
-        self.pca.write_outputs(0xE0)
-
-    def get_state(self):
-        val = self.pca.read_inputs()
-        return {
-            'up': not (val & 0x01),
-            'down': not (val & 0x02),
-            'left': not (val & 0x08), # Pin 3
-            'right': not (val & 0x04), # Pin 2
-            'center': not (val & 0x10) # Pin 4
-        }
-
 class TouchInput:
     def __init__(self, i2c):
         self.tp = adafruit_focaltouch.Adafruit_FocalTouch(i2c)
@@ -465,7 +407,7 @@ def wait_for_start(joy, touch):
     press_required = 0.06
 
     def pressed():
-        j = joy.get_state()
+        j = joy.read()
         if j['up'] or j['down'] or j['left'] or j['right'] or j['center']:
             return True
         if touch.tp.touched:
@@ -511,7 +453,8 @@ def main():
 
     i2c = busio.I2C(board.TP_SCL, board.TP_SDA)
     touch = TouchInput(i2c)
-    joy = JoystickInput(i2c)
+    from joystick import Joystick
+    joy = Joystick(i2c=i2c)
 
     # Fill background on both buffers
     display.fill_color(C_BG)
@@ -543,7 +486,7 @@ def main():
 
             # Input
             t_action = touch.get_action() # (x, y, long, released)
-            j_state = joy.get_state()
+            j_state = joy.read()
 
             # Touch Handling
             if t_action:
