@@ -141,6 +141,11 @@ def set_mode(size=(600, 450), flags=0):
     if _display is None:
          _display = rm690b0.RM690B0()
          _display.init_display()
+         try:
+             import settings
+             _display.rotation = settings.rotation
+         except ImportError:
+             pass
          _display.brightness = 1.0
     
     # Return a Surface representing the display

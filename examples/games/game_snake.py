@@ -660,6 +660,11 @@ def main():
     # Initialize display
     display = rm690b0.RM690B0()
     display.init_display()
+    try:
+        import settings
+        display.rotation = settings.rotation
+    except ImportError:
+        pass
     display.brightness = 1.0
     display.fill_color(rm690b0.BLACK)
     display.swap_buffers(copy=True)
