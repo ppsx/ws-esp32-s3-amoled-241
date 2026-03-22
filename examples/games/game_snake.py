@@ -33,19 +33,6 @@ try:
 except ImportError:
     adafruit_focaltouch = None
 
-# Import the Navigation Switch driver
-# We'll use a simplified version inline to avoid external dependencies
-PCA9554_ADDR = 0x21
-REG_INPUT_PORT = 0x00
-REG_OUTPUT_PORT = 0x01
-REG_CONFIG = 0x03
-
-PIN_UP = 0
-PIN_DOWN = 1
-PIN_RIGHT = 2
-PIN_LEFT = 3
-PIN_CENTER = 4
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -96,6 +83,28 @@ DIR_DOWN = (0, 1)
 DIR_LEFT = (-1, 0)
 DIR_RIGHT = (1, 0)
 
+# Joystick debounce state for center-press detection
+_js_last_center = False
+
+
+def joystick_direction(js):
+    """Convert joystick.read() to direction tuple."""
+    state = js.read()
+    if state["up"]: return DIR_UP
+    if state["down"]: return DIR_DOWN
+    if state["left"]: return DIR_LEFT
+    if state["right"]: return DIR_RIGHT
+    return None
+
+
+def joystick_center_pressed(js):
+    """Rising-edge center button detection (returns True once per press)."""
+    global _js_last_center
+    pressed = js.read()["center"]
+    was = _js_last_center
+    _js_last_center = pressed
+    return pressed and not was
+
 # ---------------------------------------------------------------------------
 # Text Rendering
 # ---------------------------------------------------------------------------
@@ -117,112 +126,6 @@ def draw_text(display, text, x, y, color, font_id=FONT_HUD, shadow=True):
     if shadow:
         display.text(x + 2, y + 2, text, color=rgb565(0, 0, 0))
     display.text(x, y, text, color=color)
-
-
-# ---------------------------------------------------------------------------
-# Navigation Switch Input
-# ---------------------------------------------------------------------------
-
-
-class PCA9554:
-    """Minimal PCA9554 driver for Navigation Switch."""
-
-    def __init__(self, i2c, address=PCA9554_ADDR):
-        self.i2c = i2c
-        self.address = address
-        try:
-            self._read_register(REG_INPUT_PORT)
-        except Exception as e:
-            raise RuntimeError(f"PCA9554 not found at 0x{address:02X}: {e}")
-
-    def _read_register(self, register):
-        timeout = 1.0
-        start = time.monotonic()
-        while not self.i2c.try_lock():
-            if time.monotonic() - start > timeout:
-                raise RuntimeError("I2C bus lock timeout")
-            time.sleep(0.001)
-        try:
-            result = bytearray(1)
-            self.i2c.writeto_then_readfrom(self.address, bytes([register]), result)
-            return result[0]
-        finally:
-            self.i2c.unlock()
-
-    def _write_register(self, register, value):
-        while not self.i2c.try_lock():
-            pass
-        try:
-            self.i2c.writeto(self.address, bytes([register, value]))
-        finally:
-            self.i2c.unlock()
-
-    def configure_pins(self, config_mask):
-        self._write_register(REG_CONFIG, config_mask)
-
-    def read_inputs(self):
-        return self._read_register(REG_INPUT_PORT)
-
-    def write_outputs(self, value):
-        current = self._read_register(REG_OUTPUT_PORT)
-        new_value = (current & 0b00011111) | (value & 0b11100000)
-        self._write_register(REG_OUTPUT_PORT, new_value)
-
-
-class JoystickInput:
-    """Joystick input handler using Navigation Switch."""
-
-    def __init__(self, i2c):
-        self.pca = PCA9554(i2c, PCA9554_ADDR)
-        self.pca.configure_pins(0b00011111)
-        # Turn off LED
-        self.pca.write_outputs(0b11100000)
-        self._last_state = {}
-
-    def read_switches(self):
-        """Read all switch states."""
-        value = self.pca.read_inputs()
-        return {
-            "up": not bool(value & (1 << PIN_UP)),
-            "down": not bool(value & (1 << PIN_DOWN)),
-            "left": not bool(value & (1 << PIN_LEFT)),
-            "right": not bool(value & (1 << PIN_RIGHT)),
-            "center": not bool(value & (1 << PIN_CENTER)),
-        }
-
-    def get_direction(self):
-        """Get current direction pressed (returns direction tuple or None)."""
-        switches = self.read_switches()
-        if switches["up"]:
-            return DIR_UP
-        elif switches["down"]:
-            return DIR_DOWN
-        elif switches["left"]:
-            return DIR_LEFT
-        elif switches["right"]:
-            return DIR_RIGHT
-        return None
-
-    def is_center_pressed(self):
-        """Check if center button is pressed (with debounce)."""
-        switches = self.read_switches()
-        pressed = switches["center"]
-        was_pressed = self._last_state.get("center", False)
-        self._last_state["center"] = pressed
-        return pressed and not was_pressed
-
-    def wait_for_center(self):
-        """Wait for center button press."""
-        while True:
-            if self.is_center_pressed():
-                return
-            time.sleep(WAIT_POLL_INTERVAL)
-
-    def deinit(self):
-        try:
-            self.pca.write_outputs(0b11100000)  # Turn off LED
-        except:
-            pass
 
 
 class TouchInput:
@@ -563,7 +466,7 @@ def play_round(display, joystick, touch, best_score):
         # Handle input from joystick or touch (polled at high rate)
         new_direction = None
         if joystick:
-            new_direction = joystick.get_direction()
+            new_direction = joystick_direction(joystick)
         if new_direction is None and touch:
             new_direction = touch.get_direction()
         if new_direction:
@@ -676,7 +579,8 @@ def main():
     touch = None
 
     try:
-        joystick = JoystickInput(i2c)
+        from joystick import Joystick
+        joystick = Joystick(i2c=i2c)
         print("Joystick initialized")
     except Exception as e:
         print(f"Joystick init failed: {e}")
@@ -698,14 +602,14 @@ def main():
         """Get input from joystick or touch."""
         direction = None
         if joystick:
-            direction = joystick.get_direction()
+            direction = joystick_direction(joystick)
         if direction is None and touch:
             direction = touch.get_direction()
         return direction
 
     def check_start():
         """Check if start/center is pressed."""
-        if joystick and joystick.is_center_pressed():
+        if joystick and joystick_center_pressed(joystick):
             return True
         if touch and touch.is_center_pressed():
             return True
