@@ -31,17 +31,6 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Hardware & Configuration
 # ---------------------------------------------------------------------------
-PCA9554_ADDR = 0x21
-REG_INPUT_PORT = 0x00
-REG_OUTPUT_PORT = 0x01
-REG_CONFIG = 0x03
-
-PIN_UP = 0
-PIN_DOWN = 1
-PIN_RIGHT = 2
-PIN_LEFT = 3
-PIN_CENTER = 4
-
 # Colors (RGB565)
 def rgb565(r, g, b):
     return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
@@ -84,80 +73,21 @@ DIR_LEFT = (-1, 0)
 DIR_RIGHT = (1, 0)
 
 # ---------------------------------------------------------------------------
-# Input Classes (Reused from Snake/Pacman)
+# Joystick helpers (wrapping shared joystick module)
 # ---------------------------------------------------------------------------
 
-class PCA9554:
-    def __init__(self, i2c, address=PCA9554_ADDR):
-        self.i2c = i2c
-        self.address = address
-        try:
-            self._read_register(REG_INPUT_PORT)
-        except Exception as e:
-            raise RuntimeError(f"PCA9554 not found at 0x{address:02X}: {e}")
+def joystick_get_action(js):
+    """Read joystick and return direction tuple or None."""
+    switches = js.read()
+    if switches["up"]: return DIR_UP
+    if switches["down"]: return DIR_DOWN
+    if switches["left"]: return DIR_LEFT
+    if switches["right"]: return DIR_RIGHT
+    return None
 
-    def _read_register(self, register):
-        while not self.i2c.try_lock():
-            pass
-        try:
-            result = bytearray(1)
-            self.i2c.writeto_then_readfrom(self.address, bytes([register]), result)
-            return result[0]
-        finally:
-            self.i2c.unlock()
-
-    def _write_register(self, register, value):
-        while not self.i2c.try_lock():
-            pass
-        try:
-            self.i2c.writeto(self.address, bytes([register, value]))
-        finally:
-            self.i2c.unlock()
-
-    def configure_pins(self, config_mask):
-        self._write_register(REG_CONFIG, config_mask)
-
-    def read_inputs(self):
-        return self._read_register(REG_INPUT_PORT)
-
-    def write_outputs(self, value):
-        current = self._read_register(REG_OUTPUT_PORT)
-        new_value = (current & 0b00011111) | (value & 0b11100000)
-        self._write_register(REG_OUTPUT_PORT, new_value)
-
-class JoystickInput:
-    def __init__(self, i2c):
-        self.pca = PCA9554(i2c, PCA9554_ADDR)
-        self.pca.configure_pins(0b00011111)
-        self.pca.write_outputs(0b11100000) # LED off
-        self._last_state = {}
-        self._last_press_time = 0
-        self._repeat_delay = 0.2
-
-    def read_switches(self):
-        val = self.pca.read_inputs()
-        return {
-            "up": not bool(val & (1 << PIN_UP)),
-            "down": not bool(val & (1 << PIN_DOWN)),
-            "left": not bool(val & (1 << PIN_LEFT)),
-            "right": not bool(val & (1 << PIN_RIGHT)),
-            "center": not bool(val & (1 << PIN_CENTER)),
-        }
-
-    def get_action(self):
-        switches = self.read_switches()
-        now = time.monotonic()
-        
-        # Debounce/Repeat logic could be simpler for sokoban
-        # Just return the first pressed direction
-        if switches["up"]: return DIR_UP
-        if switches["down"]: return DIR_DOWN
-        if switches["left"]: return DIR_LEFT
-        if switches["right"]: return DIR_RIGHT
-        return None
-
-    def is_center_pressed(self):
-        return self.read_switches()["center"]
+def joystick_is_center_pressed(js):
+    """Return True if center button is pressed."""
+    return js.read()["center"]
 
 class TouchInput:
     def __init__(self, i2c):
@@ -534,7 +464,7 @@ def draw_start_screen(display):
 def any_start_input(joystick, touch):
     if joystick:
         try:
-            if any(joystick.read_switches().values()):
+            if any(joystick.read().values()):
                 return True
         except Exception:
             pass
@@ -643,7 +573,8 @@ def main():
     touch = None
 
     try:
-        joystick = JoystickInput(i2c)
+        from joystick import Joystick
+        joystick = Joystick(i2c=i2c)
     except Exception as e:
         print(f"Joystick init error: {e}")
 
@@ -735,8 +666,8 @@ def main():
             center_down = False
 
             if joystick:
-                d = joystick.get_action()
-                if joystick.is_center_pressed():
+                d = joystick_get_action(joystick)
+                if joystick_is_center_pressed(joystick):
                     center_down = True
 
             if not d and not center_down and touch:
