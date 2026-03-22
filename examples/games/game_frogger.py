@@ -289,83 +289,25 @@ def flip_v(buf, w, h):
 
 
 # ==========================================================================
-# Input: PCA9554 I2C Joystick
+# Input: Joystick helpers (shared joystick module adapter)
 # ==========================================================================
-PCA9554_ADDR = 0x21
-PIN_UP = 0
-PIN_DOWN = 1
-PIN_RIGHT = 2
-PIN_LEFT = 3
-PIN_CENTER = 4
+def _joy_direction(joy):
+    """Read shared Joystick and return a DIR_* constant."""
+    state = joy.read()
+    if state["up"]:
+        return DIR_UP
+    if state["down"]:
+        return DIR_DOWN
+    if state["left"]:
+        return DIR_LEFT
+    if state["right"]:
+        return DIR_RIGHT
+    return DIR_NONE
 
 
-class PCA9554:
-    def __init__(self, i2c, addr=PCA9554_ADDR):
-        self._i2c = i2c
-        self._addr = addr
-        self._buf = bytearray(2)
-
-    def _write(self, reg, val):
-        self._buf[0] = reg
-        self._buf[1] = val
-        while not self._i2c.try_lock():
-            pass
-        try:
-            self._i2c.writeto(self._addr, self._buf)
-        finally:
-            self._i2c.unlock()
-
-    def _read(self, reg):
-        self._buf[0] = reg
-        while not self._i2c.try_lock():
-            pass
-        try:
-            self._i2c.writeto_then_readfrom(
-                self._addr, self._buf, self._buf, out_end=1, in_end=1
-            )
-            return self._buf[0]
-        finally:
-            self._i2c.unlock()
-
-    def configure(self, mask):
-        self._write(3, mask)
-
-    def read_input(self):
-        return self._read(0)
-
-    def write_output(self, val):
-        self._write(1, val)
-
-
-class JoystickInput:
-    def __init__(self, i2c):
-        self.pca = PCA9554(i2c)
-        self.pca.configure(0b00011111)
-        self.pca.write_output(0b11100000)
-
-    def get_input(self):
-        try:
-            val = self.pca.read_input()
-        except OSError:
-            return DIR_NONE
-        if val == 0:
-            return DIR_NONE
-        if not (val & (1 << PIN_UP)):
-            return DIR_UP
-        if not (val & (1 << PIN_DOWN)):
-            return DIR_DOWN
-        if not (val & (1 << PIN_LEFT)):
-            return DIR_LEFT
-        if not (val & (1 << PIN_RIGHT)):
-            return DIR_RIGHT
-        return DIR_NONE
-
-    def check_center(self):
-        try:
-            val = self.pca.read_input()
-            return val != 0 and not (val & (1 << PIN_CENTER))
-        except OSError:
-            return False
+def _joy_center(joy):
+    """Return True if joystick center button is pressed."""
+    return joy.read()["center"]
 
 
 # ==========================================================================
@@ -1098,13 +1040,13 @@ class FroggerGame:
     def get_input(self):
         d = DIR_NONE
         if self.joy:
-            d = self.joy.get_input()
+            d = _joy_direction(self.joy)
         if d == DIR_NONE and self.tch:
             d = self.tch.get_input()
         return d
 
     def check_any(self):
-        if self.joy and self.joy.check_center():
+        if self.joy and _joy_center(self.joy):
             return True
         if self.tch and self.tch.check_center():
             return True
@@ -1845,7 +1787,8 @@ def main():
     joystick = None
     touch = None
     try:
-        joystick = JoystickInput(i2c)
+        from joystick import Joystick
+        joystick = Joystick(i2c=i2c)
         print("Joystick OK")
     except Exception as e:
         print(f"Joystick: {e}")
