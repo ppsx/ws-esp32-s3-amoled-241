@@ -387,6 +387,11 @@ def _init_display():
     displayio.release_displays()
     bus = create_qspi_bus(board)
     display = RM690B0(bus)
+    try:
+        import settings
+        display.rotation = settings.rotation
+    except ImportError:
+        pass
     print(f"Display created: {display.width}x{display.height}")
 
     try:
