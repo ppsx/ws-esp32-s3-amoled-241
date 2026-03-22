@@ -65,6 +65,9 @@ def load_current_settings():
     joystick_type = "i2c"
     gpio_pins = {"up": None, "down": None, "left": None, "right": None, "center": None}
     try:
+        import sys
+        if "settings" in sys.modules:
+            del sys.modules["settings"]
         import settings
         rotation = getattr(settings, "rotation", 0)
         joystick_type = getattr(settings, "joystick_type", "i2c")
