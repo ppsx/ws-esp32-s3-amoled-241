@@ -63,12 +63,18 @@ class TouchInput:
         self._touch = adafruit_focaltouch.Adafruit_FocalTouch(self._i2c)
         self._last_touch = None
 
+        try:
+            import settings
+            self._rotation = settings.rotation
+        except ImportError:
+            self._rotation = 0
+
     def map_touch_to_display(self, touch_x, touch_y):
         """
         Transform touch coordinates from portrait to landscape.
 
         Touch controller reports portrait (450×600), display is landscape (600×450).
-        Apply 270° clockwise rotation.
+        Apply 270° clockwise rotation (or 90° if display rotation is 180).
 
         Note: This is needed when using adafruit_focaltouch directly (not LVGL).
         LVGL integration has automatic transformation, but direct touch reading does not.
@@ -80,8 +86,12 @@ class TouchInput:
         Returns:
             (display_x, display_y): 0-600, 0-450 (landscape)
         """
-        display_x = 600 - touch_y
-        display_y = touch_x
+        if self._rotation == 180:
+            display_x = touch_y
+            display_y = 450 - touch_x
+        else:
+            display_x = 600 - touch_y
+            display_y = touch_x
         return display_x, display_y
 
     def get_touch(self):
@@ -201,6 +211,37 @@ class IconButton(Button):
         display.fill_rect(cx - 14, cy - 8, 4, 8, c)
 
 
+class GearIconButton(IconButton):
+    """Button with a gear/settings icon."""
+
+    def draw(self, display, color=BUTTON_COLOR):
+        # Background and border (same pattern as IconButton)
+        display.fill_rect(self.x, self.y, self.width, self.height, color)
+        display.fill_rect(self.x, self.y, self.width, 2, BORDER_COLOR)
+        display.fill_rect(self.x, self.y + self.height - 2, self.width, 2, BORDER_COLOR)
+        display.fill_rect(self.x, self.y, 2, self.height, BORDER_COLOR)
+        display.fill_rect(self.x + self.width - 2, self.y, 2, self.height, BORDER_COLOR)
+
+        cx = self.x + self.width // 2
+        cy = self.y + self.height // 2
+        c = TEXT_COLOR
+        shadow = rgb565(0, 0, 0)
+        sx, sy = 2, 2
+
+        # Shadow
+        display.fill_rect(cx - 6 + sx, cy - 6 + sy, 12, 12, shadow)
+        display.fill_rect(cx - 3 + sx, cy - 14 + sy, 6, 28, shadow)
+        display.fill_rect(cx - 14 + sx, cy - 3 + sy, 28, 6, shadow)
+
+        # Gear: center square + cross teeth
+        display.fill_rect(cx - 6, cy - 6, 12, 12, c)
+        display.fill_rect(cx - 3, cy - 14, 6, 28, c)
+        display.fill_rect(cx - 14, cy - 3, 28, 6, c)
+
+        # Center hole
+        display.fill_rect(cx - 3, cy - 3, 6, 6, BG_COLOR)
+
+
 def draw_menu(display, buttons):
     """Draw the main menu."""
     display.fill_color(BG_COLOR)
@@ -229,6 +270,12 @@ def main():
     display = rm690b0.RM690B0()
     display.init_display()
     display.brightness = 1.0
+
+    try:
+        import settings
+        display.rotation = settings.rotation
+    except ImportError:
+        pass
 
     # Enable double buffering
     display.swap_buffers()
@@ -264,8 +311,8 @@ def main():
     robbo_button = Button(col2_x, y3, btn_w, btn_h, "ROBBO")
     galaxian_button = Button(col2_x, y4, btn_w, btn_h, "GALAXIAN")
 
-    # Exit (Centered)
-    exit_button = Button((display.width - 300) // 2, y_exit, 300, btn_h, "EXIT")
+    # Exit (Centered, sized to fit between icon buttons)
+    exit_button = Button(110, y_exit, 380, btn_h, "EXIT")
 
     buttons = [
         flappy_button,
@@ -278,6 +325,14 @@ def main():
         galaxian_button,
         exit_button,
     ]
+
+    # Settings Button (Bottom Left)
+    settings_button = GearIconButton(25, y_exit, 70, btn_h, "")
+    buttons.append(settings_button)
+
+    # Flight Button (Bottom Right)
+    flight_button = IconButton(505, y_exit, 70, btn_h, "")
+    buttons.append(flight_button)
 
     # Draw initial menu
     draw_menu(display, buttons)
@@ -317,7 +372,21 @@ def main():
                             selected = "galaxian"
                         elif btn == exit_button:
                             selected = "exit"
+                        elif btn == settings_button:
+                            selected = "settings"
+                        elif btn == flight_button:
+                            selected = "flight"
                         break
+
+            if selected == "settings":
+                import settings_ui
+                result = settings_ui.main(display, touch)
+                if result.get("saved"):
+                    display.rotation = result["rotation"]
+                    # Update touch rotation
+                    touch._rotation = result["rotation"]
+                draw_menu(display, buttons)
+                selected = None
 
             time.sleep(0.05)
 
@@ -389,6 +458,13 @@ def main():
         try:
             from games import game_galaxian
             game_galaxian.main()
+        except Exception as e:
+            print(f"Error: {e}")
+    elif selected == "flight":
+        print("\nStarting Flight Test...\n")
+        try:
+            import accelerometer.main
+            accelerometer.main.main()
         except Exception as e:
             print(f"Error: {e}")
     else:
