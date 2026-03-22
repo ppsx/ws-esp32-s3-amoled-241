@@ -703,6 +703,11 @@ def run_mode(f, mode_cfg):
         render_mode=rm690b0.RENDER_FRAMEBUFFER,
     )
     display.init_display()
+    try:
+        import settings
+        display.rotation = settings.rotation
+    except ImportError:
+        pass
     display.set_font(rm690b0.FONT_16x16)
 
     # Trigger optional front-buffer allocation early for BUFFER_DOUBLE.

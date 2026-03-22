@@ -58,7 +58,12 @@ def run_benchmark(iterations, func):
 def run_suite(double_buffer_requested):
     display = rm690b0.RM690B0()
     display.init_display()
-    
+    try:
+        import settings
+        display.rotation = settings.rotation
+    except ImportError:
+        pass
+
     active_double_buffer = False
     if double_buffer_requested:
         try:

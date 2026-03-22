@@ -391,6 +391,11 @@ def quick_test():
     try:
         display = rm690b0.RM690B0()
         display.init_display()
+        try:
+            import settings
+            display.rotation = settings.rotation
+        except ImportError:
+            pass
         print("Display ready!\n")
     except Exception as e:
         print(f"Failed to initialize display: {e}")
@@ -474,6 +479,11 @@ def full_benchmark(iterations=10, memory_efficient=False):
     try:
         display = rm690b0.RM690B0()
         display.init_display()
+        try:
+            import settings
+            display.rotation = settings.rotation
+        except ImportError:
+            pass
         print("Display ready!")
     except Exception as e:
         print(f"Failed to initialize display: {e}")
@@ -841,6 +851,11 @@ def diagnostic():
     print("\nInitializing display...")
     display = rm690b0.RM690B0()
     display.init_display()
+    try:
+        import settings
+        display.rotation = settings.rotation
+    except ImportError:
+        pass
     print("Display initialized")
 
     if "RAW" in files_data:
@@ -881,6 +896,11 @@ def format_comparison():
     try:
         display = rm690b0.RM690B0()
         display.init_display()
+        try:
+            import settings
+            display.rotation = settings.rotation
+        except ImportError:
+            pass
         print("Display ready!\n")
     except Exception as e:
         print(f"Failed to initialize display: {e}")
