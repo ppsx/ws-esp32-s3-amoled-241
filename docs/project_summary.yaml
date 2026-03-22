@@ -35,20 +35,16 @@ firmware_artifacts:
   stable:
     bin:
       path: firmware/firmware-rm690b0.bin
-      size_bytes: 1900432
       updated_on: 2026-03-22
     uf2:
       path: firmware/firmware-rm690b0.uf2
-      size_bytes: 3670016
       updated_on: 2026-03-22
   lvgl:
     bin:
       path: firmware/firmware-rm690b0-lvgl.bin
-      size_bytes: 2124640
       updated_on: 2026-03-22
     uf2:
       path: firmware/firmware-rm690b0-lvgl.uf2
-      size_bytes: 4118528
       updated_on: 2026-03-22
   flashing_guidance:
     canonical_esptool_format: .bin

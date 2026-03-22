@@ -51,11 +51,11 @@ Final DL defaults in firmware:
 ## Firmware Artifacts (2026-03-07)
 
 - Stable standalone build artifacts:
-  - `firmware/firmware-rm690b0.bin` (`1900432` bytes)
-  - `firmware/firmware-rm690b0.uf2` (`3670016` bytes)
+  - `firmware/firmware-rm690b0.bin`
+  - `firmware/firmware-rm690b0.uf2`
 - LVGL build artifacts:
-  - `firmware/firmware-rm690b0-lvgl.bin` (`2124640` bytes)
-  - `firmware/firmware-rm690b0-lvgl.uf2` (`4118528` bytes)
+  - `firmware/firmware-rm690b0-lvgl.bin`
+  - `firmware/firmware-rm690b0-lvgl.uf2`
 - Operational rule: use `.bin` as the canonical artifact for `esptool.py` flashing; keep `.uf2` as the matching packaged image for UF2-aware distribution flows.
 - Current state: both variants are present in the repository and the LVGL image fits again after font-storage deduplication in the driver.
 
