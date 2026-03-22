@@ -79,91 +79,21 @@ STATE_LEAVING_HOUSE = 4  # Exiting from ghost house
 # ---------------------------------------------------------------------------
 # Hardware Abstraction (Joystick & Touch)
 # ---------------------------------------------------------------------------
-PCA9554_ADDR = 0x21
-PIN_UP = 0
-PIN_DOWN = 1
-PIN_RIGHT = 2
-PIN_LEFT = 3
-PIN_CENTER = 4
 
 
-class PCA9554:
-    def __init__(self, i2c, address=PCA9554_ADDR):
-        self._i2c = i2c
-        self._address = address
-        self._buffer = bytearray(2)
-
-    def _write_register(self, register, value):
-        self._buffer[0] = register
-        self._buffer[1] = value
-        while not self._i2c.try_lock():
-            pass
-        try:
-            self._i2c.writeto(self._address, self._buffer)
-        finally:
-            self._i2c.unlock()
-
-    def _read_register(self, register):
-        self._buffer[0] = register
-        while not self._i2c.try_lock():
-            pass
-        try:
-            self._i2c.writeto_then_readfrom(
-                self._address, self._buffer, self._buffer, out_end=1, in_end=1
-            )
-            return self._buffer[0]
-        finally:
-            self._i2c.unlock()
-
-    def configure_pins(self, direction_mask):
-        self._write_register(3, direction_mask)
-
-    def read_inputs(self):
-        return self._read_register(0)
-
-    def write_outputs(self, value):
-        self._write_register(1, value)
+def js_get_input(js):
+    """Convert joystick.read() to direction constant."""
+    state = js.read()
+    if state["up"]: return DIR_UP
+    if state["down"]: return DIR_DOWN
+    if state["left"]: return DIR_LEFT
+    if state["right"]: return DIR_RIGHT
+    return DIR_NONE
 
 
-class JoystickInput:
-    def __init__(self, i2c):
-        self.i2c = i2c
-        self.pca = PCA9554(self.i2c)
-        self.pca.configure_pins(0b00011111)
-        self.pca.write_outputs(0b11100000)
-
-    def get_input(self):
-        try:
-            val = self.pca.read_inputs()
-        except OSError:
-            return DIR_NONE
-
-        # Ignore invalid state (all 0 usually means read error or detached)
-        if val == 0:
-            return DIR_NONE
-
-        if not (val & (1 << PIN_UP)):
-            return DIR_UP
-        if not (val & (1 << PIN_DOWN)):
-            return DIR_DOWN
-        if not (val & (1 << PIN_LEFT)):
-            return DIR_LEFT
-        if not (val & (1 << PIN_RIGHT)):
-            return DIR_RIGHT
-        return DIR_NONE
-
-    def check_center(self):
-        try:
-            val = self.pca.read_inputs()
-            # Ignore invalid state
-            if val == 0:
-                return False
-            return not (val & (1 << PIN_CENTER))
-        except OSError:
-            return False
-
-    def deinit(self):
-        pass
+def js_check_center(js):
+    """Check if center/action button is pressed."""
+    return js.read()["center"]
 
 
 class TouchInput:
@@ -1454,7 +1384,8 @@ def main():
     touch = None
 
     try:
-        joystick = JoystickInput(i2c)
+        from joystick import Joystick
+        joystick = Joystick(i2c=i2c)
         print("Joystick initialized")
     except Exception as e:
         print("Joystick init failed:", e)
@@ -1473,13 +1404,13 @@ def main():
     def get_combined_input():
         d = DIR_NONE
         if joystick:
-            d = joystick.get_input()
+            d = js_get_input(joystick)
         if d == DIR_NONE and touch:
             d = touch.get_input()
         return d
 
     def check_start():
-        if joystick and joystick.check_center():
+        if joystick and js_check_center(joystick):
             return True
         if touch and touch.check_center():
             return True
