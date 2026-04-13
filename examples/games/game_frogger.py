@@ -1752,7 +1752,7 @@ class FroggerGame:
 # ==========================================================================
 # Main
 # ==========================================================================
-def main():
+def main(display=None):
     random.seed(int(time.monotonic() * 1000) & 0xFFFFFFFF)
 
     print("\n" + "=" * 40)
@@ -1760,17 +1760,19 @@ def main():
     print("=" * 40)
 
     # Init display (explicit double buffering when available)
-    if hasattr(rm690b0, "BUFFER_DOUBLE"):
-        display = rm690b0.RM690B0(buffer_mode=rm690b0.BUFFER_DOUBLE)
-    else:
-        display = rm690b0.RM690B0()
-    display.init_display()
-    try:
-        import settings
-        display.rotation = settings.rotation
-    except ImportError:
-        pass
-    display.brightness = 1.0
+    display_owned = display is None
+    if display_owned:
+        if hasattr(rm690b0, "BUFFER_DOUBLE"):
+            display = rm690b0.RM690B0(buffer_mode=rm690b0.BUFFER_DOUBLE)
+        else:
+            display = rm690b0.RM690B0()
+        display.init_display()
+        try:
+            import settings
+            display.rotation = settings.rotation
+        except ImportError:
+            pass
+        display.brightness = 1.0
     display.fill_color(C_BLACK)
     display.swap_buffers()
 
@@ -1801,7 +1803,8 @@ def main():
 
     if not joystick and not touch:
         print("No input devices!")
-        display.deinit()
+        if display_owned:
+            display.deinit()
         return
 
     # Loading screen
@@ -1928,7 +1931,8 @@ def main():
     finally:
         display.fill_color(C_BLACK)
         display.swap_buffers()
-        display.deinit()
+        if display_owned:
+            display.deinit()
         try:
             i2c.deinit()
         except Exception:

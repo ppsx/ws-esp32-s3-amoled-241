@@ -556,16 +556,18 @@ def draw_menu(display, items, selected_idx):
         # Let's just align left with padding
         display.text(mx + 30, y + 4, text, color=color)
 
-def main():
+def main(display=None):
     print("Sokoban starting...")
-    display = rm690b0.RM690B0()
-    display.init_display()
-    try:
-        import settings
-        display.rotation = settings.rotation
-    except ImportError:
-        pass
-    display.brightness = 1.0
+    display_owned = display is None
+    if display_owned:
+        display = rm690b0.RM690B0()
+        display.init_display()
+        try:
+            import settings
+            display.rotation = settings.rotation
+        except ImportError:
+            pass
+        display.brightness = 1.0
     draw_start_screen(display)
 
     i2c = busio.I2C(board.TP_SCL, board.TP_SDA, frequency=400000)
@@ -799,7 +801,8 @@ def main():
         print("Cleaning up display...")
         display.fill_color(0x0000)
         display.swap_buffers()
-        display.deinit()
+        if display_owned:
+            display.deinit()
         try:
             i2c.deinit()
         except:

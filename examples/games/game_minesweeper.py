@@ -440,16 +440,18 @@ def wait_for_start(joy, touch):
         time.sleep(0.01)
 
 
-def main():
+def main(display=None):
     print("Minesweeper Clone Starting...")
-    display = rm690b0.RM690B0()
-    display.init_display()
-    try:
-        import settings
-        display.rotation = settings.rotation
-    except ImportError:
-        pass
-    display.brightness = 1.0
+    display_owned = display is None
+    if display_owned:
+        display = rm690b0.RM690B0()
+        display.init_display()
+        try:
+            import settings
+            display.rotation = settings.rotation
+        except ImportError:
+            pass
+        display.brightness = 1.0
 
     i2c = busio.I2C(board.TP_SCL, board.TP_SDA)
     touch = TouchInput(i2c)
@@ -644,7 +646,8 @@ def main():
         print("Cleaning up display...")
         display.fill_color(0x0000)
         display.swap_buffers()
-        display.deinit()
+        if display_owned:
+            display.deinit()
         try:
             i2c.deinit()
         except:

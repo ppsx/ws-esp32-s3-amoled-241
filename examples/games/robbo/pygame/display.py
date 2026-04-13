@@ -5,6 +5,7 @@ import rm690b0
 from .rect import Rect
 
 _display = None
+_display_owned = True
 
 class Surface:
     def __init__(self, size_or_raw=None, flags=0):
@@ -136,8 +137,14 @@ class SubSurface(Surface):
         # Recursive offset if needed
         return self.rect.x, self.rect.y
 
+def inject_display(hw_display):
+    """Accept an externally-owned display (from code.py menu)."""
+    global _display, _display_owned
+    _display = hw_display
+    _display_owned = False
+
 def set_mode(size=(600, 450), flags=0):
-    global _display
+    global _display, _display_owned
     if _display is None:
          _display = rm690b0.RM690B0()
          _display.init_display()
@@ -147,11 +154,15 @@ def set_mode(size=(600, 450), flags=0):
          except ImportError:
              pass
          _display.brightness = 1.0
-    
+         _display_owned = True
+
     # Return a Surface representing the display
     s = Surface(size)
     s.is_display = True
     return s
+
+def is_display_owned():
+    return _display_owned
 
 def flip():
     if _display:

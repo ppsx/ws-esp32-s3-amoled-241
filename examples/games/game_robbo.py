@@ -27,9 +27,9 @@ except ImportError:
     sys.path.insert(0, path)
     import robbo
 
-def main():
+def main(display=None):
     """Entry point for menu launcher"""
-    robbo.main()
+    robbo.main(display=display)
 
 if __name__ == "__main__":
     main()

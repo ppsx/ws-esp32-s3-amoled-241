@@ -15,9 +15,11 @@ def init():
 
 def quit():
     disp = display.get_hw_driver()
-    disp.fill_color(0x0000)
-    disp.swap_buffers()
-    disp.deinit()
+    if disp:
+        disp.fill_color(0x0000)
+        disp.swap_buffers()
+        if display.is_display_owned():
+            disp.deinit()
     try:
         event.get_hw_driver().deinit()
     except:

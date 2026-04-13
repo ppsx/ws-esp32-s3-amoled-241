@@ -36,16 +36,20 @@ def quit():
     pygame.quit()
     sys.exit()
 
-def main():
+def main(display=None):
     global skin, levelset, clock, clock_speed, screen, screen_rect
-    
+
     # Initialize Shim
     pygame.init()
-    
+
+    # Inject external display before set_mode if provided
+    if display is not None:
+        pygame.display.inject_display(display)
+
     # Setup Display
     # Hardware specific size usually, but game expects 640x480 logic sometimes
     # Shim set_mode ignores size arguments usually and gives HW surface
-    screen = pygame.display.set_mode((600, 450)) 
+    screen = pygame.display.set_mode((600, 450))
     
     # Define game area rect (used for clipping in original game)
     # Original was (64, 32), (512, 384) for 640x480

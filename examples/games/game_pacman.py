@@ -1367,15 +1367,17 @@ class Game:
         self.display.swap_buffers()
 
 
-def main():
-    display = rm690b0.RM690B0()
-    display.init_display()
-    try:
-        import settings
-        display.rotation = settings.rotation
-    except ImportError:
-        pass
-    display.brightness = 1.0
+def main(display=None):
+    display_owned = display is None
+    if display_owned:
+        display = rm690b0.RM690B0()
+        display.init_display()
+        try:
+            import settings
+            display.rotation = settings.rotation
+        except ImportError:
+            pass
+        display.brightness = 1.0
 
     # Input Init
     i2c = busio.I2C(board.TP_SCL, board.TP_SDA, frequency=400000)
@@ -1492,7 +1494,8 @@ def main():
         print("Cleaning up display...")
         display.fill_color(0x0000)
         display.swap_buffers()
-        display.deinit()
+        if display_owned:
+            display.deinit()
         try:
             i2c.deinit()
         except:

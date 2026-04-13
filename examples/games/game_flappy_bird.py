@@ -617,7 +617,7 @@ def play_round(display, touch, best_score, sprite_cache):
     return score, local_best
 
 
-def main():
+def main(display=None):
     seed_value = int(time.monotonic() * 1000) & 0xFFFFFFFF
     random.seed(seed_value)
 
@@ -626,14 +626,16 @@ def main():
     print("=" * 70)
     print("Controls: tap the touchscreen to flap.\n")
 
-    display = rm690b0.RM690B0()
-    display.init_display()
-    try:
-        import settings
-        display.rotation = settings.rotation
-    except ImportError:
-        pass
-    display.brightness = 1.0
+    display_owned = display is None
+    if display_owned:
+        display = rm690b0.RM690B0()
+        display.init_display()
+        try:
+            import settings
+            display.rotation = settings.rotation
+        except ImportError:
+            pass
+        display.brightness = 1.0
     display.swap_buffers()
 
     touch = TouchInput()
@@ -665,7 +667,8 @@ def main():
     finally:
         display.fill_color(rm690b0.BLACK)
         display.swap_buffers()
-        display.deinit()
+        if display_owned:
+            display.deinit()
         touch.deinit()
         print("\nBest score this session:", best_score)
 

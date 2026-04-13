@@ -8,3 +8,9 @@ gpio_pins = {
     "right": None,
     "center": None,
 }
+extra_buttons = {
+    "btn_a": None,
+    "btn_b": None,
+    "btn_c": None,
+    "btn_d": None,
+}

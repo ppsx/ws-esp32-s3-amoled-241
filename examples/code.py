@@ -259,6 +259,46 @@ def draw_menu(display, buttons):
     display.swap_buffers()
 
 
+def _launch_game(selected, display):
+    """Launch a game or app. Returns when the game exits."""
+    if selected == "flappy":
+        print("\nStarting Flappy Bird...\n")
+        from games import game_flappy_bird
+        game_flappy_bird.main(display=display)
+    elif selected == "snake":
+        print("\nStarting Snake Game...\n")
+        from games import game_snake
+        game_snake.main(display=display)
+    elif selected == "pacman":
+        print("\nStarting Pac-Man...\n")
+        from games import game_pacman
+        game_pacman.main(display=display)
+    elif selected == "sokoban":
+        print("\nStarting Sokoban...\n")
+        from games import game_sokoban
+        game_sokoban.main(display=display)
+    elif selected == "minesweeper":
+        print("\nStarting Minesweeper...\n")
+        from games import game_minesweeper
+        game_minesweeper.main(display=display)
+    elif selected == "robbo":
+        print("\nStarting Robbo...\n")
+        from games import game_robbo
+        game_robbo.main(display=display)
+    elif selected == "frogger":
+        print("\nStarting Frogger...\n")
+        from games import game_frogger
+        game_frogger.main(display=display)
+    elif selected == "galaxian":
+        print("\nStarting Galaxian...\n")
+        from games import game_galaxian
+        game_galaxian.main(display=display)
+    elif selected == "flight":
+        print("\nStarting Flight Test...\n")
+        import accelerometer.main
+        accelerometer.main.main(display=display)
+
+
 def main():
     """Main menu loop."""
     print("\n" + "=" * 50)
@@ -266,7 +306,7 @@ def main():
     print("=" * 50)
     print("Touch a button to select an option.\n")
 
-    # Initialize display
+    # Initialize display once -- kept alive across menu/game cycles
     display = rm690b0.RM690B0()
     display.init_display()
     display.brightness = 1.0
@@ -277,21 +317,15 @@ def main():
     except ImportError:
         pass
 
-    # Enable double buffering
     display.swap_buffers()
 
-    # Initialize touch
-    touch = TouchInput()
-
-    # Create buttons (2-column layout)
-    # Screen 600 wide, 450 high.
+    # Create buttons once (layout doesn't change)
     col1_x = 25
     col2_x = 315
     btn_w = 260
     btn_h = 58
     gap_y = 14
 
-    # 4 Rows + Exit
     start_y = 76
     y1 = start_y
     y2 = start_y + btn_h + gap_y
@@ -299,176 +333,93 @@ def main():
     y4 = start_y + (btn_h + gap_y) * 3
     y_exit = y4 + btn_h + gap_y + 4
 
-    # Column 1
     flappy_button = Button(col1_x, y1, btn_w, btn_h, "FLAPPY BIRD")
     snake_button = Button(col1_x, y2, btn_w, btn_h, "SNAKE")
     minesweeper_button = Button(col1_x, y3, btn_w, btn_h, "MINESWEEPER")
     frogger_button = Button(col1_x, y4, btn_w, btn_h, "FROGGER")
 
-    # Column 2
     pacman_button = Button(col2_x, y1, btn_w, btn_h, "PAC-MAN")
     sokoban_button = Button(col2_x, y2, btn_w, btn_h, "SOKOBAN")
     robbo_button = Button(col2_x, y3, btn_w, btn_h, "ROBBO")
     galaxian_button = Button(col2_x, y4, btn_w, btn_h, "GALAXIAN")
 
-    # Exit (Centered, sized to fit between icon buttons)
     exit_button = Button(110, y_exit, 380, btn_h, "EXIT")
 
+    settings_button = GearIconButton(25, y_exit, 70, btn_h, "")
+    flight_button = IconButton(505, y_exit, 70, btn_h, "")
+
     buttons = [
-        flappy_button,
-        snake_button,
-        pacman_button,
-        sokoban_button,
-        minesweeper_button,
-        robbo_button,
-        frogger_button,
-        galaxian_button,
-        exit_button,
+        flappy_button, snake_button, pacman_button, sokoban_button,
+        minesweeper_button, robbo_button, frogger_button, galaxian_button,
+        exit_button, settings_button, flight_button,
     ]
 
-    # Settings Button (Bottom Left)
-    settings_button = GearIconButton(25, y_exit, 70, btn_h, "")
-    buttons.append(settings_button)
+    btn_map = {
+        id(flappy_button): "flappy", id(snake_button): "snake",
+        id(pacman_button): "pacman", id(sokoban_button): "sokoban",
+        id(minesweeper_button): "minesweeper", id(robbo_button): "robbo",
+        id(frogger_button): "frogger", id(galaxian_button): "galaxian",
+        id(exit_button): "exit", id(settings_button): "settings",
+        id(flight_button): "flight",
+    }
 
-    # Flight Button (Bottom Right)
-    flight_button = IconButton(505, y_exit, 70, btn_h, "")
-    buttons.append(flight_button)
-
-    # Draw initial menu
-    draw_menu(display, buttons)
-
-    selected = None
     try:
-        # Main loop
-        while selected is None:
-            touch_point = touch.get_touch()
+        while True:
+            # --- Menu phase ---
+            touch = TouchInput()
+            draw_menu(display, buttons)
 
-            if touch_point:
-                x, y = touch_point
-                print(f"Touch detected at: ({x}, {y})")
+            selected = None
+            while selected is None:
+                touch_point = touch.get_touch()
+                if touch_point:
+                    x, y = touch_point
+                    for btn in buttons:
+                        if btn.contains(x, y):
+                            print(f"{btn.text} button pressed!")
+                            btn.draw(display, BUTTON_PRESSED_COLOR)
+                            display.swap_buffers()
+                            time.sleep(0.2)
+                            selected = btn_map.get(id(btn))
+                            break
 
-                for btn in buttons:
-                    if btn.contains(x, y):
-                        print(f"{btn.text} button pressed!")
-                        btn.draw(display, BUTTON_PRESSED_COLOR)
-                        display.swap_buffers()
-                        time.sleep(0.2)
+                if selected == "settings":
+                    import settings_ui
+                    result = settings_ui.main(display, touch)
+                    if result.get("saved"):
+                        display.rotation = result["rotation"]
+                        touch._rotation = result["rotation"]
+                    draw_menu(display, buttons)
+                    selected = None
 
-                        if btn == flappy_button:
-                            selected = "flappy"
-                        elif btn == snake_button:
-                            selected = "snake"
-                        elif btn == pacman_button:
-                            selected = "pacman"
-                        elif btn == sokoban_button:
-                            selected = "sokoban"
-                        elif btn == minesweeper_button:
-                            selected = "minesweeper"
-                        elif btn == robbo_button:
-                            selected = "robbo"
-                        elif btn == frogger_button:
-                            selected = "frogger"
-                        elif btn == galaxian_button:
-                            selected = "galaxian"
-                        elif btn == exit_button:
-                            selected = "exit"
-                        elif btn == settings_button:
-                            selected = "settings"
-                        elif btn == flight_button:
-                            selected = "flight"
-                        break
+                time.sleep(0.05)
 
-            if selected == "settings":
-                import settings_ui
-                result = settings_ui.main(display, touch)
-                if result.get("saved"):
-                    display.rotation = result["rotation"]
-                    # Update touch rotation
-                    touch._rotation = result["rotation"]
-                draw_menu(display, buttons)
-                selected = None
+            touch.deinit()
 
-            time.sleep(0.05)
+            if selected == "exit":
+                break
+
+            # --- Game phase ---
+            try:
+                _launch_game(selected, display)
+            except Exception as e:
+                print(f"Game error: {e}")
+
+            # Game exited -- loop back to menu (display stays alive)
+            print("Returning to menu...\n")
 
     except KeyboardInterrupt:
         print("\nInterrupted by user.")
-        selected = "exit"
 
     finally:
-        # Cleanup
-        print("Cleaning up display and touch...")
-        display.fill_color(rgb565(0, 0, 0))
-        display.swap_buffers()
-        display.deinit()
-        touch.deinit()
-        print("Cleanup complete.")
-
-    # Execute selected option
-    if selected == "flappy":
-        print("\nStarting Flappy Bird...\n")
+        print("Cleaning up...")
         try:
-            from games import game_flappy_bird
-            game_flappy_bird.main()
-        except Exception as e:
-            print(f"Error: {e}")
-    elif selected == "snake":
-        print("\nStarting Snake Game...\n")
-        try:
-            from games import game_snake
-            game_snake.main()
-        except Exception as e:
-            print(f"Error: {e}")
-    elif selected == "pacman":
-        print("\nStarting Pac-Man...\n")
-        try:
-            from games import game_pacman
-            game_pacman.main()
-        except Exception as e:
-            print(f"Error: {e}")
-    elif selected == "sokoban":
-        print("\nStarting Sokoban...\n")
-        try:
-            from games import game_sokoban
-            game_sokoban.main()
-        except Exception as e:
-            print(f"Error: {e}")
-    elif selected == "minesweeper":
-        print("\nStarting Minesweeper...\n")
-        try:
-            from games import game_minesweeper
-            game_minesweeper.main()
-        except Exception as e:
-            print(f"Error: {e}")
-    elif selected == "robbo":
-        print("\nStarting Robbo...\n")
-        try:
-            from games import game_robbo
-            game_robbo.main()
-        except Exception as e:
-            print(f"Error: {e}")
-    elif selected == "frogger":
-        print("\nStarting Frogger...\n")
-        try:
-            from games import game_frogger
-            game_frogger.main()
-        except Exception as e:
-            print(f"Error: {e}")
-    elif selected == "galaxian":
-        print("\nStarting Galaxian...\n")
-        try:
-            from games import game_galaxian
-            game_galaxian.main()
-        except Exception as e:
-            print(f"Error: {e}")
-    elif selected == "flight":
-        print("\nStarting Flight Test...\n")
-        try:
-            import accelerometer.main
-            accelerometer.main.main()
-        except Exception as e:
-            print(f"Error: {e}")
-    else:
-        print("\nExiting to REPL.")
+            display.fill_color(rgb565(0, 0, 0))
+            display.swap_buffers()
+            display.deinit()
+        except Exception:
+            pass
+        print("Exiting to REPL.")
 
 
 if __name__ == "__main__":

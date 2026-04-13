@@ -69,7 +69,7 @@ class Joystick:
         for key in ("up", "down", "left", "right", "center"):
             pin_num = self._gpio_pins_cfg.get(key)
             if pin_num is not None:
-                pin = digitalio.DigitalInOut(microcontroller.pin.GPIO(pin_num))
+                pin = digitalio.DigitalInOut(getattr(microcontroller.pin, "GPIO" + str(pin_num)))
                 pin.direction = digitalio.Direction.INPUT
                 pin.pull = digitalio.Pull.UP
                 self._gpio_pins[key] = pin

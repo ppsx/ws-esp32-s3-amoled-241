@@ -852,7 +852,7 @@ class Game:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def main():
+def main(display=None):
     seed = int(time.monotonic() * 1000) & 0xFFFFFFFF
     random.seed(seed)
 
@@ -860,14 +860,16 @@ def main():
     print("  GALAXIAN CLONE")
     print("=" * 50)
 
-    display = rm690b0.RM690B0()
-    display.init_display()
-    try:
-        import settings
-        display.rotation = settings.rotation
-    except ImportError:
-        pass
-    display.brightness = 1.0
+    display_owned = display is None
+    if display_owned:
+        display = rm690b0.RM690B0()
+        display.init_display()
+        try:
+            import settings
+            display.rotation = settings.rotation
+        except ImportError:
+            pass
+        display.brightness = 1.0
     display.swap_buffers()
 
     print("Building sprites...")
@@ -892,7 +894,8 @@ def main():
 
     if not joystick and not touch:
         print("No input devices!")
-        display.deinit()
+        if display_owned:
+            display.deinit()
         return
 
     game = Game(display, sprites)
@@ -952,7 +955,8 @@ def main():
     finally:
         display.fill_color(BLACK)
         display.swap_buffers()
-        display.deinit()
+        if display_owned:
+            display.deinit()
         try:
             i2c.deinit()
         except:
