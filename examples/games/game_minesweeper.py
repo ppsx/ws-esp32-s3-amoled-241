@@ -99,30 +99,30 @@ class TouchInput:
         self.tp = adafruit_focaltouch.Adafruit_FocalTouch(i2c)
         self.last_pos = None
         self.press_start = 0
-        
+        try:
+            import settings
+            self._rotation = settings.rotation
+        except ImportError:
+            self._rotation = 0
+
+    def _map(self, raw_x, raw_y):
+        if self._rotation == 180:
+            return raw_y, 450 - raw_x
+        return 600 - raw_y, raw_x
+
     def get_action(self):
-        # Return (x, y, is_long_press, is_release)
-        # We need to detect:
-        # - Tap (Release < 300ms)
-        # - Long Press (Hold > 300ms)
-        
         if not self.tp.touched:
             if self.last_pos:
-                # Released
                 dur = time.monotonic() - self.press_start
                 pos = self.last_pos
                 self.last_pos = None
                 is_long = dur > 0.4
-                return (pos[0], pos[1], is_long, True) # True = Release action
+                return (pos[0], pos[1], is_long, True)
             return None
-        
+
         try:
             p = self.tp.touches[0]
-            # Map coords: 600x450 landscape. Controller is 450x600 portrait.
-            # Touch X (0-450) -> Y
-            # Touch Y (0-600) -> 600 - Y -> X
-            tx = 600 - p['y']
-            ty = p['x']
+            tx, ty = self._map(p['x'], p['y'])
             
             if self.last_pos is None:
                 self.press_start = time.monotonic()
@@ -400,7 +400,7 @@ def draw_start_screen(display):
     display.swap_buffers(copy=True)
 
 
-def wait_for_start(joy, touch):
+def wait_for_start(joy, touch, display):
     idle_since = None
     press_since = None
     idle_required = 0.12
@@ -423,6 +423,7 @@ def wait_for_start(joy, touch):
                 break
         else:
             idle_since = None
+        display.swap_buffers()
         time.sleep(0.01)
 
     while True:
@@ -434,9 +435,11 @@ def wait_for_start(joy, touch):
                 break
         else:
             press_since = None
+        display.swap_buffers()
         time.sleep(0.01)
 
     while pressed():
+        display.swap_buffers()
         time.sleep(0.01)
 
 
@@ -463,7 +466,7 @@ def main(display=None):
     display.swap_buffers(copy=True)
 
     draw_start_screen(display)
-    wait_for_start(joy, touch)
+    wait_for_start(joy, touch, display)
 
     try:
         game = MinesweeperGame(COLS, ROWS, MINES_COUNT)
@@ -637,21 +640,22 @@ def main(display=None):
 
             elif ui_drawn:
                 display.swap_buffers(copy=True)
+            else:
+                display.swap_buffers()
 
     except KeyboardInterrupt:
         print("\nGame interrupted by user")
     except Exception as e:
         print(f"\nGame crashed: {e}")
     finally:
+        if joy:
+            joy.deinit()
+        i2c.deinit()
         print("Cleaning up display...")
         display.fill_color(0x0000)
         display.swap_buffers()
         if display_owned:
             display.deinit()
-        try:
-            i2c.deinit()
-        except:
-            pass
         print("Minesweeper exited")
 
 if __name__ == "__main__":

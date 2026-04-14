@@ -398,10 +398,11 @@ def draw_scene(display, clouds, pipes, bird, ground_y, score, best):
     draw_hud(display, score, best, width)
 
 
-def wait_for_tap(touch):
+def wait_for_tap(touch, display):
     while True:
         if touch.poll():
             return
+        display.swap_buffers()
         time.sleep(WAIT_POLL_INTERVAL)
 
 
@@ -650,7 +651,7 @@ def main(display=None):
     try:
         while True:
             draw_start_screen(display, best_score)
-            wait_for_tap(touch)
+            wait_for_tap(touch, display)
 
             score, best_score = play_round(display, touch, best_score, sprite_cache)
             print(f"\nRound finished. Score: {score}, Best: {best_score}")
@@ -658,18 +659,18 @@ def main(display=None):
             draw_game_over(display, score, best_score, display.width, display.height)
             display.swap_buffers()
 
-            wait_for_tap(touch)
+            wait_for_tap(touch, display)
 
     except KeyboardInterrupt:
         print("\nInterrupted. Exiting.")
     except Exception as e:
         print(f"\nGame crashed: {e}")
     finally:
+        touch.deinit()
         display.fill_color(rm690b0.BLACK)
         display.swap_buffers()
         if display_owned:
             display.deinit()
-        touch.deinit()
         print("\nBest score this session:", best_score)
 
 

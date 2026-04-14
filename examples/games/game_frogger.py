@@ -320,6 +320,16 @@ class TouchInput:
         self.sy = 0
         self.swiping = False
         self.last_tap = 0
+        try:
+            import settings
+            self._rotation = settings.rotation
+        except ImportError:
+            self._rotation = 0
+
+    def _map(self, raw_x, raw_y):
+        if self._rotation == 180:
+            return raw_y, 450 - raw_x
+        return 600 - raw_y, raw_x
 
     def get_input(self):
         if not self.touch.touched:
@@ -333,9 +343,7 @@ class TouchInput:
             self.swiping = False
             return DIR_NONE
 
-        # Landscape mapping: raw display is portrait
-        x = 600 - pts[0]["y"]
-        y = pts[0]["x"]
+        x, y = self._map(pts[0]["x"], pts[0]["y"])
 
         if not self.swiping:
             self.sx = x
@@ -1852,6 +1860,7 @@ def main(display=None):
 
             # Debounce
             while game.check_any():
+                display.swap_buffers()
                 time.sleep(0.05)
 
             # --- Game loop ---
@@ -1929,14 +1938,13 @@ def main(display=None):
     except Exception as e:
         print(f"\nError: {e}")
     finally:
+        if joystick:
+            joystick.deinit()
+        i2c.deinit()
         display.fill_color(C_BLACK)
         display.swap_buffers()
         if display_owned:
             display.deinit()
-        try:
-            i2c.deinit()
-        except Exception:
-            pass
         print("Frogger exited")
 
 

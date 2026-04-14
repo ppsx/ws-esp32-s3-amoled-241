@@ -161,6 +161,16 @@ class TouchInput:
         self.start_x = 0
         self.is_touching = False
         self.tap_fired = False
+        try:
+            import settings
+            self._rotation = settings.rotation
+        except ImportError:
+            self._rotation = 0
+
+    def _map(self, raw_x, raw_y):
+        if self._rotation == 180:
+            return raw_y, 450 - raw_x
+        return 600 - raw_y, raw_x
 
     def poll(self):
         if not self.touch.touched:
@@ -176,10 +186,7 @@ class TouchInput:
             self.tap_fired = False
             return DIR_NONE
 
-        raw_x = points[0]["x"]
-        raw_y = points[0]["y"]
-        x = 600 - raw_y
-        y = raw_x
+        x, y = self._map(points[0]["x"], points[0]["y"])
 
         if not self.is_touching:
             self.start_x = x
@@ -929,6 +936,7 @@ def main(display=None):
                     game.draw_title()
                     title_drawn = True
                     go_drawn = False
+                display.swap_buffers()
                 _sleep(0.05)
                 continue
 
@@ -937,6 +945,7 @@ def main(display=None):
                     game.draw_game_over()
                     go_drawn = True
                     title_drawn = False
+                display.swap_buffers()
                 _sleep(0.05)
                 continue
 
@@ -953,14 +962,13 @@ def main(display=None):
     except Exception as e:
         print(f"\nCrash: {e}")
     finally:
+        if joystick:
+            joystick.deinit()
+        i2c.deinit()
         display.fill_color(BLACK)
         display.swap_buffers()
         if display_owned:
             display.deinit()
-        try:
-            i2c.deinit()
-        except:
-            pass
         print("Galaxian exited.")
 
 

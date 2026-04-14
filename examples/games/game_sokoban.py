@@ -99,6 +99,16 @@ class TouchInput:
         self.start_y = 0
         self.is_swiping = False
         self.last_tap_time = 0
+        try:
+            import settings
+            self._rotation = settings.rotation
+        except ImportError:
+            self._rotation = 0
+
+    def _map(self, raw_x, raw_y):
+        if self._rotation == 180:
+            return raw_y, 450 - raw_x
+        return 600 - raw_y, raw_x
 
     def get_action(self):
         if not self.touch.touched:
@@ -111,11 +121,8 @@ class TouchInput:
         if not points:
             self.is_swiping = False
             return None
-            
-        raw_x = points[0]["x"]
-        raw_y = points[0]["y"]
-        x = 600 - raw_y
-        y = raw_x
+
+        x, y = self._map(points[0]["x"], points[0]["y"])
         
         if not self.is_swiping:
             self.start_x = x
@@ -476,7 +483,7 @@ def any_start_input(joystick, touch):
     return False
 
 
-def wait_for_start(joystick, touch):
+def wait_for_start(joystick, touch, display):
     released_since = 0.0
     while True:
         active = any_start_input(joystick, touch)
@@ -488,6 +495,7 @@ def wait_for_start(joystick, touch):
                 break
         else:
             released_since = 0.0
+        display.swap_buffers()
         time.sleep(0.01)
 
     pressed_since = 0.0
@@ -501,6 +509,7 @@ def wait_for_start(joystick, touch):
                 break
         else:
             pressed_since = 0.0
+        display.swap_buffers()
         time.sleep(0.01)
 
     released_since = 0.0
@@ -514,6 +523,7 @@ def wait_for_start(joystick, touch):
                 return
         else:
             released_since = 0.0
+        display.swap_buffers()
         time.sleep(0.01)
 
 
@@ -585,7 +595,7 @@ def main(display=None):
     except Exception as e:
         print(f"Touch init error: {e}")
 
-    wait_for_start(joystick, touch)
+    wait_for_start(joystick, touch, display)
 
     level_idx = 0
     game = None
@@ -662,6 +672,7 @@ def main(display=None):
                 dirty_cells.clear()
                 full_redraw = False
             else:
+                display.swap_buffers()
                 time.sleep(0.001)
 
             d = None
@@ -798,15 +809,16 @@ def main(display=None):
     except Exception as e:
         print(f"\nGame crashed: {e}")
     finally:
+        if joystick:
+            joystick.deinit()
+        if touch:
+            touch.deinit()
+        i2c.deinit()
         print("Cleaning up display...")
         display.fill_color(0x0000)
         display.swap_buffers()
         if display_owned:
             display.deinit()
-        try:
-            i2c.deinit()
-        except:
-            pass
         print("Sokoban exited")
 
 if __name__ == "__main__":

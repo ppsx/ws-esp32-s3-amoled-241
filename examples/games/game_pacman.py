@@ -106,6 +106,16 @@ class TouchInput:
         self.start_y = 0
         self.is_swiping = False
         self.last_tap_time = 0
+        try:
+            import settings
+            self._rotation = settings.rotation
+        except ImportError:
+            self._rotation = 0
+
+    def _map(self, raw_x, raw_y):
+        if self._rotation == 180:
+            return raw_y, 450 - raw_x
+        return 600 - raw_y, raw_x
 
     def get_input(self):
         if not self.touch.touched:
@@ -119,11 +129,7 @@ class TouchInput:
             self.is_swiping = False
             return DIR_NONE
 
-        # Map coordinates (Landscape)
-        raw_x = points[0]["x"]
-        raw_y = points[0]["y"]
-        x = 600 - raw_y
-        y = raw_x
+        x, y = self._map(points[0]["x"], points[0]["y"])
 
         if not self.is_swiping:
             self.start_x = x
@@ -1428,6 +1434,7 @@ def main(display=None):
             # Wait for inputs to be released (debounce)
             # We loop until no inputs are detected
             while check_start() or get_combined_input() != DIR_NONE:
+                display.swap_buffers()
                 time.sleep(0.1)
 
             # Wait for input to start
@@ -1437,6 +1444,7 @@ def main(display=None):
                     start = True
                 elif get_combined_input() != DIR_NONE:
                     start = True
+                display.swap_buffers()
                 time.sleep(0.05)
 
             # Play Game
@@ -1463,6 +1471,7 @@ def main(display=None):
                     game.update()
                     game.draw()
                 else:
+                    display.swap_buffers()
                     time.sleep(0.002)
 
             # Game Over
@@ -1473,6 +1482,7 @@ def main(display=None):
 
             # Wait for inputs to be released (debounce)
             while check_start() or get_combined_input() != DIR_NONE:
+                display.swap_buffers()
                 time.sleep(0.1)
 
             # Wait for any input to continue
@@ -1482,6 +1492,7 @@ def main(display=None):
                     waiting = False
                 elif get_combined_input() != DIR_NONE:
                     waiting = False
+                display.swap_buffers()
                 time.sleep(0.05)
 
                 # Loop back to welcome
@@ -1491,15 +1502,16 @@ def main(display=None):
     except Exception as e:
         print(f"\nGame crashed: {e}")
     finally:
+        if joystick:
+            joystick.deinit()
+        if touch:
+            touch.deinit()
+        i2c.deinit()
         print("Cleaning up display...")
         display.fill_color(0x0000)
         display.swap_buffers()
         if display_owned:
             display.deinit()
-        try:
-            i2c.deinit()
-        except:
-            pass
         print("Pac-Man exited")
 
 

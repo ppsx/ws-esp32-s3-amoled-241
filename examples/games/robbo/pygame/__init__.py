@@ -14,16 +14,16 @@ def init():
     pass
 
 def quit():
+    try:
+        event.get_hw_driver().deinit()
+    except:
+        pass
     disp = display.get_hw_driver()
     if disp:
         disp.fill_color(0x0000)
         disp.swap_buffers()
         if display.is_display_owned():
             disp.deinit()
-    try:
-        event.get_hw_driver().deinit()
-    except:
-        pass
 
 
 from .rect import Rect

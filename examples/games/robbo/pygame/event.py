@@ -60,9 +60,13 @@ def pump():
     
 def wait():
     # Blocking wait
+    from . import display as _disp
+    hw = _disp.get_hw_driver()
     while True:
         evs = get()
         if evs: return evs[0]
+        if hw:
+            hw.swap_buffers()
         time.sleep(0.05)
 
 # Internal access to driver

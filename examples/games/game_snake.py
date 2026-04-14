@@ -140,6 +140,16 @@ class TouchInput:
         self.start_y = 0
         self.is_swiping = False
         self.last_tap_time = 0
+        try:
+            import settings
+            self._rotation = settings.rotation
+        except ImportError:
+            self._rotation = 0
+
+    def _map(self, raw_x, raw_y):
+        if self._rotation == 180:
+            return raw_y, 450 - raw_x
+        return 600 - raw_y, raw_x
 
     def get_direction(self):
         """Get swipe direction from touch input (returns direction tuple or None)."""
@@ -156,11 +166,7 @@ class TouchInput:
             self.is_swiping = False
             return None
 
-        # Map coordinates (Landscape)
-        raw_x = points[0]["x"]
-        raw_y = points[0]["y"]
-        x = 600 - raw_y
-        y = raw_x
+        x, y = self._map(points[0]["x"], points[0]["y"])
 
         if not self.is_swiping:
             self.start_x = x
@@ -624,6 +630,7 @@ def main(display=None):
 
             # Wait for inputs to be released (debounce)
             while check_start() or get_combined_input() is not None:
+                display.swap_buffers()
                 time.sleep(0.1)
 
             # Wait for input to start
@@ -633,6 +640,7 @@ def main(display=None):
                     start = True
                 elif get_combined_input() is not None:
                     start = True
+                display.swap_buffers()
                 time.sleep(0.05)
 
             # Play round
@@ -645,6 +653,7 @@ def main(display=None):
 
             # Wait for inputs to be released (debounce)
             while check_start() or get_combined_input() is not None:
+                display.swap_buffers()
                 time.sleep(0.1)
 
             # Wait for any input to continue
@@ -654,6 +663,7 @@ def main(display=None):
                     waiting = False
                 elif get_combined_input() is not None:
                     waiting = False
+                display.swap_buffers()
                 time.sleep(0.05)
 
     except KeyboardInterrupt:
@@ -661,15 +671,15 @@ def main(display=None):
     except Exception as e:
         print(f"\nGame crashed: {e}")
     finally:
-        display.fill_color(rm690b0.BLACK)
-        display.swap_buffers()
-        if display_owned:
-            display.deinit()
         if joystick:
             joystick.deinit()
         if touch:
             touch.deinit()
         i2c.deinit()
+        display.fill_color(rm690b0.BLACK)
+        display.swap_buffers()
+        if display_owned:
+            display.deinit()
         print("\nBest score this session:", best_score)
 
 
